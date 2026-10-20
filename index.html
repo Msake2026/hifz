@@ -382,8 +382,10 @@ const scopeLabel = sc => sc.type === 'matn' ? (sc.id === 'all' ? 'Tous les mouto
 const modeTitle = id => (MODES.find(m => m[0] === id) || [])[1] || id;
 const INPUTS = {recite: 'je récite', type: 'je tape', voice: 'à voix haute'};
 
-function home(){ // affiche l'écran du menu courant
+function home(){ // affiche l'écran du menu courant (accès réservé aux comptes connectés quand les comptes sont activés)
   stopAudio(); ls = null;
+  if (cloudOn() && !authReady) return renderLoading();
+  if (cloudOn() && !me) return renderAccount();
   if (!TABS.some(t => t[0] === cfg.tab)) cfg.tab = 'home';
   $app.innerHTML = ({home: tabHome, train: tabTrain, progress: tabProgress, errors: tabErrors, settings: tabSettings})[cfg.tab]();
   setNav(true);
@@ -403,7 +405,11 @@ function syncCfg(){
       cfg.scope = {type: t, from: f || 1, to: e || 114};
     }
   }
-  if ($('sn')){ cfg.n = +v('sn'); cfg.level = +v('slevel'); cfg.contLen = +v('scont'); cfg.endLen = +v('send'); cfg.begLen = +v('sbeg'); }
+  if ($('sn')) cfg.n = +v('sn');
+  if ($('slevel')) cfg.level = +v('slevel');
+  if ($('scont')) cfg.contLen = +v('scont');
+  if ($('send')) cfg.endLen = +v('send');
+  if ($('sbeg')) cfg.begLen = +v('sbeg');
   if ($('srec')){ cfg.reciter = v('srec'); cfg.goal = +v('sgoal'); }
   saveCfg();
 }
@@ -428,7 +434,7 @@ function tabHome(){
 
   <div class="card"><h2>Ma série</h2>
     <div class="sumline"><span>${cfg.scope.type === 'matn' ? '📜 Moutoun' : '📖 Coran'}</span><span>${esc(scopeLabel(cfg.scope))}</span>
-      <span>${esc(modeTitle(cfg.mode))}</span><span>${cfg.n} questions</span><span>${INPUTS[cfg.input] || ''}</span></div>
+      <span>${esc(modeTitle(cfg.mode))}</span><span>${cfg.n} questions</span>${(MODE_OPTS[cfg.mode] || {}).input ? `<span>${INPUTS[cfg.input] || ''}</span>` : ''}</div>
     <button class="pri big" data-act="start">Commencer</button>
     <div class="row" style="margin-top:8px"><button data-act="tab" data-v="train">Modifier</button><button data-act="lsopen">🎧 Écouter</button></div>
   </div>
@@ -438,8 +444,21 @@ function tabHome(){
 }
 
 /* -- Réviser : tout pour préparer une série -- */
+/* options utiles pour chaque exercice (n = nombre de questions : toujours) ; q = Coran seulement */
+const MODE_OPTS = {
+  mix: {level: 1, end: 'q', beg: 'q', input: 1}, next: {input: 1}, cloze: {level: 1, input: 1}, which: {}, mcq: {}, mutash: {}, start: {input: 1},
+  order: {}, end: {end: 'q', input: 1}, link: {end: 'q', beg: 'q', input: 1}, cont: {cont: 1, input: 1}, half: {input: 1}, phrase: {input: 1}
+};
+const modeHelp = {
+  mix: 'Un mélange de tous les exercices.', next: 'On te donne un verset, tu donnes la suite.', cloze: 'Des mots du verset sont cachés : retrouve-les.',
+  which: 'Tu identifies la sourate (ou le matn) d\'un verset en touchant la bonne réponse.', mcq: 'Tu touches le bon verset suivant parmi quatre.',
+  mutash: 'Tu touches la vraie suite d\'un verset qui ressemble à d\'autres.', start: 'Tu récites le premier verset d\'une sourate.',
+  order: 'Tu touches la sourate qui vient juste après.', end: 'Tu récites les derniers versets d\'une sourate.',
+  link: 'Tu récites la fin d\'une sourate puis le début de la suivante.', cont: 'Tu récites un passage entier d\'une traite.',
+  half: 'On te donne la première moitié, tu complètes la seconde.', phrase: 'On te donne une phrase, tu donnes la suivante.'
+};
 function tabTrain(){
-  const sc = cfg.scope, isM = sc.type === 'matn';
+  const sc = cfg.scope, isM = sc.type === 'matn', o = MODE_OPTS[cfg.mode] || {};
   return `
   <h1>Réviser</h1>
   <p class="sub">Choisis ce que tu veux travailler, puis lance la série.</p>
@@ -485,24 +504,25 @@ function tabTrain(){
   </div>
 
   <div class="card"><h2>Options de la série</h2>
+    <p class="ref" style="margin:0 0 8px">${modeHelp[cfg.mode] || ''}</p>
     <div class="row">
       <div><label class="f">Nombre de questions</label>
         <select id="sn">${[5, 10, 20, 30].map(n => `<option ${n === cfg.n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
-      <div><label class="f">Mots cachés (mots manquants)</label>
-        <select id="slevel">${[20, 40, 60, 80].map(n => `<option value="${n}" ${n === cfg.level ? 'selected' : ''}>${n} %</option>`).join('')}</select></div>
-      <div><label class="f">Versets en récitation continue</label>
-        <select id="scont">${[3, 5, 8, 10, 15].map(n => `<option ${n === cfg.contLen ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
-      <div ${isM ? 'hidden' : ''}><label class="f">Versets de fin de sourate</label>
-        <select id="send">${[1, 2, 3, 5].map(n => `<option ${n === cfg.endLen ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
-      <div ${isM ? 'hidden' : ''}><label class="f">Versets de début (sourate suivante)</label>
-        <select id="sbeg">${[1, 2, 3].map(n => `<option ${n === cfg.begLen ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      ${o.level ? `<div><label class="f">Mots cachés (mots manquants)</label>
+        <select id="slevel">${[20, 40, 60, 80].map(n => `<option value="${n}" ${n === cfg.level ? 'selected' : ''}>${n} %</option>`).join('')}</select></div>` : ''}
+      ${o.cont ? `<div><label class="f">Versets à réciter d'une traite</label>
+        <select id="scont">${[3, 5, 8, 10, 15].map(n => `<option ${n === cfg.contLen ? 'selected' : ''}>${n}</option>`).join('')}</select></div>` : ''}
+      ${o.end && !isM ? `<div><label class="f">Versets de fin de sourate</label>
+        <select id="send">${[1, 2, 3, 5].map(n => `<option ${n === cfg.endLen ? 'selected' : ''}>${n}</option>`).join('')}</select></div>` : ''}
+      ${o.beg && !isM ? `<div><label class="f">Versets de début (sourate suivante)</label>
+        <select id="sbeg">${[1, 2, 3].map(n => `<option ${n === cfg.begLen ? 'selected' : ''}>${n}</option>`).join('')}</select></div>` : ''}
     </div>
-    <label class="f">Façon de répondre${SR ? '' : ' (la voix n\'est pas disponible dans ce navigateur : essaie Chrome ou Safari)'}</label>
+    ${o.input ? `<label class="f">Façon de répondre${SR ? '' : ' (la voix n\'est pas disponible dans ce navigateur : essaie Chrome ou Safari)'}</label>
     <div class="seg">
       <button class="${cfg.input === 'recite' ? 'sel' : ''}" data-act="input" data-v="recite">Je récite, puis je marque mes erreurs</button>
       <button class="${cfg.input === 'type' ? 'sel' : ''}" data-act="input" data-v="type">Je tape en arabe</button>
       ${SR ? `<button class="${cfg.input === 'voice' ? 'sel' : ''}" data-act="input" data-v="voice">🎤 Je récite à voix haute</button>` : ''}
-    </div>
+    </div>` : '<p class="ref" style="margin:10px 0 0">Pour cet exercice, tu réponds en touchant la bonne proposition.</p>'}
   </div>
 
   <div class="row"><button class="big" data-act="rdscope">📖 Lire le texte complet</button><button class="big" data-act="lsopen">🎧 Écouter ma portée</button></div>
@@ -1252,7 +1272,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '20 oct. 2026';
+const APP_VERSION = '20 oct. 2026 · v2';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert('Pas de connexion : connecte-toi à internet pour mettre à jour.');
   el.disabled = true; el.textContent = 'Mise à jour…';
@@ -1301,18 +1321,24 @@ function loadSupabase(){
     document.head.appendChild(sc);
   });
 }
+let authReady = !cloudOn(); // sans comptes configurés, l'accès est libre ; sinon on attend de savoir si une session existe
 async function cloudInit(){
-  if (!cloudOn()) return;
-  try { await loadSupabase(); } catch (e){ acc.msg = friendly(e); return; }
+  try { await loadSupabase(); } catch (e){ acc.msg = friendly(e); authReady = true; return home(); }
   sb = window.supabase.createClient(CLOUD.url, CLOUD.anonKey, {auth: {persistSession: true, autoRefreshToken: true, detectSessionInUrl: true}});
   sb.auth.onAuthStateChange((ev, sess) => setTimeout(async () => { // jamais d'appel Supabase directement dans ce rappel
+    if (!authReady) return;
     if (ev === 'SIGNED_OUT'){ me = null; refreshAccount(); return; }
     if (ev === 'PASSWORD_RECOVERY'){ await loadMe(sess); acc.mode = 'newpass'; openAccount('newpass'); return; }
-    if (sess && ['SIGNED_IN', 'INITIAL_SESSION'].includes(ev) && !me) await loadMe(sess);
+    if (sess && ev === 'SIGNED_IN' && !me) await loadMe(sess);
   }, 0));
-  refreshAccount();
+  try { const {data: {session}} = await sb.auth.getSession(); if (session) await loadMe(session); } catch {}
+  authReady = true; home();
 }
-function refreshAccount(){ if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else if (screen === 'tab') home(); }
+function renderLoading(){ setNav(false); $app.innerHTML = '<p class="sub" style="margin-top:40vh;text-align:center">Chargement…</p>'; }
+function refreshAccount(){
+  if (screen === 'account' && me && acc.fromGate){ acc.fromGate = false; return go('home'); } // connexion réussie depuis l'écran d'accueil protégé
+  if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else if (screen === 'tab' || !me) home();
+}
 async function loadMe(sess){
   if (!sess || loadingMe) return; loadingMe = true;
   try {
@@ -1320,10 +1346,14 @@ async function loadMe(sess){
     if (error) throw error;
     if (!prof) throw new Error('relation profiles does not exist (profil introuvable)');
     if (prof.blocked){ await sb.auth.signOut(); me = null; acc.msg = 'Ce compte est suspendu.'; acc.ok = false; return; }
-    me = {user: u, profile: prof};
+    me = {user: {id: u.id, email: u.email}, profile: prof}; store.set('hifz.me', me);
     sb.rpc('touch');
     await cloudSyncOnLogin();
-  } catch (e){ acc.msg = friendly(e); acc.ok = false; }
+  } catch (e){
+    const c = store.get('hifz.me', null); // hors ligne : on reprend le dernier profil connu de cette session
+    if (c && sess && c.user.id === sess.user.id && /Failed to fetch|NetworkError|Load failed/i.test(String(e && e.message))) me = c;
+    else { acc.msg = friendly(e); acc.ok = false; }
+  }
   finally { loadingMe = false; refreshAccount(); }
 }
 
@@ -1390,7 +1420,7 @@ function renderAccount(){
   const f = (id, label, type, ac, extra = '') => `<label class="f" for="${id}">${label}</label><input id="${id}" type="${type}" autocomplete="${ac}" value="${esc(acc.d[dk[id]] || '')}" ${extra}>`;
   let body;
   if (!cloudOn()) body = `<div class="card"><h2>Comptes non activés</h2><p class="sub" style="margin:0">Le propriétaire du site doit encore relier une base Supabase (voir <code>supabase/README.md</code> dans le dépôt). Ta progression reste pour l'instant sur cet appareil.</p></div>`;
-  else if (!sb) body = `<div class="card"><p class="sub" style="margin:0">${esc(acc.msg || 'Chargement…')}</p></div>`;
+  else if (!sb) body = `<div class="card"><p class="sub" style="margin:0 0 10px">${esc(acc.msg || 'Chargement…')}</p><button class="pri" onclick="location.reload()">Réessayer</button></div>`;
   else if (me){
     body = `<div class="card"><h2>${esc(me.user.email)}</h2>
       <p class="ref" style="margin:0 0 8px">${isAdmin() ? 'Rôle : administrateur' : 'Rôle : utilisateur'} · inscrit le ${esc(new Date(me.profile.created_at).toLocaleDateString('fr-FR'))}</p>
@@ -1418,8 +1448,9 @@ function renderAccount(){
       ${!su && !rs ? '<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="reset">Mot de passe oublié ?</button></p>' : ''}
       ${rs ? '<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="login">← Retour à la connexion</button></p>' : ''}</div>`;
   }
-  $app.innerHTML = `<div class="top"><button class="link" data-act="acc-back">← Retour</button><span>Compte</span></div>
-    <h1 style="margin-top:8px">Mon compte</h1>
+  const gate = cloudOn() && !me; acc.fromGate = gate;
+  $app.innerHTML = `${gate ? '' : '<div class="top"><button class="link" data-act="acc-back">← Retour</button><span>Compte</span></div>'}
+    ${gate ? '<div class="hero" style="margin-top:8px"><div class="logo">حفظ</div><div><h1>Hifz</h1><p>Crée un compte ou connecte-toi pour accéder à l\'application.</p></div></div>' : '<h1 style="margin-top:8px">Mon compte</h1>'}
     ${acc.msg && cloudOn() && sb ? `<div class="fb ${acc.ok ? 'ok' : 'ko'}">${esc(acc.msg)}</div>` : ''}${body}`;
 }
 const val = id => ($(id)?.value || '').trim();
@@ -1458,7 +1489,7 @@ const doLogout = async () => {
   if (!confirm('Te déconnecter ? La progression de cet appareil sera effacée (elle reste dans ton compte).')) return;
   clearTimeout(pushTimer); await cloudPush();
   if (acc.syncErr && !confirm('La dernière synchronisation a échoué : te déconnecter perdra les changements non envoyés. Continuer ?')) return;
-  await sb.auth.signOut(); me = null;
+  await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.me'); } catch {}
   syncPause = true; stats = {}; sched = {}; days = {}; errors = []; custom.forEach(t => { delete MT[t.id]; }); custom = [];
   ['hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.cloud'].forEach(k => { try { localStorage.removeItem(k); } catch {} });
   syncPause = false; acc.msg = 'Déconnecté.'; acc.ok = true; acc.mode = 'login'; renderAccount();
@@ -1466,7 +1497,7 @@ const doLogout = async () => {
 const doDeleteMe = () => busy(async () => {
   if (!confirm('Supprimer définitivement ton compte et ta progression enregistrée ? Cette action est irréversible.')) return;
   const {error} = await sb.rpc('delete_me'); if (error) throw error;
-  await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.cloud'); } catch {}
+  await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.cloud'); localStorage.removeItem('hifz.me'); } catch {}
   acc.mode = 'login'; acc.ok = true; acc.msg = 'Compte supprimé. La progression de cet appareil est conservée.';
 });
 
@@ -1537,7 +1568,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) naviga
 (async function init(){
   MT = Object.fromEntries((window.MOUTOUN?.texts || []).map(t => [t.id, t]));
   custom.forEach(t => { MT[t.id] = t; });
-  try { await loadQuran(); home(); cloudInit(); }
+  try { await loadQuran(); if (cloudOn()){ renderLoading(); await cloudInit(); } else home(); }
   catch (err){
     $app.innerHTML = `<h1>Chargement impossible</h1>
       <p class="sub">Une connexion internet est nécessaire au premier lancement (${esc(err.message)}).</p>
