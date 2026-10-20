@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#0f6b4f">
+<meta name="theme-color" content="#0f5d46">
 <link rel="icon" href="icon.svg">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,15 +13,20 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Hifz – Teste ta mémorisation du Coran</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f6f1e7; --card:#fffdf8; --ink:#1d2a24; --muted:#6a766f; --line:#e3dac8;
-  --accent:#0f6b4f; --accent-ink:#fff; --ok:#1c8a5a; --okbg:#dff3e7; --ko:#b8392f; --kobg:#f9e1de; --mid:#b7791f; --midbg:#faefd6;
+  --bg:#f3ead6; --card:#fcf7ea; --ink:#2b2218; --muted:#7a6a52; --line:#decfa9; --line-soft:#ecddb6;
+  --accent:#0f5d46; --accent-ink:#fff8e6; --gold:#b58a2c; --gold-soft:#e3cf98; --glow:rgba(190,150,60,.20);
+  --ok:#1f7a4d; --okbg:#e1efd9; --ko:#a8362b; --kobg:#f6ddd5; --mid:#a8741a; --midbg:#f6e8c3;
+  --pattern:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23b58a2c' stroke-opacity='.14'%3E%3Crect x='20' y='20' width='32' height='32'/%3E%3Crect x='20' y='20' width='32' height='32' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='4'/%3E%3C/g%3E%3C/svg%3E");
+  --serif:"Cormorant Garamond","Amiri Quran",Georgia,serif;
 }
 @media (prefers-color-scheme:dark){
-  :root{--bg:#0f1714; --card:#17231e; --ink:#e8efe9; --muted:#93a39a; --line:#27382f;
-  --accent:#4cc79b; --accent-ink:#06261b; --ok:#5fd6a0; --okbg:#173a2b; --ko:#ff8d82; --kobg:#401f1c; --mid:#f0b95a; --midbg:#3d311a;}
+  :root{--bg:#15110b; --card:#201a11; --ink:#f0e6cf; --muted:#b3a283; --line:#3b3022; --line-soft:#2f2619;
+  --accent:#4dbb92; --accent-ink:#0b241a; --gold:#d5b25a; --gold-soft:#5a4a24; --glow:rgba(213,178,90,.10);
+  --ok:#74d3a1; --okbg:#173326; --ko:#ff9a8c; --kobg:#3d1f1a; --mid:#e8b95b; --midbg:#3a2c14;
+  --pattern:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23d5b25a' stroke-opacity='.09'%3E%3Crect x='20' y='20' width='32' height='32'/%3E%3Crect x='20' y='20' width='32' height='32' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='4'/%3E%3C/g%3E%3C/svg%3E");}
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -119,6 +124,61 @@ body.has-nav main{padding-bottom:96px}
 .sumline{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
 .sumline span{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:.82rem}
 .list-btn{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;margin-top:8px}
+/* ===== Style « mushaf » : parchemin, vert profond, filets dorés ===== */
+body{background-color:var(--bg);background-image:radial-gradient(120% 50% at 50% -8%,var(--glow),transparent 65%),var(--pattern);background-attachment:fixed}
+h1,h2{font-family:var(--serif);letter-spacing:.2px;color:var(--ink)}
+h1{font-size:2rem;font-weight:700;line-height:1.1}
+h2{font-size:1.3rem;font-weight:700;display:flex;align-items:center;gap:10px}
+h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--gold),transparent);opacity:.7}
+.sub,.ref{color:var(--muted)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.card{border-radius:18px;padding:18px;border:1px solid var(--line);
+  box-shadow:inset 0 0 0 4px var(--card),inset 0 0 0 5px var(--line-soft),0 12px 26px -20px rgba(70,45,10,.55)}
+select,input[type=number],input[type=text],input[type=email],input[type=password],input[type=time],textarea,.blankin{background:color-mix(in srgb,var(--card) 70%,var(--bg));border-color:var(--line);border-radius:12px}
+select:focus,input:focus,textarea:focus{border-color:var(--gold);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--gold) 22%,transparent)}
+button{border-radius:12px;font-weight:500;border-color:var(--line);transition:border-color .15s,box-shadow .15s,transform .05s}
+button:hover:not(:disabled){border-color:var(--gold);box-shadow:0 0 0 3px color-mix(in srgb,var(--gold) 18%,transparent)}
+button:active:not(:disabled){transform:translateY(1px)}
+button.pri{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 86%,#fff),var(--accent));color:var(--accent-ink);border-color:var(--gold);font-weight:600;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 16px -10px var(--accent);letter-spacing:.2px}
+button.pri:hover:not(:disabled){box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 3px color-mix(in srgb,var(--gold) 28%,transparent)}
+button.big{border-radius:14px}
+.mode{border-radius:14px}.mode b{font-family:var(--serif);font-size:1.12rem}
+.mode.sel{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold),0 0 0 3px color-mix(in srgb,var(--gold) 18%,transparent);background:color-mix(in srgb,var(--accent) 7%,var(--card))}
+.seg button.sel,.chips button.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--gold)}
+.link{color:var(--muted)}
+/* repères */
+.hero .logo{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--accent) 70%,#fff),var(--accent));border:2px solid var(--gold);color:var(--gold-soft);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--gold) 22%,transparent)}
+.hero h1{font-size:2.1rem}
+.bar,.goal{height:8px;border-radius:8px;background:color-mix(in srgb,var(--gold) 22%,var(--line))}
+.bar i,.goal i{background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:8px}
+.stat div{background:color-mix(in srgb,var(--bg) 55%,var(--card));border:1px solid var(--line);border-radius:14px}
+.stat b{font-family:var(--serif);font-size:1.8rem;color:var(--accent);line-height:1.1}
+.big-score{font-family:var(--serif);font-size:4rem;color:var(--accent);font-weight:700;text-shadow:0 2px 0 color-mix(in srgb,var(--gold) 30%,transparent)}
+.week i{background:linear-gradient(180deg,var(--gold),var(--accent))}
+.cell{border-radius:8px}
+.vend{color:var(--gold)}sup.vn{color:var(--gold)}
+/* menu du bas */
+#nav{background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--gold-soft);box-shadow:0 -10px 24px -18px rgba(70,45,10,.5)}
+#nav button{border-radius:0;box-shadow:none;font-weight:500}
+#nav button:hover:not(:disabled){box-shadow:none}
+#nav button.sel::before{content:"";position:absolute;top:0;left:32%;right:32%;height:3px;border-radius:0 0 6px 6px;background:var(--gold)}
+#nav .badge{background:var(--gold);color:var(--card)}
+.cta{background:linear-gradient(to top,var(--bg) 65%,transparent)}
+/* exercices */
+.top{color:var(--muted)}
+.ar{color:var(--ink)}
+.card>.ar:first-of-type{border-radius:12px}
+.opt{border-radius:14px;box-shadow:none}
+.opt.c{background:var(--okbg);border-color:var(--ok);box-shadow:inset 3px 0 0 var(--ok)}
+.opt.w{background:var(--kobg);border-color:var(--ko);box-shadow:inset 3px 0 0 var(--ko)}
+.fb{border-radius:12px;border:1px solid transparent}
+.fb.ok{border-left:4px solid var(--ok)}.fb.ko{border-left:4px solid var(--ko)}.fb.mid{border-left:4px solid var(--mid)}
+.blank{border-bottom-color:var(--gold)}.blank.rev{color:var(--accent)}
+.wd:hover{background:color-mix(in srgb,var(--gold) 20%,transparent)}
+.sib{border-top-color:var(--line)}
+.sumline span{background:color-mix(in srgb,var(--bg) 55%,var(--card));border-color:var(--line)}
 </style>
 </head>
 <body>
@@ -1277,7 +1337,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '20 oct. 2026 · v3';
+const APP_VERSION = '20 oct. 2026 · v4';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert('Pas de connexion : connecte-toi à internet pour mettre à jour.');
   el.disabled = true; el.textContent = 'Mise à jour…';
