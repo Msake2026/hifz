@@ -4,5 +4,5 @@
 // N'écris JAMAIS ici la clé « service_role » (secrète).
 window.HIFZ_CLOUD = {
   url: '',      // ex. https://abcdefgh.supabase.co
-  anonKey: ''   // clé « anon / publishable » du projet
+  anonKey: 'sb_publishable_EmfYn0tBDUM-QgHfNSCc5A_qwU2IVDw'   // clé « publishable » (publique par conception)
 };

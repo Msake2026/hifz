@@ -1279,8 +1279,8 @@ function loadSupabase(){
   return new Promise((res, rej) => {
     if (window.supabase) return res();
     const sc = document.createElement('script');
-    sc.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js';
-    sc.integrity = 'sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug'; sc.crossOrigin = 'anonymous';
+    sc.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js';
+    sc.integrity = 'sha384-JBR+x8blGwjDRO63aHCGiZMD4VNiTR4ZUGA+N6ZKLf3zNt1fK8IBpcgPaMrxqWBp'; sc.crossOrigin = 'anonymous';
     sc.onload = res; sc.onerror = () => rej(new Error('Bibliothèque de compte indisponible (hors ligne ?)'));
     document.head.appendChild(sc);
   });
