@@ -115,6 +115,9 @@ body.has-nav main{padding-bottom:96px}
 .pl{display:flex;gap:10px;align-items:baseline;justify-content:flex-start;padding:2px 4px;border-bottom:1px solid var(--line)}
 .pl .psep{color:var(--accent);font-size:.7em;flex:none}.pl .pn,.pp .pn{font-family:Inter,sans-serif;font-size:.65rem;color:var(--muted);flex:none;min-width:1.6em;text-align:center}
 .pp{padding:4px;border-bottom:1px solid var(--line)}
+.consent{display:flex;gap:14px;align-items:flex-start;margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:14px;font-size:.95rem;line-height:1.45;cursor:pointer;background:color-mix(in srgb,var(--bg) 55%,var(--card))}
+.consent input{flex:none;width:28px;height:28px;margin:0;accent-color:var(--accent);cursor:pointer}
+.consent:has(input:checked){border-color:var(--gold);background:color-mix(in srgb,var(--accent) 8%,var(--card))}
 .pw{position:relative}.pw input{padding-right:48px}
 .eye{position:absolute;right:2px;top:50%;transform:translateY(-50%);border:0;background:none;padding:9px 10px;color:var(--muted);line-height:0}
 .eye svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -1337,7 +1340,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '20 oct. 2026 · v4';
+const APP_VERSION = '20 oct. 2026 · v5';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert('Pas de connexion : connecte-toi à internet pour mettre à jour.');
   el.disabled = true; el.textContent = 'Mise à jour…';
@@ -1510,7 +1513,7 @@ function renderAccount(){
       ${f('ac-email', 'Adresse e-mail', 'email', 'email', `data-enter="ac-go"`)}
       ${rs ? '' : f('ac-pass', su ? 'Mot de passe (8 caractères minimum)' : 'Mot de passe', 'password', su ? 'new-password' : 'current-password', 'data-enter="ac-go"')}
       ${su ? f('ac-pass2', 'Confirmer le mot de passe', 'password', 'new-password', 'data-enter="ac-go"')
-        + `<label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:.88rem"><input type="checkbox" id="ac-consent" style="width:auto;margin-top:4px" ${acc.d.consent ? 'checked' : ''}>
+        + `<label class="consent"><input type="checkbox" id="ac-consent" ${acc.d.consent ? 'checked' : ''}>
         <span>J'accepte que mon e-mail et ma progression soient enregistrés pour la synchronisation, et consultables par l'administrateur du site.</span></label>` : ''}
       <button id="ac-go" class="pri big" style="margin-top:12px" data-act="${su ? 'acc-signup' : rs ? 'acc-reset' : 'acc-login'}">${su ? 'Créer mon compte' : rs ? 'Envoyer le lien' : 'Me connecter'}</button>
       ${!su && !rs ? '<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="reset">Mot de passe oublié ?</button></p>' : ''}
