@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Hifz – Teste ta mémorisation du Coran</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&family=Noto+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&family=Noto+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet" crossorigin>
 <style>
 :root{
   --bg:#f3ead6; --card:#fcf7ea; --ink:#2b2218; --muted:#7a6a52; --line:#decfa9; --line-soft:#ecddb6;
@@ -182,6 +182,15 @@ button.big{border-radius:14px}
 .wd:hover{background:color-mix(in srgb,var(--gold) 20%,transparent)}
 .sib{border-top-color:var(--line)}
 .sumline span{background:color-mix(in srgb,var(--bg) 55%,var(--card));border-color:var(--line)}
+/* anciens navigateurs (iPhone avant iOS 16.2) : sans color-mix(), on garde des couleurs unies lisibles */
+@supports not (color: color-mix(in srgb, red, blue)){
+  select,input[type=number],input[type=text],input[type=email],input[type=password],input[type=time],textarea,.blankin{background:var(--card)}
+  .mode.sel,.consent:has(input:checked){background:var(--card)}
+  .bar,.goal{background:var(--line)}
+  .stat div,.sumline span,.consent{background:var(--card)}
+  .cell.l1{background:#cfe0d6}.cell.l2{background:#9fc4b2}.cell.l3{background:#4f9a7d}
+  .rv.playing,.rv.focus{background:var(--line-soft)}
+}
 /* langues : arabe = écriture de droite à gauche */
 [dir=rtl] h1,[dir=rtl] h2,[dir=rtl] button,[dir=rtl] .sub,[dir=rtl] label.f{letter-spacing:0}
 [dir=rtl] h2::after{background:linear-gradient(270deg,var(--gold),transparent)}
@@ -318,6 +327,8 @@ if (stored.strict === true && !stored.corr) cfg.corr = 'strict';
 LANG = ['fr', 'en', 'ar'].includes(cfg.lang) ? cfg.lang : 'fr'; applyLang();
 let stats = store.get('hifz.stats', {}); // "s:a" -> [ok, ko]
 let errors = store.get('hifz.errors', []); // journal : {t, k, m, sc, ans?, bad?[]}
+let plan = store.get('hifz.plan', null);   // plan de mémorisation (voir plus bas)
+const savePlan = () => store.set('hifz.plan', plan);
 let sched = store.get('hifz.sched', {}); // "s:a" -> {iv: jours, due: timestamp}
 let days = store.get('hifz.days', {});   // "AAAA-MM-JJ" -> nb de réponses
 const saveCfg = () => store.set('hifz.cfg', cfg);
@@ -467,6 +478,7 @@ function weekHtml(){
 /* ---------- navigation : menu en bas, un écran à la fois ---------- */
 const TABS = [
   ['home', 'Accueil', '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>'],
+  ['plan', 'Plan', '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M9 16l2 2 4-4"/>'],
   ['train', 'Réviser', '<path d="M12 6.5C10.5 5 8 4.5 4 4.5v13c4 0 6.5.5 8 2 1.5-1.5 4-2 8-2v-13c-4 0-6.5.5-8 2z"/><path d="M12 6.5v13"/>'],
   ['progress', 'Progrès', '<path d="M5 20V11M12 20V4M19 20v-6"/>'],
   ['errors', 'Erreurs', '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'],
@@ -492,10 +504,10 @@ function home(){ // affiche l'écran du menu courant (accès réservé aux compt
   if (cloudOn() && !authReady) return renderLoading();
   if (cloudOn() && !me) return renderAccount();
   if (!TABS.some(t => t[0] === cfg.tab)) cfg.tab = 'home';
-  $app.innerHTML = ({home: tabHome, train: tabTrain, progress: tabProgress, errors: tabErrors, settings: tabSettings})[cfg.tab]();
+  $app.innerHTML = ({home: tabHome, plan: tabPlan, train: tabTrain, progress: tabProgress, errors: tabErrors, settings: tabSettings})[cfg.tab]();
   setNav(true);
   $app.querySelectorAll('select').forEach(el => { if (el.id.startsWith('cm-')) return;
-    el.onchange = () => { syncCfg(); if (['stype', 'sgoal'].includes(el.id)) home(); }; });
+    el.onchange = () => { syncCfg(); if (['stype', 'sgoal'].includes(el.id) || el.id.startsWith('pf-')) home(); }; });
   if ($('impfile')) $('impfile').onchange = e => importFile(e.target.files[0]);
 }
 function syncCfg(){
@@ -516,6 +528,8 @@ function syncCfg(){
   if ($('send')) cfg.endLen = +v('send');
   if ($('sbeg')) cfg.begLen = +v('sbeg');
   if ($('srec')){ cfg.reciter = v('srec'); cfg.goal = +v('sgoal'); }
+  if ($('pf-from')) pdraft = {from: +v('pf-from'), to: +v('pf-to'), order: v('pf-order'), amt: v('pf-amt'), recent: +v('pf-recent'), cycle: +v('pf-cycle')};
+  if ($('sabrep') && sab) sab.rep = +v('sabrep');
   saveCfg();
 }
 function setLang(l){ // change la langue de l'interface (le texte du Coran ne change pas)
@@ -542,6 +556,10 @@ function tabHome(){
       : `<p class="sub" style="margin:8px 0 0">${tr("Rien à revoir pour l'instant. Lance une série : les versets à retravailler reviendront ici au bon moment.")}</p>`}
   </div>
 
+  ${plan ? (() => { const T = planToday(), tot = (T.next ? 1 : 0) + (T.rec.length ? 1 : 0) + (T.man.length ? 1 : 0), dn = (T.next && T.d.sabaq ? 1 : 0) + (T.rec.length && T.d.sabqi ? 1 : 0) + (T.man.length && T.d.manzil ? 1 : 0);
+    return `<div class="card"><h2>${tr('Plan du jour')}</h2><p class="sub" style="margin:0 0 8px">${T.next || tot ? tr("{a} / {b} étapes terminées aujourd'hui", {a: dn, b: tot}) : tr('Plan terminé 🎉')}</p>
+    <button class="pri big" data-act="tab" data-v="plan">${tr('Ouvrir mon plan')}</button></div>`; })() : ''}
+
   <div class="card"><h2>${tr('Ma série')}</h2>
     <div class="sumline"><span>${cfg.scope.type === 'matn' ? '📜 ' + tr('Moutoun') : '📖 ' + tr('Coran')}</span><span>${esc(scopeLabel(cfg.scope))}</span>
       <span>${esc(modeTitle(cfg.mode))}</span><span>${trp(cfg.n, '{n} question|{n} questions')}</span>${(MODE_OPTS[cfg.mode] || {}).input ? `<span>${tr(INPUTS[cfg.input] || '')}</span>` : ''}</div>
@@ -551,6 +569,140 @@ function tabHome(){
 
   ${top.length ? `<div class="card"><h2>${tr('Mes erreurs de la semaine')}</h2>${top.map(a => `<div class="weak"><span>${rlabel(a.r)}</span><span>${a.n}×</span></div>`).join('')}
     <button class="list-btn" data-act="tab" data-v="errors"><span>${tr('Voir toutes mes erreurs')}</span><span>›</span></button></div>` : ''}`;
+}
+
+/* -- Plan de mémorisation : sabaq (nouveau), sabqi (révision récente), manzil (révision ancienne) -- */
+const PLAN_AMT = ['v3', 'v5', 'v10', 'v15', 'p0.25', 'p0.5', 'p1'];
+const amtLabel = a => a[0] === 'v' ? tr('{n} versets', {n: a.slice(1)}) : ({'p0.25': tr('¼ page'), 'p0.5': tr('½ page'), 'p1': tr('1 page')})[a];
+let pdraft = null, planEditing = false, sab = null;
+const dayKey = d => today(d || new Date());
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const chunkRefs = c => range(c.s, c.a, c.b - c.a + 1);
+const passageLabel = refs => refs.length === 1 ? rlabel(refs[0]) : tr('Sourate {n} – {name}, versets {a} à {b}', {n: refs[0].s, name: SN(refs[0].s), a: refs[0].a, b: refs[refs.length - 1].a});
+function planUnits(pl){ // les versets du plan, dans l'ordre d'apprentissage
+  const lo = Math.min(pl.from, pl.to), hi = Math.max(pl.from, pl.to), secs = [];
+  for (let s = lo; s <= hi; s++) secs.push(s);
+  if (pl.order === 'desc') secs.reverse();
+  const out = []; secs.forEach(s => { for (let a = 1; a <= slen(s); a++) out.push({s, a}); });
+  return out;
+}
+const learnedKeys = pl => { const set = new Set(); (pl.log || []).forEach(c => { for (let a = c.a; a <= c.b; a++) set.add(c.s + ':' + a); }); return set; };
+function planNextChunk(pl){
+  const L = learnedKeys(pl), u = planUnits(pl).find(x => !L.has(key(x)));
+  if (!u) return null;
+  const n = +pl.amt.slice(1), byVerse = pl.amt[0] === 'v'; let b = u.a, acc = 0;
+  for (let v = u.a; v <= slen(u.s); v++){ // n versets, ou n pages (chaque verset pèse 1 / nombre de versets de sa page)
+    if (L.has(u.s + ':' + v)) break;
+    b = v; acc += byVerse ? 1 : 1 / (PAGE_LEN[Q[u.s - 1].a[v - 1].p] || 10);
+    if (acc >= n - 1e-9) break;
+  }
+  // s'il ne reste qu'un petit bout de la sourate (≤ 35 % de la quantité du jour), on l'ajoute pour ne pas laisser un verset isolé
+  let rest = 0; for (let v = b + 1; v <= slen(u.s); v++){ if (L.has(u.s + ':' + v)){ rest = Infinity; break; } rest += byVerse ? 1 : 1 / (PAGE_LEN[Q[u.s - 1].a[v - 1].p] || 10); }
+  if (rest > 0 && rest <= n * 0.35 + 1e-9) b = slen(u.s);
+  return {s: u.s, a: u.a, b};
+}
+function planSets(pl){ // portions apprises avant aujourd'hui : récentes (sabqi) ou anciennes (manzil)
+  const t0 = dayKey(), lim = dayKey(addDays(new Date(), -pl.recent)), rec = [], old = [];
+  (pl.log || []).forEach(c => { if (c.d >= t0) return; (c.d >= lim ? rec : old).push(c); });
+  return {rec, old};
+}
+function manzilToday(pl, old){
+  if (!old.length) return [];
+  const k = Math.min(old.length, Math.max(1, Math.ceil(old.length / pl.cycle))), st = (pl.mptr || 0) % old.length;
+  return Array.from({length: k}, (_, i) => old[(st + i) % old.length]);
+}
+function planToday(){
+  const {rec, old} = planSets(plan);
+  return {next: planNextChunk(plan), rec: rec.slice(-8), man: manzilToday(plan, old).slice(0, 8), d: (plan.done || {})[dayKey()] || {}, nOld: old.length, nRec: rec.length};
+}
+function planMark(kind){
+  plan.done ||= {}; (plan.done[dayKey()] ||= {})[kind] = true;
+  Object.keys(plan.done).sort().slice(0, -60).forEach(k => delete plan.done[k]); // on ne garde que 60 jours
+  savePlan();
+}
+function planFinish(kind){
+  if (ses.planDone) return; ses.planDone = true;
+  if (kind === 'manzil'){ const {old} = planSets(plan); plan.mptr = ((plan.mptr || 0) + ses.chunks.length) % Math.max(1, old.length); }
+  planMark(kind);
+}
+function learnChunk(ch){
+  if (!ch) return;
+  const L = learnedKeys(plan); let dup = true; for (let a = ch.a; a <= ch.b; a++) if (!L.has(ch.s + ':' + a)) dup = false;
+  if (!dup) (plan.log ||= []).push({d: dayKey(), s: ch.s, a: ch.a, b: ch.b});
+  planMark('sabaq'); sab = null; go('plan');
+}
+function startChunks(chunks, kind){
+  const refs = chunks.flatMap(chunkRefs);
+  ses = {pool: refs, fixed: true, i: 0, score: 0, missed: [], used: new Set(), total: chunks.length, chunks, planKind: kind};
+  nextQ();
+}
+function openSabaq(){ const ch = planNextChunk(plan); if (!ch) return; sab = {ch, rep: 3, hide: false}; renderSabaq(); window.scrollTo(0, 0); }
+function renderSabaq(){
+  setNav(false);
+  const refs = chunkRefs(sab.ch);
+  $app.innerHTML = `
+  <div class="top"><button class="link" data-act="sab-back">${tr('← Retour')}</button><span>${tr('Nouveau (sabaq)')}</span></div>
+  <div class="card" style="margin-top:8px"><h2>${tr('Nouveau à apprendre')}</h2>
+    <p style="margin:0 0 4px"><b>${esc(passageLabel(refs))}</b></p>
+    <p class="ref" style="margin:0 0 8px">${tr('Lis, écoute et répète. Quand tu penses savoir, masque le texte et teste-toi.')}</p>
+    <div class="rd" style="font-size:${cfg.rdSize}rem">${refs.map(r => `<span class="rv${sab.hide ? ' hid' : ''}" data-act="rv-sab">${esc(verse(r))} <span class="vend">﴿${arNum(r.a)}﴾</span></span>`).join(' ')}</div>
+    <label class="f">${tr('Répétitions audio')}</label>
+    <select id="sabrep">${[1, 3, 5, 10].map(n => `<option ${n === sab.rep ? 'selected' : ''}>${n}</option>`).join('')}</select>
+    <div class="grades"><button data-act="sab-play">▶ ${tr('Écouter')}</button><button data-act="sab-hide">${sab.hide ? '👁 ' + tr('Tout afficher') : '🙈 ' + tr('Masquer le texte')}</button></div>
+    <p class="ref" id="audio-msg" style="margin:8px 0 0"></p>
+  </div>
+  <button class="pri big" data-act="sab-test">${tr('Tester ma récitation')}</button>
+  <button class="big" style="margin-top:8px" data-act="plan-learned">✓ ${tr("J'ai appris cette portion")}</button>`;
+  $('sabrep').onchange = e => { sab.rep = +e.target.value; };
+}
+function sabTest(){
+  const refs = chunkRefs(sab.ch);
+  ses = {pool: refs, fixed: true, i: 1, score: 0, missed: [], used: new Set(), total: 1, planKind: 'sabaq', planChunk: sab.ch};
+  cur = {m: 'cont', r: refs[0], done: false};
+  startPassage(refs, passageLabel(refs), tr('Récite de mémoire la portion à apprendre :'));
+}
+function planSetupHtml(){
+  const d = pdraft || (pdraft = plan ? {from: plan.from, to: plan.to, order: plan.order, amt: plan.amt, recent: plan.recent, cycle: plan.cycle} : {from: 78, to: 114, order: 'desc', amt: 'v5', recent: 7, cycle: 30});
+  const total = planUnits(d).length, per = d.amt[0] === 'v' ? +d.amt.slice(1) : +d.amt.slice(1) * 10.3, days = Math.ceil(total / per);
+  const sel = (id, label, opts, val) => `<div><label class="f" for="${id}">${label}</label><select id="${id}">${opts.map(([v, t]) => `<option value="${v}" ${String(v) === String(val) ? 'selected' : ''}>${t}</option>`).join('')}</select></div>`;
+  return `
+  <h1>${tr('Mon plan de mémorisation')}</h1>
+  <p class="sub">${tr("Chaque jour, l'application te dit quoi apprendre et quoi réviser.")}</p>
+  <div class="card"><h2>${tr('Sourates du plan')}</h2>
+    <div class="row"><div><label class="f" for="pf-from">${tr('De')}</label><select id="pf-from">${surahOpts(d.from)}</select></div>
+      <div><label class="f" for="pf-to">${tr('À')}</label><select id="pf-to">${surahOpts(d.to)}</select></div></div>
+    ${sel('pf-order', tr("Ordre d'apprentissage"), [['desc', tr('À rebours : de la fin vers le début (ex. An-Nas → An-Naba)')], ['asc', tr("Dans l'ordre : du début vers la fin")]], d.order)}
+  </div>
+  <div class="card"><h2>${tr('Rythme')}</h2>
+    ${sel('pf-amt', tr('Quantité de nouveau par jour'), PLAN_AMT.map(a => [a, amtLabel(a)]), d.amt)}
+    <div class="row">${sel('pf-recent', tr('Révision récente sur'), [3, 5, 7, 10].map(n => [n, tr('{n} jours', {n})]), d.recent)}
+      ${sel('pf-cycle', tr('Révision ancienne : cycle de'), [14, 30, 60].map(n => [n, tr('{n} jours', {n})]), d.cycle)}</div>
+    <p class="ref" style="margin:10px 0 0">${tr('{v} versets au total, environ {d} jours à ce rythme.', {v: total, d: days})}</p>
+  </div>
+  <button class="pri big" data-act="plan-save">${plan ? tr('Enregistrer le plan') : tr('Créer mon plan')}</button>
+  ${plan ? `<button class="big" style="margin-top:8px" data-act="plan-cancel">${tr('Annuler')}</button>` : ''}`;
+}
+function tabPlan(){
+  if (!plan || planEditing) return planSetupHtml();
+  const T = planToday(), units = planUnits(plan), L = learnedKeys(plan), nL = units.filter(u => L.has(key(u))).length, pct = Math.round(100 * nL / units.length), rem = units.length - nL;
+  const dist = new Set((plan.log || []).map(c => c.d)).size, per = dist >= 3 ? nL / dist : (plan.amt[0] === 'v' ? +plan.amt.slice(1) : +plan.amt.slice(1) * 10.3), days = Math.ceil(rem / Math.max(per, 1));
+  const end = addDays(new Date(), days).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'long', year: 'numeric'});
+  const row = (title, sub, done, act, btn) => `<div class="card"><h2>${title}</h2><p class="sub" style="margin:0 0 8px">${sub}</p>
+    ${done ? `<p class="ref" style="margin:0">✓ ${tr('Fait')}</p>` : act ? `<button class="pri big" data-act="${act}">${btn}</button>` : ''}</div>`;
+  return `
+  <h1>${tr('Plan')}</h1>
+  <div class="card"><h2>${tr('Mon plan de mémorisation')}</h2>
+    <div class="goal"><i style="width:${pct}%"></i></div>
+    <p style="margin:6px 0 0"><b>${tr('{a} / {b} versets appris', {a: nL, b: units.length})}</b> · ${pct} %</p>
+    <p class="ref" style="margin:4px 0 0">${rem ? tr('À ce rythme : environ {d} jours (fin vers le {date}).', {d: days, date: end}) : tr('Plan terminé 🎉')}</p></div>
+  ${T.next ? row(tr('Nouveau (sabaq)'), esc(passageLabel(chunkRefs(T.next))) + ' · ' + amtLabel(plan.amt), T.d.sabaq, 'plan-sabaq', tr('Apprendre'))
+    : `<div class="card"><h2>${tr('Nouveau (sabaq)')}</h2><p class="sub" style="margin:0">${tr('Plan terminé 🎉')}</p></div>`}
+  ${T.rec.length ? row(tr('Révision récente (sabqi)'), trp(T.rec.length, '{n} portion apprise ces {d} derniers jours|{n} portions apprises ces {d} derniers jours', {d: plan.recent}), T.d.sabqi, 'plan-sabqi', tr('Réviser'))
+    : `<div class="card"><h2>${tr('Révision récente (sabqi)')}</h2><p class="sub" style="margin:0">${tr('Rien à réviser pour le moment.')}</p></div>`}
+  ${T.man.length ? row(tr('Révision ancienne (manzil)'), trp(T.man.length, '{n} portion à revoir aujourd\'hui (cycle de {c} jours)|{n} portions à revoir aujourd\'hui (cycle de {c} jours)', {c: plan.cycle}), T.d.manzil, 'plan-manzil', tr('Réviser'))
+    : `<div class="card"><h2>${tr('Révision ancienne (manzil)')}</h2><p class="sub" style="margin:0">${tr('Rien à réviser pour le moment.')}</p></div>`}
+  <p class="ref">${tr('Sabaq : la nouvelle portion du jour. Sabqi : révision des portions apprises ces derniers jours. Manzil : révision tournante de tout ce que tu as appris avant.')}</p>
+  <div class="row"><button data-act="plan-edit">${tr('Modifier le plan')}</button><button data-act="plan-del" style="color:var(--ko)">${tr('Supprimer le plan')}</button></div>`;
 }
 
 /* -- Réviser : tout pour préparer une série -- */
@@ -632,7 +784,7 @@ function tabTrain(){
       <button class="${cfg.input === 'recite' ? 'sel' : ''}" data-act="input" data-v="recite">${tr('Je récite, puis je marque mes erreurs')}</button>
       <button class="${cfg.input === 'type' ? 'sel' : ''}" data-act="input" data-v="type">${tr('Je tape en arabe')}</button>
       ${SR ? `<button class="${cfg.input === 'voice' ? 'sel' : ''}" data-act="input" data-v="voice">🎤 ${tr('Je récite à voix haute')}</button>` : ''}
-    </div>` : `<p class="ref" style="margin:10px 0 0">${tr('Pour cet exercice, tu réponds en touchant la bonne proposition.')}</p>`}
+    </div>${SR && IOS_APP ? `<p class="ref" style="margin:6px 0 0">${tr("Sur iPhone, la reconnaissance vocale peut ne pas marcher dans l'application installée : ouvre le site dans Safari pour l'utiliser.")}</p>` : ''}` : `<p class="ref" style="margin:10px 0 0">${tr('Pour cet exercice, tu réponds en touchant la bonne proposition.')}</p>`}
   </div>
 
   <div class="row"><button class="big" data-act="rdscope">📖 ${tr('Lire le texte complet')}</button><button class="big" data-act="lsopen">🎧 ${tr('Écouter ma portée')}</button></div>
@@ -705,6 +857,10 @@ function tabSettings(){
     <p class="ref" style="margin:0 0 8px">${tr("Version {v}. Une fois installée sur le téléphone, l'application se met à jour toute seule à l'ouverture quand tu es en ligne ; si tu ne vois pas les nouveautés, utilise ce bouton (ta progression n'est pas touchée).", {v: APP_VERSION})}</p>
     <button data-act="upd">🔄 ${tr('Chercher les mises à jour')}</button></div>
 
+  <div class="card"><h2>${tr('Confidentialité')}</h2>
+    <p class="ref" style="margin:0 0 8px">${tr('Quelles données sont enregistrées, qui les voit, comment les supprimer.')}</p>
+    <button data-act="legal">${tr('Lire la confidentialité et les conditions')}</button></div>
+
   <div class="card"><h2>${tr('Sources')}</h2>
     <p class="ref" style="margin:0">${tr("Coran : texte uthmani du projet Tanzil via api.alquran.cloud (lecture de Ḥafṣ). Audio : cdn.islamic.network (AlQuran Cloud). Moutoun : Wikisource arabe et hadith-api (voir l'écran Réviser pour chaque matn). Versets proches : calculés automatiquement.")}</p>
   </div>`;
@@ -743,6 +899,10 @@ function nextQ(){
   stopAudio();
   if (ses.i >= ses.total) return results();
   ses.i++;
+  if (ses.chunks){ // révision du plan : une portion complète par question
+    const refs = chunkRefs(ses.chunks[ses.i - 1]); cur = {m: 'cont', r: refs[0], done: false};
+    return startPassage(refs, passageLabel(refs), ses.planKind === 'manzil' ? tr('Révision ancienne : récite de mémoire ce passage.') : tr('Révision récente : récite de mémoire ce passage.'));
+  }
   const hasQ = ses.pool.some(r => isQ(r.s)), hasM = ses.pool.some(r => !isQ(r.s));
   let m = cfg.mode;
   if (m === 'mix'){
@@ -1121,14 +1281,22 @@ function exportIcs(){
     'BEGIN:VALARM', 'TRIGGER:PT0S', 'ACTION:DISPLAY', 'DESCRIPTION:' + tr('Révision du Coran'), 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   download('rappel-hifz.ics', ics, 'text/calendar');
 }
-function download(name, text, type){
+const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const IOS_APP = navigator.standalone === true; // application installée sur l'écran d'accueil de l'iPhone
+async function download(name, text, type){
+  if (IOS){ // iPhone/iPad : le téléchargement direct est peu fiable (surtout dans l'application installée) → feuille de partage
+    try {
+      const f = new File([text], name, {type});
+      if (navigator.canShare && navigator.canShare({files: [f]})){ await navigator.share({files: [f], title: name}); return; }
+    } catch (e){ if (e && e.name === 'AbortError') return; }
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name; a.click();
 }
 
 /* ---------- sauvegarde / restauration ---------- */
 function exportData(){
-  download('hifz-sauvegarde-' + today() + '.json', JSON.stringify({app: 'hifz', v: 1, cfg, stats, sched, days, custom, errors}), 'application/json');
+  download('hifz-sauvegarde-' + today() + '.json', JSON.stringify({app: 'hifz', v: 1, cfg, stats, sched, days, custom, errors, plan}), 'application/json');
 }
 async function importFile(f){
   if (!f) return;
@@ -1137,7 +1305,7 @@ async function importFile(f){
     if (d.app !== 'hifz' || typeof d.stats !== 'object') throw new Error('format');
     if (!confirm(tr('Remplacer ta progression actuelle par cette sauvegarde ?'))) return;
     store.set('hifz.cfg', d.cfg || {}); store.set('hifz.stats', d.stats); store.set('hifz.sched', d.sched || {});
-    store.set('hifz.days', d.days || {}); store.set('hifz.custom', d.custom || []); store.set('hifz.errors', d.errors || []);
+    store.set('hifz.days', d.days || {}); store.set('hifz.custom', d.custom || []); store.set('hifz.errors', d.errors || []); store.set('hifz.plan', d.plan || null);
     location.reload();
   } catch { alert(tr('Fichier non reconnu : choisis une sauvegarde exportée depuis Hifz.')); }
 }
@@ -1207,6 +1375,25 @@ const onClick = e => {
     case 'home': home(); break;
     case 'tab': go(v); break;
     case 'upd': forceUpdate(el); break;
+    case 'plan-save': {
+      const d = pdraft || {}; plan = {v: 1, from: d.from, to: d.to, order: d.order, amt: d.amt, recent: d.recent, cycle: d.cycle,
+        log: plan ? plan.log : [], mptr: plan ? plan.mptr || 0 : 0, done: plan ? plan.done || {} : {}};
+      savePlan(); planEditing = false; pdraft = null; home(); window.scrollTo(0, 0); break;
+    }
+    case 'plan-edit': planEditing = true; pdraft = null; home(); break;
+    case 'plan-cancel': planEditing = false; pdraft = null; home(); break;
+    case 'plan-del': if (confirm(tr("Supprimer ton plan et sa progression d'apprentissage ?"))){ plan = null; savePlan(); planEditing = false; pdraft = null; home(); } break;
+    case 'plan-sabaq': openSabaq(); break;
+    case 'plan-sabqi': startChunks(planToday().rec, 'sabqi'); break;
+    case 'plan-manzil': startChunks(planToday().man, 'manzil'); break;
+    case 'plan-learned': learnChunk(sab && sab.ch); break;
+    case 'sab-back': sab = null; go('plan'); break;
+    case 'sab-play': playUrls(Array.from({length: sab.rep}).flatMap(() => chunkRefs(sab.ch).map(audioUrl))); break;
+    case 'sab-hide': stopAudio(); sab.hide = !sab.hide; renderSabaq(); break;
+    case 'sab-test': sabTest(); break;
+    case 'rv-sab': el.classList.toggle('hid'); break;
+    case 'legal': renderLegal(); break;
+    case 'legal-back': if (cloudOn() && !me) renderAccount(); else go('settings'); break;
     case 'lang': setLang(v); break;
     case 'pw-eye': { const i = $(v), show = i.type === 'password'; i.type = show ? 'text' : 'password'; el.innerHTML = show ? EYE_OFF : EYE;
       el.setAttribute('aria-pressed', String(show)); el.setAttribute('aria-label', show ? tr('Masquer le mot de passe') : tr('Afficher le mot de passe')); i.focus(); break; }
@@ -1418,6 +1605,7 @@ function results(){
   const pct = Math.round(100 * ses.score / ses.total);
   const msg = pct >= 90 ? tr('Machaa Allah, excellente mémorisation !') : pct >= 70 ? tr('Très bien, continue ainsi.') : pct >= 50 ? tr('Pas mal, quelques versets à consolider.') : tr('Courage : relis puis réessaie.');
   const missed = [...new Map(ses.missed.map(r => [key(r), r])).values()];
+  if (ses.planKind === 'sabqi' || ses.planKind === 'manzil') planFinish(ses.planKind);
   ses.missed = missed; setNav(false);
   $app.innerHTML = `
   <h1>${tr('Résultat')}</h1>
@@ -1426,12 +1614,14 @@ function results(){
   ${missed.length ? `<div class="card"><h2>${tr('À revoir ({n})', {n: missed.length})}</h2>
     ${missed.map(r => `<p class="ref" style="margin:10px 0 0">${rlabel(r)}</p><div class="ar" style="font-size:1.5rem">${esc(verse(r))}</div>`).join('')}</div>` : ''}
   ${missed.length ? `<button class="pri big" data-act="retry">${tr('Refaire mes erreurs')}</button>` : ''}
-  <button class="big" style="margin-top:8px" data-act="again">${tr('Nouvelle série')}</button>
+  ${ses.planKind === 'sabaq' ? `<button class="pri big" style="margin-top:8px" data-act="plan-learned">✓ ${tr('Marquer cette portion comme apprise')}</button>` : ''}
+  ${ses.planKind ? `<button class="big" style="margin-top:8px" data-act="tab" data-v="plan">${tr('Retour au plan')}</button>`
+    : `<button class="big" style="margin-top:8px" data-act="again">${tr('Nouvelle série')}</button>`}
   <button class="big" style="margin-top:8px" data-act="tab" data-v="home">${tr('Accueil')}</button>`;
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '20 oct. 2026 · v6';
+const APP_VERSION = '21 oct. 2026 · v7';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -1447,7 +1637,7 @@ const cloudOn = () => !!(CLOUD.url && CLOUD.anonKey);
 let sb = null, me = null, screen = 'tab', loadingMe = false;
 let acc = {mode: 'login', msg: '', ok: false, busy: false, last: '', syncErr: '', d: {email: '', pass: '', pass2: '', consent: false}}; // d : brouillon du formulaire (gardé en mémoire seulement)
 let adm = {users: null, q: '', detail: null, msg: ''};
-const SYNC_KEYS = ['hifz.cfg', 'hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom'];
+const SYNC_KEYS = ['hifz.cfg', 'hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan'];
 let syncPause = false, pushTimer = null;
 const cmeta = () => store.get('hifz.cloud', {});
 const isAdmin = () => !!(me && me.profile && me.profile.role === 'admin');
@@ -1495,6 +1685,7 @@ async function cloudInit(){
 }
 function renderLoading(){ setNav(false); $app.innerHTML = `<p class="sub" style="margin-top:40vh;text-align:center">${tr('Chargement…')}</p>`; }
 function refreshAccount(){
+  if (screen === 'legal') return;
   if (screen === 'account' && me && acc.fromGate){ acc.fromGate = false; return go('home'); } // connexion réussie depuis l'écran d'accueil protégé
   if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else if (screen === 'tab' || !me) home();
 }
@@ -1517,8 +1708,8 @@ async function loadMe(sess){
 }
 
 /* synchronisation : un document JSON par utilisateur */
-function snap(){ const c = {...cfg}; delete c.tab; return {v: 1, cfg: c, stats, sched, days, errors, custom}; }
-const hasLocal = () => Object.keys(stats).length > 0 || errors.length > 0 || custom.length > 0;
+function snap(){ const c = {...cfg}; delete c.tab; return {v: 1, cfg: c, stats, sched, days, errors, custom, plan}; }
+const hasLocal = () => Object.keys(stats).length > 0 || errors.length > 0 || custom.length > 0 || !!plan;
 function applyRemote(d){
   syncPause = true;
   try {
@@ -1526,6 +1717,7 @@ function applyRemote(d){
     custom.forEach(t => { delete MT[t.id]; }); custom = d.custom || []; custom.forEach(t => { MT[t.id] = t; });
     if (d.cfg){ const keep = cfg.tab; Object.assign(cfg, d.cfg); cfg.tab = keep; }
     store.set('hifz.stats', stats); store.set('hifz.sched', sched); store.set('hifz.days', days);
+    plan = d.plan || null; store.set('hifz.plan', plan);
     store.set('hifz.errors', errors); store.set('hifz.custom', custom); saveCfg();
   } finally { syncPause = false; }
 }
@@ -1538,7 +1730,9 @@ function mergeData(a, b){ // a = cet appareil, b = compte : on ne perd rien
   const er = [...(b.errors || []), ...(a.errors || [])].filter(e => { const id = e.t + ':' + e.k; if (seen.has(id)) return false; seen.add(id); return true; })
     .sort((x, y) => x.t - y.t).slice(-2000);
   const cu = new Map(); [...(b.custom || []), ...(a.custom || [])].forEach(t => cu.set(t.id, t));
-  return {...b, cfg: a.cfg || b.cfg, stats: st, sched: sc, days: dy, errors: er, custom: [...cu.values()]};
+  let pl = b.plan || a.plan || null; // plan : on garde celui du compte et on y ajoute les portions apprises ailleurs
+  if (b.plan && a.plan){ const seenC = new Set((b.plan.log || []).map(c => [c.d, c.s, c.a, c.b].join())); pl = {...b.plan, log: [...(b.plan.log || []), ...(a.plan.log || []).filter(c => !seenC.has([c.d, c.s, c.a, c.b].join()))]}; }
+  return {...b, cfg: a.cfg || b.cfg, stats: st, sched: sc, days: dy, errors: er, custom: [...cu.values()], plan: pl};
 }
 async function cloudPush(){
   if (!me || !sb) return;
@@ -1591,6 +1785,7 @@ function renderAccount(){
       <div class="card"><h2>${tr('Mot de passe')}</h2>${f('ac-pass', tr('Nouveau mot de passe (8 caractères minimum)'), 'password', 'new-password', 'data-enter="ac-go"')}
       <button id="ac-go" class="pri" style="margin-top:8px" data-act="acc-newpass">${tr('Changer le mot de passe')}</button></div>
       <div class="card"><h2>${tr('Confidentialité')}</h2><p class="ref" style="margin:0">${tr("Sont enregistrés : ton e-mail, ta date d'inscription, ta dernière activité et ta progression (statistiques, erreurs, historique). L'administrateur du site peut les consulter. Tu peux tout supprimer à tout moment.")}</p>
+      <p style="margin:10px 0 0"><button class="link" data-act="legal">${tr('Confidentialité et conditions')}</button></p>
       <p style="margin:10px 0 0"><button class="link" data-act="acc-delete" style="color:var(--ko)">${tr('Supprimer mon compte et mes données')}</button></p></div>
       <button class="big" data-act="acc-logout">${tr('Se déconnecter')}</button>`;
   } else if (acc.mode === 'newpass'){
@@ -1608,7 +1803,8 @@ function renderAccount(){
         <span>${tr("J'accepte que mon e-mail et ma progression soient enregistrés pour la synchronisation, et consultables par l'administrateur du site.")}</span></label>` : ''}
       <button id="ac-go" class="pri big" style="margin-top:12px" data-act="${su ? 'acc-signup' : rs ? 'acc-reset' : 'acc-login'}">${su ? tr('Créer mon compte') : rs ? tr('Envoyer le lien') : tr('Me connecter')}</button>
       ${!su && !rs ? `<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="reset">${tr('Mot de passe oublié ?')}</button></p>` : ''}
-      ${rs ? `<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="login">${tr('← Retour à la connexion')}</button></p>` : ''}</div>`;
+      ${rs ? `<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="login">${tr('← Retour à la connexion')}</button></p>` : ''}</div>
+      <p style="text-align:center"><button class="link" data-act="legal">${tr('Confidentialité et conditions')}</button></p>`;
   }
   const gate = cloudOn() && !me; acc.fromGate = gate;
   const langBar = `<div class="langs">${Object.entries(LANGS).map(([k, n]) => `<button class="${LANG === k ? 'sel' : ''}" data-act="lang" data-v="${k}" lang="${k}">${n}</button>`).join('')}</div>`;
@@ -1655,8 +1851,8 @@ const doLogout = async () => {
   clearTimeout(pushTimer); await cloudPush();
   if (acc.syncErr && !confirm(tr('La dernière synchronisation a échoué : te déconnecter perdra les changements non envoyés. Continuer ?'))) return;
   await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.me'); } catch {}
-  syncPause = true; stats = {}; sched = {}; days = {}; errors = []; custom.forEach(t => { delete MT[t.id]; }); custom = [];
-  ['hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.cloud'].forEach(k => { try { localStorage.removeItem(k); } catch {} });
+  syncPause = true; stats = {}; sched = {}; days = {}; errors = []; plan = null; custom.forEach(t => { delete MT[t.id]; }); custom = [];
+  ['hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan', 'hifz.cloud'].forEach(k => { try { localStorage.removeItem(k); } catch {} });
   syncPause = false; acc.msg = tr('Déconnecté.'); acc.ok = true; acc.mode = 'login'; renderAccount();
 };
 const doDeleteMe = () => busy(async () => {
@@ -1665,6 +1861,35 @@ const doDeleteMe = () => busy(async () => {
   await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.cloud'); localStorage.removeItem('hifz.me'); } catch {}
   acc.mode = 'login'; acc.ok = true; acc.msg = tr('Compte supprimé. La progression de cet appareil est conservée.');
 });
+
+/* confidentialité et conditions : décrit le fonctionnement réel du site (voir supabase/schema.sql, config.js) */
+const LEGAL_DATE = '2026-10-21';
+function renderLegal(){
+  setNav(false); screen = 'legal';
+  const L = Object.assign({contact: '', region: ''}, window.HIFZ_LEGAL || {});
+  const contact = L.contact ? `<a href="mailto:${esc(L.contact)}">${esc(L.contact)}</a>` : tr('(adresse à compléter)');
+  const cnil = '<a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">cnil.fr/fr/plaintes</a>';
+  const region = L.region ? ', ' + tr('région : {r}', {r: esc(L.region)}) : '';
+  const date = new Date(LEGAL_DATE).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'long', year: 'numeric'});
+  const sec = (h, ps) => `<div class="card"><h2>${tr(h)}</h2>${ps.map(p => `<p style="margin:0 0 8px">${p}</p>`).join('')}</div>`;
+  $app.innerHTML = `<div class="top"><button class="link" data-act="legal-back">${tr('← Retour')}</button><span>${tr('Confidentialité')}</span></div>
+    <h1 style="margin-top:8px">${tr("Confidentialité et conditions d'utilisation")}</h1>
+    <p class="sub">${tr('Dernière mise à jour : {d}', {d: date})}</p>
+    ${sec('Qui est responsable ?', [tr("Hifz est un site personnel et gratuit d'aide à la mémorisation du Coran. Responsable du site : contact par e-mail uniquement ({contact}).", {contact})])}
+    ${sec('Quelles données ?', [tr("Compte : ton adresse e-mail, ton mot de passe (transmis au service d'authentification Supabase, qui le stocke de façon sécurisée ; ce site ne le conserve pas), la date d'inscription, ta dernière activité et ton rôle."),
+      tr("Progression : tes statistiques, ton historique d'erreurs (y compris les réponses que tu saisis), ton plan de mémorisation, tes réglages et les textes que tu ajoutes toi-même."),
+      tr("Données techniques : comme sur tout site, les hébergeurs et services utilisés peuvent enregistrer des informations de connexion, par exemple l'adresse IP.")])}
+    ${sec('Pourquoi ?', [tr("Pour créer ton compte, te connecter et synchroniser ta progression entre tes appareils. L'administrateur peut consulter la liste des comptes et la progression pour gérer le service. Les données ne sont ni vendues ni utilisées pour de la publicité.")])}
+    ${sec('Sur quelle base ?', [tr("Ton consentement, donné en cochant la case à l'inscription. Tu peux le retirer à tout moment en supprimant ton compte.")])}
+    ${sec('Qui reçoit les données ?', [tr("L'administrateur du site, et les services techniques utilisés : Supabase (comptes et base de données{region}), GitHub (hébergement du site), jsDelivr (bibliothèque du site), Google Fonts (polices), AlQuran Cloud (texte du Coran et audio). Certains de ces services sont situés hors de l'Union européenne.", {region})])}
+    ${sec('Combien de temps ?', [tr("Tant que ton compte existe. Tu peux le supprimer à tout moment (Réglages, puis Mon compte) : ton compte et ta progression enregistrée sont alors effacés.")])}
+    ${sec('Tes droits', [tr("Tu peux demander l'accès à tes données, leur rectification, leur effacement, leur portabilité, la limitation de leur traitement, ou t'opposer à certains usages. Tu peux déjà supprimer ton compte et exporter ta progression toi-même dans l'application ; pour toute autre demande, écris à {contact}. Tu peux aussi saisir la CNIL : {cnil}.", {contact, cnil})])}
+    ${sec('Stockage sur ton appareil', [tr("Ce site n'utilise ni cookies publicitaires ni outil de mesure d'audience. Il garde sur ton appareil (stockage local et cache du navigateur) ta session, ta progression et les fichiers de l'application pour fonctionner hors ligne.")])}
+    ${sec('Sécurité', [tr("Les échanges sont chiffrés (HTTPS) et l'accès aux données est limité par des règles de la base de données : chacun ne voit que ses propres données, seul l'administrateur voit l'ensemble.")])}
+    ${sec("Conditions d'utilisation", [tr("Hifz est un outil d'aide à la mémorisation, fourni gratuitement et sans garantie. Les textes (Coran, moutoun) viennent de sources publiques citées dans l'application et peuvent contenir des erreurs : vérifie toujours avec ton mushaf et ton enseignant. Tu es responsable de l'usage de ton compte et de la confidentialité de ton mot de passe. Un compte peut être suspendu en cas d'abus.")])}
+    ${sec('Modifications', [tr("Cette page peut évoluer ; la date de dernière mise à jour est indiquée en haut.")])}`;
+  window.scrollTo(0, 0);
+}
 
 /* espace admin : l'interface n'est qu'un affichage, les droits sont vérifiés par la base (voir supabase/schema.sql) */
 const when = t => t ? fdate(Date.parse(t)) : '—';

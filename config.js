@@ -6,3 +6,9 @@ window.HIFZ_CLOUD = {
   url: 'https://rdtfpinikhqxbufnoqvm.supabase.co',
   anonKey: 'sb_publishable_EmfYn0tBDUM-QgHfNSCc5A_qwU2IVDw'   // clé « publishable » (publique par conception)
 };
+
+// Mentions affichées dans la page « Confidentialité et conditions ».
+window.HIFZ_LEGAL = {
+  contact: 'amrouniali@gmail.com',  // adresse pour les demandes sur les données
+  region: ''                        // région du projet Supabase (Project Settings → General), ex. « Paris (eu-west-3) »
+};
