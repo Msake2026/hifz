@@ -1,6 +1,6 @@
 // Service worker Hifz : l'application fonctionne hors ligne, mais NE MET JAMAIS EN CACHE les échanges de compte (Supabase).
 const SHELL = 'hifz-shell-v2', RUNTIME = 'hifz-runtime-v2';
-const FILES = ['./', './index.html', './config.js', './manifest.webmanifest', './icon.svg', './moutoun.js', './mutashabihat.js',
+const FILES = ['./', './index.html', './config.js', './i18n.js', './manifest.webmanifest', './icon.svg', './moutoun.js', './mutashabihat.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 // seuls ces hôtes externes sont mis en cache (polices, texte du Coran, bibliothèque) ; tout le reste passe directement par le réseau
 const CACHEABLE = ['fonts.googleapis.com', 'fonts.gstatic.com', 'api.alquran.cloud', 'cdn.jsdelivr.net'];

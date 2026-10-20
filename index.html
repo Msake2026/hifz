@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Hifz – Teste ta mémorisation du Coran</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&family=Noto+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#f3ead6; --card:#fcf7ea; --ink:#2b2218; --muted:#7a6a52; --line:#decfa9; --line-soft:#ecddb6;
@@ -30,7 +30,7 @@
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,"Noto Sans Arabic",system-ui,sans-serif}
 main{max-width:720px;margin:0 auto;padding:20px 16px 60px}
 h1{font-size:1.5rem;margin:.2em 0}
 h2{font-size:1.05rem;margin:0 0 .6em}
@@ -46,7 +46,7 @@ button:disabled{opacity:.5;cursor:default}
 button.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
 button.big{width:100%;padding:14px;font-size:1.05rem}
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.mode{text-align:left;padding:12px}
+.mode{text-align:start;padding:12px}
 .mode b{display:block}
 .mode small{color:var(--muted)}
 .mode.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
@@ -104,7 +104,7 @@ details textarea{min-height:120px;margin-top:6px}
 body.has-nav main{padding-bottom:96px}
 .cta{position:sticky;bottom:calc(66px + env(safe-area-inset-bottom));padding:10px 0 4px;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:5}
 .grid.named{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:6px}
-.cell.named{width:auto;height:auto;padding:5px 6px;display:flex;flex-direction:column;align-items:flex-start;text-align:left;line-height:1.2}
+.cell.named{width:auto;height:auto;padding:5px 6px;display:flex;flex-direction:column;align-items:flex-start;text-align:start;line-height:1.2}
 .cell.named b{font-size:.85rem}.cell.named small{font-size:.68rem;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85}
 /* lecteur */
 .rd{font-family:"Amiri Quran","Traditional Arabic",serif;direction:rtl;text-align:justify;line-height:2.5;padding:4px 2px}
@@ -126,7 +126,7 @@ body.has-nav main{padding-bottom:96px}
 .hero h1{margin:0;line-height:1.1}.hero p{margin:0;color:var(--muted);font-size:.9rem}
 .sumline{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
 .sumline span{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:.82rem}
-.list-btn{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;margin-top:8px}
+.list-btn{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:start;margin-top:8px}
 /* ===== Style « mushaf » : parchemin, vert profond, filets dorés ===== */
 body{background-color:var(--bg);background-image:radial-gradient(120% 50% at 50% -8%,var(--glow),transparent 65%),var(--pattern);background-attachment:fixed}
 h1,h2{font-family:var(--serif);letter-spacing:.2px;color:var(--ink)}
@@ -177,18 +177,33 @@ button.big{border-radius:14px}
 .opt.c{background:var(--okbg);border-color:var(--ok);box-shadow:inset 3px 0 0 var(--ok)}
 .opt.w{background:var(--kobg);border-color:var(--ko);box-shadow:inset 3px 0 0 var(--ko)}
 .fb{border-radius:12px;border:1px solid transparent}
-.fb.ok{border-left:4px solid var(--ok)}.fb.ko{border-left:4px solid var(--ko)}.fb.mid{border-left:4px solid var(--mid)}
+.fb.ok{border-inline-start:4px solid var(--ok)}.fb.ko{border-inline-start:4px solid var(--ko)}.fb.mid{border-inline-start:4px solid var(--mid)}
 .blank{border-bottom-color:var(--gold)}.blank.rev{color:var(--accent)}
 .wd:hover{background:color-mix(in srgb,var(--gold) 20%,transparent)}
 .sib{border-top-color:var(--line)}
 .sumline span{background:color-mix(in srgb,var(--bg) 55%,var(--card));border-color:var(--line)}
+/* langues : arabe = écriture de droite à gauche */
+[dir=rtl] h1,[dir=rtl] h2,[dir=rtl] button,[dir=rtl] .sub,[dir=rtl] label.f{letter-spacing:0}
+[dir=rtl] h2::after{background:linear-gradient(270deg,var(--gold),transparent)}
+input[type=email],input[type=password],input[type=time]{direction:ltr;text-align:start}
+[dir=rtl] input[type=email],[dir=rtl] input[type=password]{text-align:left}
+.langs{display:flex;gap:6px;justify-content:center;margin:2px 0 12px}.langs button{padding:6px 12px;font-size:.85rem}.langs button.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--gold)}
+/* lecteur : plusieurs sections (Coran entier, tous les moutoun) */
+.rsec{margin:0 0 22px}
+.rtitle{margin:0 0 6px;text-align:center;border-top:1px solid var(--gold-soft);border-bottom:1px solid var(--gold-soft);padding:10px 0;font-family:inherit;font-weight:400}
+.rtitle .ar{display:block;font-size:2.1rem;line-height:1.7;padding:0}
+.rtitle small{display:block;color:var(--muted);font-family:Inter,"Noto Sans Arabic",sans-serif;font-size:.8rem}
+.rsentinel{text-align:center;color:var(--muted);padding:12px}
+.juzhead{flex:0 0 100%;font-family:var(--serif);font-weight:700;color:var(--accent);margin:8px 0 2px;border-bottom:1px solid var(--line-soft)}
+.cell.pg{width:40px;height:32px;font-size:.78rem}
 </style>
 </head>
 <body>
 <script src="moutoun.js"></script>
 <script src="mutashabihat.js"></script>
 <script src="config.js"></script>
-<main id="app"><p class="sub">Chargement du texte du Coran…</p></main>
+<script src="i18n.js"></script>
+<main id="app"><p class="sub" id="boot">…</p></main>
 <nav id="nav" hidden aria-label="Menu principal"></nav>
 
 <script>
@@ -203,6 +218,22 @@ const store = {
 const rnd = n => Math.floor(Math.random() * n);
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- langues : français (référence), anglais, arabe ---------- */
+const I18N = window.I18N || {}; // dictionnaires (i18n.js) : clé = texte français
+let LANG = 'fr';
+const LANGS = {fr: 'Français', en: 'English', ar: 'العربية'};
+const missingKeys = new Set(); // clés sans traduction rencontrées (aide au contrôle)
+function lookup(k){ if (LANG === 'fr') return k; const d = (I18N[LANG] || {})[k]; if (d === undefined){ missingKeys.add(k); return k; } return d; }
+const fill = (s, v) => v ? s.replace(/\{(\w+)\}/g, (m, n) => n in v ? v[n] : m) : s;
+const tr = (k, v) => fill(lookup(k), v);                                   // texte (avec {variables})
+const trp = (n, k, v) => { const [a, b] = lookup(k).split('|'); return fill((LANG === 'fr' ? n > 1 : n !== 1) ? (b ?? a) : a, {n, ...v}); }; // « singulier|pluriel »
+const LOCALE = () => ({fr: 'fr-FR', en: 'en-GB', ar: 'ar-u-nu-latn'})[LANG];
+function applyLang(){
+  document.documentElement.lang = LANG; document.documentElement.dir = LANG === 'ar' ? 'rtl' : 'ltr';
+  document.title = tr('Hifz – Teste ta mémorisation du Coran');
+  const b = document.getElementById('boot'); if (b) b.textContent = tr('Chargement du texte du Coran…');
+}
 
 /* Normalisation arabe (mode souple) : on ignore voyelles, signes coraniques, variantes d'alif/ya/ta marbuta */
 const norm = w => w
@@ -249,7 +280,7 @@ let Q = null; // [{n, ar, en, a:[{t, j, p}]}]
 let MT = {};  // moutoun : id -> {ar, fr, author, kind, unit, source, a:[{t, m}]}
 let custom = store.get('hifz.custom', []); // moutoun ajoutés par l'utilisateur
 const MS = (window.MUTASHABIHAT && window.MUTASHABIHAT.pairs) || {}; // versets proches (calculés)
-let OFF = [], PAGE_LEN = [];
+let OFF = [], PAGE_LEN = [], PAGE_JUZ = [];
 const isQ = s => typeof s === 'number';
 const book = s => isQ(s) ? Q[s - 1] : MT[s];
 const pk = k => { const [s, a] = k.split(':'); return {s: /^\d+$/.test(s) ? +s : s, a: +a}; };
@@ -272,16 +303,19 @@ async function loadQuran(){
     store.set(CACHE_KEY, Q);
   }
   let n = 0; OFF = Q.map(s => { const o = n; n += s.a.length; return o; });
-  PAGE_LEN = new Array(605).fill(0); Q.forEach(s => s.a.forEach(v => PAGE_LEN[v.p]++));
+  PAGE_LEN = new Array(605).fill(0); PAGE_JUZ = new Array(605).fill(0);
+  Q.forEach(s => s.a.forEach(v => { PAGE_LEN[v.p]++; if (!PAGE_JUZ[v.p]) PAGE_JUZ[v.p] = v.j; }));
 }
 
 /* ---------- état persistant ---------- */
 const DEF = {mode: 'mix', scope: {type: 'surah', from: 78, to: 114}, n: 10, input: 'recite', level: 40,
-  corr: 'standard', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9};
+  corr: 'standard', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9,
+  lang: ['fr', 'en', 'ar'].includes((navigator.language || '').slice(0, 2)) ? navigator.language.slice(0, 2) : 'fr'};
 const stored = store.get('hifz.cfg', {});
 let cfg = Object.assign({}, DEF, stored);
 if (stored.strict === false && !stored.corr) cfg.corr = 'soft';   // ancien réglage
 if (stored.strict === true && !stored.corr) cfg.corr = 'strict';
+LANG = ['fr', 'en', 'ar'].includes(cfg.lang) ? cfg.lang : 'fr'; applyLang();
 let stats = store.get('hifz.stats', {}); // "s:a" -> [ok, ko]
 let errors = store.get('hifz.errors', []); // journal : {t, k, m, sc, ans?, bad?[]}
 let sched = store.get('hifz.sched', {}); // "s:a" -> {iv: jours, due: timestamp}
@@ -292,9 +326,12 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const key = r => r.s + ':' + r.a;
 const verse = r => book(r.s).a[r.a - 1].t;
 const slen = s => book(s).a.length;
-const sname = s => isQ(s) ? `${Q[s-1].en} · ${Q[s-1].ar}` : `${MT[s].fr} · ${MT[s].ar}`;
-const rlabel = r => isQ(r.s) ? `Sourate ${r.s} – ${Q[r.s-1].en}, verset ${r.a} · page ${Q[r.s-1].a[r.a-1].p}`
-  : `${MT[r.s].fr}, ${MT[r.s].unit} ${r.a}`;
+const SN = n => LANG === 'ar' ? Q[n - 1].ar.replace(/^\S+\s+/, '') : Q[n - 1].en;   // nom de la sourate dans la langue de l'interface
+const MN = id => LANG === 'ar' ? MT[id].ar : MT[id].fr;                              // idem pour les moutoun
+const UNIT = u => ({vers: tr('vers'), hadith: tr('hadith'), passage: tr('passage')})[u] || u;
+const sname = s => isQ(s) ? (LANG === 'ar' ? SN(s) : `${Q[s-1].en} · ${Q[s-1].ar}`) : (LANG === 'ar' ? MT[s].ar : `${MT[s].fr} · ${MT[s].ar}`);
+const rlabel = r => isQ(r.s) ? tr('Sourate {n} – {name}, verset {a}', {n: r.s, name: SN(r.s), a: r.a}) + ' · ' + tr('page {p}', {p: Q[r.s-1].a[r.a-1].p})
+  : `${MN(r.s)}, ${UNIT(MT[r.s].unit)} ${r.a}`;
 function record(r, score){
   const [ok, ko] = stats[key(r)] || [0, 0];
   stats[key(r)] = [ok + score, ko + (1 - score)];
@@ -358,12 +395,12 @@ function playUrls(urls, done){
 function step(){
   if (!playQ.length){ const d = playDone; playDone = null; if (d) d(); return; }
   player.src = playQ.shift();
-  player.play().catch(() => { playQ = []; const m = $('audio-msg'); if (m) m.textContent = 'Audio indisponible (connexion ?).'; });
+  player.play().catch(() => { playQ = []; const m = $('audio-msg'); if (m) m.textContent = tr('Audio indisponible (connexion ?).'); });
 }
 player.onended = step;
 function stopAudio(){ playQ = []; playDone = null; try { player.pause(); } catch {} }
 const audioHtml = () => (cur && cur.audio && cur.audio.length && isQ(cur.audio[0].s))
-  ? `<div class="grades"><button data-act="play">🔊 Écouter (${(RECITERS.find(x => x[0] === cfg.reciter) || RECITERS[0])[1]})</button><button data-act="stopaudio" style="flex:0 0 auto;min-width:0">⏹</button></div><p class="ref" id="audio-msg"></p>` : '';
+  ? `<div class="grades"><button data-act="play">🔊 ${tr('Écouter')} (${(RECITERS.find(x => x[0] === cfg.reciter) || RECITERS[0])[1]})</button><button data-act="stopaudio" style="flex:0 0 auto;min-width:0">⏹</button></div><p class="ref" id="audio-msg"></p>` : '';
 
 /* ---------- écran d'accueil ---------- */
 const MODES = [
@@ -382,12 +419,12 @@ const MODES = [
   ['phrase', 'Phrase suivante',    'Prose : complète la phrase suivante', 'm']
 ];
 function opts(n, sel){ let h = ''; for (let i = 1; i <= n; i++) h += `<option value="${i}" ${i === sel ? 'selected' : ''}>${i}</option>`; return h; }
-function surahOpts(sel){ return Q.map(s => `<option value="${s.n}" ${s.n === sel ? 'selected' : ''}>${s.n}. ${s.en}</option>`).join(''); }
+function surahOpts(sel){ return Q.map(s => `<option value="${s.n}" ${s.n === sel ? 'selected' : ''}>${s.n}. ${SN(s.n)}</option>`).join(''); }
 function srcNote(sc){
   const L = (sc.id === 'all' ? Object.values(MT) : [MT[sc.id]]).filter(Boolean);
-  return L.map(t => `<p class="ref" style="margin:8px 0 0"><b>${esc(t.fr)}</b>${t.author ? ` (${esc(t.author)})` : ''} — source : ${t.source.url
-    ? `<a href="${t.source.url}" target="_blank" rel="noopener">${esc(t.source.name)}</a>` : esc(t.source.name)}. ${esc(t.source.note)}.${t.custom
-    ? ` <button class="link" data-act="delcustom" data-v="${t.id}">Supprimer</button>` : ''}</p>`).join('');
+  return L.map(t => `<p class="ref" style="margin:8px 0 0"><b>${esc(MN(t.id))}</b>${t.author ? ` (${esc(tr(t.author))})` : ''} — ${tr('source')} : ${t.source.url
+    ? `<a href="${t.source.url}" target="_blank" rel="noopener">${esc(tr(t.source.name))}</a>` : esc(tr(t.source.name))}. ${esc(tr(t.source.note))}.${t.custom
+    ? ` <button class="link" data-act="delcustom" data-v="${t.id}">${tr('Supprimer')}</button>` : ''}</p>`).join('');
 }
 
 /* progression par sourate / page / matn */
@@ -405,24 +442,26 @@ function mapHtml(){
     const e = (by[id] ||= {seen: 0, ok: 0, ko: 0}); e.seen++; e.ok += ok; e.ko += ko;
   }
   const tabs = `<div class="seg" style="margin-bottom:10px">${[['s', 'Sourates'], ['p', 'Pages'], ['m', 'Moutoun']]
-    .map(([k, t]) => `<button class="${cfg.map === k ? 'sel' : ''}" data-act="maptab" data-v="${k}">${t}</button>`).join('')}</div>`;
+    .map(([k, t]) => `<button class="${cfg.map === k ? 'sel' : ''}" data-act="maptab" data-v="${k}">${tr(t)}</button>`).join('')}</div>`;
   let body;
   if (cfg.map === 's') body = Q.map(S => { const lv = levelOf(by[S.n], S.a.length), e = by[S.n];
-    return `<button class="cell named l${lv}" data-act="cell" data-v="${S.n}" title="${S.n}. ${S.en}${e ? ' · ' + Math.round(100 * e.ok / (e.ok + e.ko)) + ' % · ' + e.seen + '/' + S.a.length + ' versets vus' : ''}"><b>${S.n}</b><small>${esc(S.en)}</small></button>`; }).join('');
-  else if (cfg.map === 'p') body = Array.from({length: 604}, (_, i) => { const p = i + 1, lv = levelOf(by[p], PAGE_LEN[p] || 1);
-    return `<button class="cell sm l${lv}" data-act="pcell" data-v="${p}" title="page ${p}"></button>`; }).join('');
+    return `<button class="cell named l${lv}" data-act="cell" data-v="${S.n}" title="${S.n}. ${SN(S.n)}${e ? ' · ' + Math.round(100 * e.ok / (e.ok + e.ko)) + ' % · ' + e.seen + '/' + S.a.length + ' ' + tr('versets vus') : ''}"><b>${S.n}</b><small>${esc(SN(S.n))}</small></button>`; }).join('');
+  else if (cfg.map === 'p') body = Array.from({length: 30}, (_, j) => {
+    const ps = Array.from({length: 604}, (_, i) => i + 1).filter(p => PAGE_JUZ[p] === j + 1);
+    return `<div class="juzhead">${tr("Juz' {a}", {a: j + 1})}</div>` + ps.map(p => { const lv = levelOf(by[p], PAGE_LEN[p] || 1), e = by[p];
+      return `<button class="cell pg l${lv}" data-act="pcell" data-v="${p}" title="${tr('page {p}', {p})}${e ? ' · ' + Math.round(100 * e.ok / (e.ok + e.ko)) + ' %' : ''}">${p}</button>`; }).join(''); }).join('');
   else body = Object.values(MT).map(t => { const e = by[t.id], lv = levelOf(e, t.a.length);
-    return `<div class="weak" style="width:100%"><span>${esc(t.fr)}</span><span>${e ? Math.round(100 * e.ok / (e.ok + e.ko)) + ' % · ' + e.seen + '/' + t.a.length : 'pas commencé'}</span></div>`; }).join('');
+    return `<div class="weak" style="width:100%"><span>${esc(MN(t.id))}</span><span>${e ? Math.round(100 * e.ok / (e.ok + e.ko)) + ' % · ' + e.seen + '/' + t.a.length : tr('pas commencé')}</span></div>`; }).join('');
   return `${tabs}<div class="grid${cfg.map === 's' ? ' named' : ''}">${body}</div>
-    <div class="legend">pas vu <i class="cell" style="width:14px;height:14px"></i><i class="cell l1" style="width:14px;height:14px"></i><i class="cell l2" style="width:14px;height:14px"></i><i class="cell l3" style="width:14px;height:14px"></i><i class="cell l4" style="width:14px;height:14px"></i> maîtrisé</div>
-    <p class="ref" style="margin:4px 0 0">Maîtrise = réussite × part des versets déjà vus.${cfg.map === 'm' ? '' : ' Touche une case pour réviser.'}</p>`;
+    <div class="legend">${tr('pas vu')} <i class="cell" style="width:14px;height:14px"></i><i class="cell l1" style="width:14px;height:14px"></i><i class="cell l2" style="width:14px;height:14px"></i><i class="cell l3" style="width:14px;height:14px"></i><i class="cell l4" style="width:14px;height:14px"></i> ${tr('maîtrisé')}</div>
+    <p class="ref" style="margin:4px 0 0">${tr('Maîtrise = réussite × part des versets déjà vus.')}${cfg.map === 'm' ? '' : ' ' + tr('Touche une case pour réviser.')}</p>`;
 }
 function weekHtml(){
-  const out = [], names = ['D', 'L', 'M', 'M', 'J', 'V', 'S']; let tot = 0, act = 0;
-  for (let i = 6; i >= 0; i--){ const d = new Date(); d.setDate(d.getDate() - i); const n = days[today(d)] || 0; tot += n; if (n) act++; out.push([names[d.getDay()], n]); }
+  const out = []; let tot = 0, act = 0;
+  for (let i = 6; i >= 0; i--){ const d = new Date(); d.setDate(d.getDate() - i); const n = days[today(d)] || 0; tot += n; if (n) act++; out.push([d.toLocaleDateString(LOCALE(), {weekday: 'narrow'}), n]); }
   const mx = Math.max(cfg.goal, ...out.map(x => x[1]));
-  return `<div class="week">${out.map(([l, n]) => `<div title="${n} réponses"><i style="height:${Math.round(70 * n / mx)}px"></i>${l}</div>`).join('')}</div>
-    <p class="ref" style="margin:4px 0 0">7 derniers jours : ${tot} réponses, ${act} jour${act > 1 ? 's' : ''} actif${act > 1 ? 's' : ''}.</p>`;
+  return `<div class="week">${out.map(([l, n]) => `<div title="${trp(n, '{n} réponse|{n} réponses')}"><i style="height:${Math.round(70 * n / mx)}px"></i>${l}</div>`).join('')}</div>
+    <p class="ref" style="margin:4px 0 0">${tr('7 derniers jours')} : ${trp(tot, '{n} réponse|{n} réponses')}, ${trp(act, '{n} jour actif|{n} jours actifs')}.</p>`;
 }
 
 /* ---------- navigation : menu en bas, un écran à la fois ---------- */
@@ -437,15 +476,15 @@ function setNav(on){
   const n = $('nav'); n.hidden = !on; document.body.classList.toggle('has-nav', on); screen = on ? 'tab' : 'full';
   if (!on) return;
   const due = dueRefs().length;
-  n.innerHTML = `<div class="in">${TABS.map(([id, t, ico]) => `<button class="${cfg.tab === id ? 'sel' : ''}" data-act="tab" data-v="${id}" aria-label="${t}"${cfg.tab === id ? ' aria-current="page"' : ''}>
-    <svg viewBox="0 0 24 24" aria-hidden="true">${ico}</svg>${t}${id === 'home' && due ? `<span class="badge">${due > 99 ? '99+' : due}</span>` : ''}</button>`).join('')}</div>`;
+  n.innerHTML = `<div class="in">${TABS.map(([id, t, ico]) => `<button class="${cfg.tab === id ? 'sel' : ''}" data-act="tab" data-v="${id}" aria-label="${tr(t)}"${cfg.tab === id ? ' aria-current="page"' : ''}>
+    <svg viewBox="0 0 24 24" aria-hidden="true">${ico}</svg>${tr(t)}${id === 'home' && due ? `<span class="badge">${due > 99 ? '99+' : due}</span>` : ''}</button>`).join('')}</div>`;
 }
-const scopeLabel = sc => sc.type === 'matn' ? (sc.id === 'all' ? 'Tous les moutoun' : MT[sc.id]?.fr || 'Matn')
-  : sc.type === 'all' ? 'Tout le Coran'
-  : sc.type === 'surah' ? (sc.from === sc.to ? `Sourate ${sc.from} · ${Q[sc.from - 1].en}` : `Sourates ${sc.from} ${Q[sc.from - 1].en} → ${sc.to} ${Q[sc.to - 1].en}`)
-  : sc.type === 'juz' ? (sc.from === sc.to ? `Juz' ${sc.from}` : `Juz' ${sc.from}–${sc.to}`)
-  : (sc.from === sc.to ? `Page ${sc.from}` : `Pages ${sc.from}–${sc.to}`);
-const modeTitle = id => (MODES.find(m => m[0] === id) || [])[1] || id;
+const scopeLabel = sc => sc.type === 'matn' ? (sc.id === 'all' ? tr('Tous les moutoun') : (MT[sc.id] ? MN(sc.id) : tr('Matn')))
+  : sc.type === 'all' ? tr('Tout le Coran')
+  : sc.type === 'surah' ? (sc.from === sc.to ? tr('Sourate {n} · {name}', {n: sc.from, name: SN(sc.from)}) : tr('Sourates {a} {an} → {b} {bn}', {a: sc.from, an: SN(sc.from), b: sc.to, bn: SN(sc.to)}))
+  : sc.type === 'juz' ? (sc.from === sc.to ? tr("Juz' {a}", {a: sc.from}) : tr("Juz' {a}–{b}", {a: sc.from, b: sc.to}))
+  : (sc.from === sc.to ? tr('Page {a}', {a: sc.from}) : tr('Pages {a}–{b}', {a: sc.from, b: sc.to}));
+const modeTitle = id => tr((MODES.find(m => m[0] === id) || [])[1] || id);
 const INPUTS = {recite: 'je récite', type: 'je tape', voice: 'à voix haute'};
 
 function home(){ // affiche l'écran du menu courant (accès réservé aux comptes connectés quand les comptes sont activés)
@@ -479,6 +518,11 @@ function syncCfg(){
   if ($('srec')){ cfg.reciter = v('srec'); cfg.goal = +v('sgoal'); }
   saveCfg();
 }
+function setLang(l){ // change la langue de l'interface (le texte du Coran ne change pas)
+  if (!['fr', 'en', 'ar'].includes(l) || l === LANG) return;
+  LANG = l; cfg.lang = l; saveCfg(); applyLang();
+  if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else home();
+}
 function go(tab){ cfg.tab = tab; saveCfg(); home(); window.scrollTo(0, 0); }
 
 /* -- Accueil : l'essentiel du jour -- */
@@ -486,27 +530,27 @@ function tabHome(){
   const due = dueRefs(), td = days[today()] || 0, st = streak();
   const top = aggErrors(errors.filter(e => e.t >= Date.now() - 7 * 864e5)).slice(0, 3);
   return `
-  <div class="hero"><div class="logo">حفظ</div><div><h1>Hifz</h1><p>${me ? esc(me.user.email) : 'Que ta mémorisation soit bénie.'}</p></div></div>
-  ${cloudOn() && !me ? `<div class="card"><h2>Sauvegarde ta progression</h2><p class="sub" style="margin:0 0 8px">Crée un compte gratuit pour retrouver tes séries, tes erreurs et ton historique sur tous tes appareils.</p>
-    <div class="row"><button class="pri" data-act="acc-open" data-v="signup">Créer un compte</button><button data-act="acc-open" data-v="login">Se connecter</button></div></div>` : ''}
+  <div class="hero"><div class="logo">حفظ</div><div><h1>Hifz</h1><p>${me ? esc(me.user.email) : tr('Que ta mémorisation soit bénie.')}</p></div></div>
+  ${cloudOn() && !me ? `<div class="card"><h2>${tr('Sauvegarde ta progression')}</h2><p class="sub" style="margin:0 0 8px">${tr('Crée un compte gratuit pour retrouver tes séries, tes erreurs et ton historique sur tous tes appareils.')}</p>
+    <div class="row"><button class="pri" data-act="acc-open" data-v="signup">${tr('Créer un compte')}</button><button data-act="acc-open" data-v="login">${tr('Se connecter')}</button></div></div>` : ''}
 
-  <div class="card"><h2>Aujourd'hui</h2>
-    <p class="sub" style="margin:0 0 4px">🔥 ${st} jour${st > 1 ? 's' : ''} d'affilée · objectif : ${Math.min(td, cfg.goal)} / ${cfg.goal}</p>
+  <div class="card"><h2>${tr("Aujourd'hui")}</h2>
+    <p class="sub" style="margin:0 0 4px">🔥 ${trp(st, '{n} jour d\'affilée|{n} jours d\'affilée')} · ${tr('objectif : {a} / {b}', {a: Math.min(td, cfg.goal), b: cfg.goal})}</p>
     <div class="goal"><i style="width:${Math.min(100, 100 * td / cfg.goal)}%"></i></div>
-    ${td >= cfg.goal ? '<p class="ref" style="margin:0 0 8px">Objectif atteint, machaa Allah 🎉</p>' : ''}
-    ${due.length ? `<button class="pri big" style="margin-top:8px" data-act="review">Réviser mes versets dus (${due.length})</button>`
-      : `<p class="sub" style="margin:8px 0 0">Rien à revoir pour l'instant. Lance une série : les versets à retravailler reviendront ici au bon moment.</p>`}
+    ${td >= cfg.goal ? `<p class="ref" style="margin:0 0 8px">${tr('Objectif atteint, machaa Allah 🎉')}</p>` : ''}
+    ${due.length ? `<button class="pri big" style="margin-top:8px" data-act="review">${tr('Réviser mes versets dus ({n})', {n: due.length})}</button>`
+      : `<p class="sub" style="margin:8px 0 0">${tr("Rien à revoir pour l'instant. Lance une série : les versets à retravailler reviendront ici au bon moment.")}</p>`}
   </div>
 
-  <div class="card"><h2>Ma série</h2>
-    <div class="sumline"><span>${cfg.scope.type === 'matn' ? '📜 Moutoun' : '📖 Coran'}</span><span>${esc(scopeLabel(cfg.scope))}</span>
-      <span>${esc(modeTitle(cfg.mode))}</span><span>${cfg.n} questions</span>${(MODE_OPTS[cfg.mode] || {}).input ? `<span>${INPUTS[cfg.input] || ''}</span>` : ''}</div>
-    <button class="pri big" data-act="start">Commencer</button>
-    <div class="row" style="margin-top:8px"><button data-act="tab" data-v="train">Modifier</button><button data-act="lsopen">🎧 Écouter</button></div>
+  <div class="card"><h2>${tr('Ma série')}</h2>
+    <div class="sumline"><span>${cfg.scope.type === 'matn' ? '📜 ' + tr('Moutoun') : '📖 ' + tr('Coran')}</span><span>${esc(scopeLabel(cfg.scope))}</span>
+      <span>${esc(modeTitle(cfg.mode))}</span><span>${trp(cfg.n, '{n} question|{n} questions')}</span>${(MODE_OPTS[cfg.mode] || {}).input ? `<span>${tr(INPUTS[cfg.input] || '')}</span>` : ''}</div>
+    <button class="pri big" data-act="start">${tr('Commencer')}</button>
+    <div class="row" style="margin-top:8px"><button data-act="tab" data-v="train">${tr('Modifier')}</button><button data-act="lsopen">🎧 ${tr('Écouter')}</button></div>
   </div>
 
-  ${top.length ? `<div class="card"><h2>Mes erreurs de la semaine</h2>${top.map(a => `<div class="weak"><span>${rlabel(a.r)}</span><span>${a.n}×</span></div>`).join('')}
-    <button class="list-btn" data-act="tab" data-v="errors"><span>Voir toutes mes erreurs</span><span>›</span></button></div>` : ''}`;
+  ${top.length ? `<div class="card"><h2>${tr('Mes erreurs de la semaine')}</h2>${top.map(a => `<div class="weak"><span>${rlabel(a.r)}</span><span>${a.n}×</span></div>`).join('')}
+    <button class="list-btn" data-act="tab" data-v="errors"><span>${tr('Voir toutes mes erreurs')}</span><span>›</span></button></div>` : ''}`;
 }
 
 /* -- Réviser : tout pour préparer une série -- */
@@ -526,73 +570,73 @@ const modeHelp = {
 function tabTrain(){
   const sc = cfg.scope, isM = sc.type === 'matn', o = MODE_OPTS[cfg.mode] || {};
   return `
-  <h1>Réviser</h1>
-  <p class="sub">Choisis ce que tu veux travailler, puis lance la série.</p>
+  <h1>${tr('Réviser')}</h1>
+  <p class="sub">${tr('Choisis ce que tu veux travailler, puis lance la série.')}</p>
 
-  <div class="card"><h2>Je veux réviser</h2>
+  <div class="card"><h2>${tr('Je veux réviser')}</h2>
     <div class="seg">
-      <button class="${isM ? '' : 'sel'}" data-act="corpus" data-v="quran">📖 Le Coran</button>
-      <button class="${isM ? 'sel' : ''}" data-act="corpus" data-v="matn">📜 Les moutoun</button>
+      <button class="${isM ? '' : 'sel'}" data-act="corpus" data-v="quran">📖 ${tr('Le Coran')}</button>
+      <button class="${isM ? 'sel' : ''}" data-act="corpus" data-v="matn">📜 ${tr('Les moutoun')}</button>
     </div>
   </div>
 
-  <div class="card"><h2>Exercice</h2>
+  <div class="card"><h2>${tr('Exercice')}</h2>
     <div class="modes">${MODES.filter(([, , , w]) => !w || (w === 'm') === isM).map(([id, t, d]) =>
-      `<button class="mode ${cfg.mode === id ? 'sel' : ''}" data-act="mode" data-v="${id}"><b>${isM && id === 'which' ? 'Quel matn ?' : t}</b><small>${d}</small></button>`).join('')}</div>
+      `<button class="mode ${cfg.mode === id ? 'sel' : ''}" data-act="mode" data-v="${id}"><b>${tr(isM && id === 'which' ? 'Quel matn ?' : t)}</b><small>${tr(d)}</small></button>`).join('')}</div>
   </div>
 
-  <div class="card"><h2>Portée</h2>
-    <label class="f" ${isM ? 'hidden' : ''}>Réviser…</label>
+  <div class="card"><h2>${tr('Portée')}</h2>
+    <label class="f" ${isM ? 'hidden' : ''}>${tr('Réviser…')}</label>
     <select id="stype" ${isM ? 'hidden' : ''}>
-      <option value="surah" ${sc.type === 'surah' ? 'selected' : ''}>Une plage de sourates</option>
-      <option value="juz" ${sc.type === 'juz' ? 'selected' : ''}>Un ou plusieurs juz'</option>
-      <option value="page" ${sc.type === 'page' ? 'selected' : ''}>Des pages du Mushaf (1–604)</option>
-      <option value="all" ${sc.type === 'all' ? 'selected' : ''}>Tout le Coran</option>
+      <option value="surah" ${sc.type === 'surah' ? 'selected' : ''}>${tr('Une plage de sourates')}</option>
+      <option value="juz" ${sc.type === 'juz' ? 'selected' : ''}>${tr("Un ou plusieurs juz'")}</option>
+      <option value="page" ${sc.type === 'page' ? 'selected' : ''}>${tr('Des pages du Mushaf (1–604)')}</option>
+      <option value="all" ${sc.type === 'all' ? 'selected' : ''}>${tr('Tout le Coran')}</option>
     </select>
     <div id="smatn-row" ${isM ? '' : 'hidden'}>
-      <label class="f">Matn</label>
-      <select id="smatn"><option value="all">Tous les moutoun</option>${Object.values(MT).map(t => `<option value="${t.id}" ${sc.id === t.id ? 'selected' : ''}>${esc(t.fr)} · ${esc(t.ar)} (${t.a.length})</option>`).join('')}</select>
+      <label class="f">${tr('Matn')}</label>
+      <select id="smatn"><option value="all">${tr('Tous les moutoun')}</option>${Object.values(MT).map(t => `<option value="${t.id}" ${sc.id === t.id ? 'selected' : ''}>${esc(MN(t.id))}${LANG === 'ar' ? '' : ' · ' + esc(t.ar)} (${t.a.length})</option>`).join('')}</select>
       ${isM ? srcNote(sc) : ''}
-      <details style="margin-top:12px"><summary>➕ Ajouter mon propre matn</summary>
-        <label class="f">Titre</label><input type="text" id="cm-title" placeholder="ex. Alfiyya – Ibn Mālik">
-        <label class="f">Type de texte</label>
-        <select id="cm-kind"><option value="poem">Poème (un vers par ligne, les deux moitiés séparées par *)</option><option value="prose">Prose (un passage par ligne)</option></select>
-        <label class="f">Texte (copie-le depuis ton édition de référence)</label>
+      <details style="margin-top:12px"><summary>➕ ${tr('Ajouter mon propre matn')}</summary>
+        <label class="f">${tr('Titre')}</label><input type="text" id="cm-title" placeholder="${tr('ex. Alfiyya – Ibn Mālik')}">
+        <label class="f">${tr('Type de texte')}</label>
+        <select id="cm-kind"><option value="poem">${tr('Poème (un vers par ligne, les deux moitiés séparées par *)')}</option><option value="prose">${tr('Prose (un passage par ligne)')}</option></select>
+        <label class="f">${tr('Texte (copie-le depuis ton édition de référence)')}</label>
         <textarea id="cm-text" dir="rtl" lang="ar" placeholder="الحمد لله ربي * ..."></textarea>
-        <button class="pri" style="margin-top:8px" data-act="addcustom">Enregistrer ce matn</button>
-        <p class="ref">Le texte reste sur cet appareil. Si tu n'indiques pas de séparateur *, chaque vers est coupé au milieu.</p>
+        <button class="pri" style="margin-top:8px" data-act="addcustom">${tr('Enregistrer ce matn')}</button>
+        <p class="ref">${tr("Le texte reste sur cet appareil. Si tu n'indiques pas de séparateur *, chaque vers est coupé au milieu.")}</p>
       </details>
     </div>
     <div class="row" id="srange" ${sc.type === 'all' || isM ? 'hidden' : ''}>
-      <div><label class="f">De</label><select id="sfrom">${sc.type === 'juz' ? opts(30, sc.from) : sc.type === 'page' ? opts(604, sc.from) : surahOpts(sc.from)}</select></div>
-      <div><label class="f">À</label><select id="sto">${sc.type === 'juz' ? opts(30, sc.to) : sc.type === 'page' ? opts(604, sc.to) : surahOpts(sc.to)}</select></div>
+      <div><label class="f">${tr('De')}</label><select id="sfrom">${sc.type === 'juz' ? opts(30, sc.from) : sc.type === 'page' ? opts(604, sc.from) : surahOpts(sc.from)}</select></div>
+      <div><label class="f">${tr('À')}</label><select id="sto">${sc.type === 'juz' ? opts(30, sc.to) : sc.type === 'page' ? opts(604, sc.to) : surahOpts(sc.to)}</select></div>
     </div>
   </div>
 
-  <div class="card"><h2>Options de la série</h2>
-    <p class="ref" style="margin:0 0 8px">${modeHelp[cfg.mode] || ''}</p>
+  <div class="card"><h2>${tr('Options de la série')}</h2>
+    <p class="ref" style="margin:0 0 8px">${tr(modeHelp[cfg.mode] || '')}</p>
     <div class="row">
-      <div><label class="f">Nombre de questions</label>
+      <div><label class="f">${tr('Nombre de questions')}</label>
         <select id="sn">${[5, 10, 20, 30].map(n => `<option ${n === cfg.n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
-      ${o.level ? `<div><label class="f">Mots cachés (mots manquants)</label>
+      ${o.level ? `<div><label class="f">${tr('Mots cachés (mots manquants)')}</label>
         <select id="slevel">${[20, 40, 60, 80].map(n => `<option value="${n}" ${n === cfg.level ? 'selected' : ''}>${n} %</option>`).join('')}</select></div>` : ''}
-      ${o.cont ? `<div><label class="f">Versets à réciter d'une traite</label>
+      ${o.cont ? `<div><label class="f">${tr("Versets à réciter d'une traite")}</label>
         <select id="scont">${[3, 5, 8, 10, 15].map(n => `<option ${n === cfg.contLen ? 'selected' : ''}>${n}</option>`).join('')}</select></div>` : ''}
-      ${o.end && !isM ? `<div><label class="f">Versets de fin de sourate</label>
+      ${o.end && !isM ? `<div><label class="f">${tr('Versets de fin de sourate')}</label>
         <select id="send">${[1, 2, 3, 5].map(n => `<option ${n === cfg.endLen ? 'selected' : ''}>${n}</option>`).join('')}</select></div>` : ''}
-      ${o.beg && !isM ? `<div><label class="f">Versets de début (sourate suivante)</label>
+      ${o.beg && !isM ? `<div><label class="f">${tr('Versets de début (sourate suivante)')}</label>
         <select id="sbeg">${[1, 2, 3].map(n => `<option ${n === cfg.begLen ? 'selected' : ''}>${n}</option>`).join('')}</select></div>` : ''}
     </div>
-    ${o.input ? `<label class="f">Façon de répondre${SR ? '' : ' (la voix n\'est pas disponible dans ce navigateur : essaie Chrome ou Safari)'}</label>
+    ${o.input ? `<label class="f">${tr('Façon de répondre')}${SR ? '' : ' (' + tr("la voix n'est pas disponible dans ce navigateur : essaie Chrome ou Safari") + ')'}</label>
     <div class="seg">
-      <button class="${cfg.input === 'recite' ? 'sel' : ''}" data-act="input" data-v="recite">Je récite, puis je marque mes erreurs</button>
-      <button class="${cfg.input === 'type' ? 'sel' : ''}" data-act="input" data-v="type">Je tape en arabe</button>
-      ${SR ? `<button class="${cfg.input === 'voice' ? 'sel' : ''}" data-act="input" data-v="voice">🎤 Je récite à voix haute</button>` : ''}
-    </div>` : '<p class="ref" style="margin:10px 0 0">Pour cet exercice, tu réponds en touchant la bonne proposition.</p>'}
+      <button class="${cfg.input === 'recite' ? 'sel' : ''}" data-act="input" data-v="recite">${tr('Je récite, puis je marque mes erreurs')}</button>
+      <button class="${cfg.input === 'type' ? 'sel' : ''}" data-act="input" data-v="type">${tr('Je tape en arabe')}</button>
+      ${SR ? `<button class="${cfg.input === 'voice' ? 'sel' : ''}" data-act="input" data-v="voice">🎤 ${tr('Je récite à voix haute')}</button>` : ''}
+    </div>` : `<p class="ref" style="margin:10px 0 0">${tr('Pour cet exercice, tu réponds en touchant la bonne proposition.')}</p>`}
   </div>
 
-  <div class="row"><button class="big" data-act="rdscope">📖 Lire le texte complet</button><button class="big" data-act="lsopen">🎧 Écouter ma portée</button></div>
-  <div class="cta"><button class="pri big" data-act="start">Commencer · ${esc(scopeLabel(sc))}</button></div>`;
+  <div class="row"><button class="big" data-act="rdscope">📖 ${tr('Lire le texte complet')}</button><button class="big" data-act="lsopen">🎧 ${tr('Écouter ma portée')}</button></div>
+  <div class="cta"><button class="pri big" data-act="start">${tr('Commencer')} · ${esc(scopeLabel(sc))}</button></div>`;
 }
 
 /* -- Progrès : statistiques et carte -- */
@@ -603,80 +647,83 @@ function tabProgress(){
   const weak = Object.entries(per).filter(([, [o, k]]) => o + k >= 3)
     .map(([s, [o, k]]) => [s, o / (o + k), o + k]).sort((a, b) => a[1] - b[1]).slice(0, 5);
   return `
-  <h1>Progrès</h1>
-  <p class="sub">Où tu en es, sourate par sourate.</p>
-  <div class="card">${answered ? `<div class="stat"><div><b>${Math.round(answered)}</b>réponses</div>
-    <div><b>${Math.round(100 * tot[0] / answered)} %</b>réussite</div>
-    <div><b>${Object.keys(stats).length}</b>versets vus</div></div>`
-    : `<p class="sub" style="margin:0">Pas encore de statistiques : fais ta première série.</p>`}</div>
-  <div class="card"><h2>Cette semaine</h2>${weekHtml()}</div>
-  <div class="card"><h2>Carte de progression</h2>${mapHtml()}</div>
+  <h1>${tr('Progrès')}</h1>
+  <p class="sub">${tr('Où tu en es, sourate par sourate.')}</p>
+  <div class="card">${answered ? `<div class="stat"><div><b>${Math.round(answered)}</b>${tr('réponses')}</div>
+    <div><b>${Math.round(100 * tot[0] / answered)} %</b>${tr('réussite')}</div>
+    <div><b>${Object.keys(stats).length}</b>${tr('versets vus')}</div></div>`
+    : `<p class="sub" style="margin:0">${tr('Pas encore de statistiques : fais ta première série.')}</p>`}</div>
+  <div class="card"><h2>${tr('Cette semaine')}</h2>${weekHtml()}</div>
+  <div class="card"><h2>${tr('Carte de progression')}</h2>${mapHtml()}</div>
   ${weak.length ? `<div class="card">${weakHtml(weak)}</div>` : ''}`;
 }
 
 /* -- Réglages -- */
 function tabSettings(){
-  const isM = cfg.scope.type === 'matn';
   const corrTxt = {strict: 'Chaque lettre, chaque voyelle, soukoun et chadda compris : une seule faute = raté.',
     standard: 'Lettres et voyelles exactes ; soukoun et chadda d\'assimilation (idghām) tolérés comme dans l\'écriture courante.',
     soft: 'Les voyelles sont ignorées et une petite faute de frappe est tolérée.'}[cfg.corr];
   return `
-  <h1>Réglages</h1>
-  <p class="sub">Compte, correction, indices, audio, sauvegarde.</p>
+  <h1>${tr('Réglages')}</h1>
+  <p class="sub">${tr('Compte, correction, indices, audio, sauvegarde.')}</p>
   ${accountCard()}
 
-  <div class="card"><h2>Correction de la saisie (Coran)</h2>
+  <div class="card"><h2>${tr('Langue')}</h2>
+    <div class="seg">${Object.entries(LANGS).map(([k, n]) => `<button class="${LANG === k ? 'sel' : ''}" data-act="lang" data-v="${k}" lang="${k}">${n}</button>`).join('')}</div>
+  </div>
+
+  <div class="card"><h2>${tr('Correction de la saisie (Coran)')}</h2>
     <div class="seg">${[['strict', 'Stricte'], ['standard', 'Standard'], ['soft', 'Souple']].map(([k, t]) =>
-      `<button class="${cfg.corr === k ? 'sel' : ''}" data-act="corr" data-v="${k}">${t}</button>`).join('')}</div>
-    <p class="ref" style="margin:8px 0 0">${corrTxt}${cfg.corr === 'soft' ? '' : ' La voix ne peut pas vérifier les voyelles.'} Les moutoun gardent une correction souple.</p>
+      `<button class="${cfg.corr === k ? 'sel' : ''}" data-act="corr" data-v="${k}">${tr(t)}</button>`).join('')}</div>
+    <p class="ref" style="margin:8px 0 0">${tr(corrTxt)}${cfg.corr === 'soft' ? '' : ' ' + tr('La voix ne peut pas vérifier les voyelles.')} ${tr('Les moutoun gardent une correction souple.')}</p>
   </div>
 
-  <div class="card"><h2>Indices affichés avec le verset à compléter</h2>
+  <div class="card"><h2>${tr('Indices affichés avec le verset à compléter')}</h2>
     <div class="chips">${[['s', 'Sourate / titre du matn'], ['v', 'N° du verset'], ['p', 'N° de page']]
-      .map(([k, t]) => `<button class="${cfg.show[k] ? 'sel' : ''}" data-act="show" data-v="${k}">${cfg.show[k] ? '✓ ' : ''}${t}</button>`).join('')}</div>
+      .map(([k, t]) => `<button class="${cfg.show[k] ? 'sel' : ''}" data-act="show" data-v="${k}">${cfg.show[k] ? '✓ ' : ''}${tr(t)}</button>`).join('')}</div>
   </div>
 
-  <div class="card"><h2>Audio et objectif</h2>
+  <div class="card"><h2>${tr('Audio et objectif')}</h2>
     <div class="row">
-      <div><label class="f">Récitateur</label>
+      <div><label class="f">${tr('Récitateur')}</label>
         <select id="srec">${RECITERS.map(([id, n]) => `<option value="${id}" ${id === cfg.reciter ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
-      <div><label class="f">Objectif quotidien (réponses)</label>
+      <div><label class="f">${tr('Objectif quotidien (réponses)')}</label>
         <select id="sgoal">${[10, 20, 30, 50, 100].map(n => `<option ${n === cfg.goal ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
     </div>
-    <div class="row" style="margin-top:12px;align-items:end"><div><label class="f">Rappel quotidien (calendrier)</label><input type="time" id="rtime" value="20:00"></div>
-      <button data-act="ics">📅 Ajouter au calendrier</button></div>
+    <div class="row" style="margin-top:12px;align-items:end"><div><label class="f">${tr('Rappel quotidien (calendrier)')}</label><input type="time" id="rtime" value="20:00"></div>
+      <button data-act="ics">📅 ${tr('Ajouter au calendrier')}</button></div>
   </div>
 
-  <div class="card"><h2>Mes données</h2>
-    <div class="row"><button data-act="export">⬇ Exporter ma progression</button><button data-act="import">⬆ Importer</button></div>
+  <div class="card"><h2>${tr('Mes données')}</h2>
+    <div class="row"><button data-act="export">⬇ ${tr('Exporter ma progression')}</button><button data-act="import">⬆ ${tr('Importer')}</button></div>
     <input type="file" id="impfile" accept="application/json,.json" hidden>
-    <p class="ref" style="margin:8px 0 0">Tout est stocké sur cet appareil. Exporte régulièrement pour ne rien perdre en changeant de téléphone.</p>
-    <p style="margin:6px 0 0"><button class="link" data-act="reset" style="color:var(--ko)">Réinitialiser statistiques et historique</button></p>
+    <p class="ref" style="margin:8px 0 0">${tr('Tout est stocké sur cet appareil. Exporte régulièrement pour ne rien perdre en changeant de téléphone.')}</p>
+    <p style="margin:6px 0 0"><button class="link" data-act="reset" style="color:var(--ko)">${tr('Réinitialiser statistiques et historique')}</button></p>
   </div>
 
-  <div class="card"><h2>Application</h2>
-    <p class="ref" style="margin:0 0 8px">Version ${APP_VERSION}. Une fois installée sur le téléphone, l'application se met à jour toute seule à l'ouverture quand tu es en ligne ; si tu ne vois pas les nouveautés, utilise ce bouton (ta progression n'est pas touchée).</p>
-    <button data-act="upd">🔄 Chercher les mises à jour</button></div>
+  <div class="card"><h2>${tr('Application')}</h2>
+    <p class="ref" style="margin:0 0 8px">${tr("Version {v}. Une fois installée sur le téléphone, l'application se met à jour toute seule à l'ouverture quand tu es en ligne ; si tu ne vois pas les nouveautés, utilise ce bouton (ta progression n'est pas touchée).", {v: APP_VERSION})}</p>
+    <button data-act="upd">🔄 ${tr('Chercher les mises à jour')}</button></div>
 
-  <div class="card"><h2>Sources</h2>
-    <p class="ref" style="margin:0">Coran : texte uthmani du projet Tanzil via api.alquran.cloud (lecture de Ḥafṣ). Audio : cdn.islamic.network (AlQuran Cloud). Moutoun : Wikisource arabe et hadith-api (voir l'écran Réviser pour chaque matn). Versets proches : calculés automatiquement.</p>
+  <div class="card"><h2>${tr('Sources')}</h2>
+    <p class="ref" style="margin:0">${tr("Coran : texte uthmani du projet Tanzil via api.alquran.cloud (lecture de Ḥafṣ). Audio : cdn.islamic.network (AlQuran Cloud). Moutoun : Wikisource arabe et hadith-api (voir l'écran Réviser pour chaque matn). Versets proches : calculés automatiquement.")}</p>
   </div>`;
 }
-const weakHtml = weak => weak.length ? `<h2 style="margin-top:14px">À retravailler</h2>` + weak.map(([s, r, n]) =>
-  `<div class="weak"><span>${sname(pk(s + ':1').s)}</span><span>${Math.round(r * 100)} % · ${Math.round(n)} rép.</span></div>`).join('') : '';
+const weakHtml = weak => weak.length ? `<h2 style="margin-top:14px">${tr('À retravailler')}</h2>` + weak.map(([s, r, n]) =>
+  `<div class="weak"><span>${sname(pk(s + ':1').s)}</span><span>${Math.round(r * 100)} % · ${Math.round(n)} ${tr('rép.')}</span></div>`).join('') : '';
 
 /* ---------- séance ---------- */
 let ses = null, cur = null, ls = null;
 function start(fixed){
   const pool = fixed || buildPool(cfg.scope);
-  if (!pool.length) return alert('Aucun verset dans cette portée.');
+  if (!pool.length) return alert(tr('Aucun verset dans cette portée.'));
   ses = {pool, fixed: !!fixed, i: 0, score: 0, missed: [], used: new Set(), total: fixed ? fixed.length : cfg.n};
   nextQ();
 }
 function shell(inner){
   setNav(false);
   $app.innerHTML = `
-  <div class="top"><button class="link" data-act="home">✕ Quitter</button><span>${ses.i} / ${ses.total}</span></div>
+  <div class="top"><button class="link" data-act="home">✕ ${tr('Quitter')}</button><span>${ses.i} / ${ses.total}</span></div>
   <div class="bar"><i style="width:${100 * (ses.i - 1) / ses.total}%"></i></div>
   <div class="card">${inner}</div>`;
 }
@@ -739,26 +786,26 @@ function finish(score, extra = ''){
   else { record(cur.r, score); if (score < 1){ ses.missed.push(cur.r); logError(cur.r, score, cur.info); } }
   ses.score += score;
   const cls = score === 1 ? 'ok' : score >= 0.5 ? 'mid' : 'ko';
-  const label = score === 1 ? 'Excellent ✓' : score >= 0.5 ? 'Presque' : 'À revoir';
+  const label = score === 1 ? tr('Excellent ✓') : score >= 0.5 ? tr('Presque') : tr('À revoir');
   $('fb').innerHTML =
     `<div class="fb ${cls}"><b>${label}</b> · <span class="ref">${cur.label || rlabel(cur.r)}</span>${extra}</div>${audioHtml()}
-     <button class="pri big" style="margin-top:8px" data-act="nextq">${ses.i >= ses.total ? 'Voir le résultat' : 'Question suivante'}</button>`;
+     <button class="pri big" style="margin-top:8px" data-act="nextq">${ses.i >= ses.total ? tr('Voir le résultat') : tr('Question suivante')}</button>`;
 }
 const gradeUI = () => `<div class="grades">
-  <button data-act="grade" data-v="1">✓ Je savais</button>
-  <button data-act="grade" data-v="0.5">~ J'ai hésité</button>
-  <button data-act="grade" data-v="0">✗ Raté</button></div>`;
+  <button data-act="grade" data-v="1">${tr('✓ Je savais')}</button>
+  <button data-act="grade" data-v="0.5">${tr("~ J'ai hésité")}</button>
+  <button data-act="grade" data-v="0">${tr('✗ Raté')}</button></div>`;
 
 /* indices affichés avec la question, selon les réglages */
 function qref(r){
   const sh = cfg.show, p = [];
   if (isQ(r.s)){
-    if (sh.s) p.push(`Sourate ${r.s} – ${Q[r.s-1].en}`);
-    if (sh.v) p.push(`verset ${r.a}`);
-    if (sh.p) p.push(`page ${Q[r.s-1].a[r.a-1].p}`);
+    if (sh.s) p.push(tr('Sourate {n} – {name}', {n: r.s, name: SN(r.s)}));
+    if (sh.v) p.push(tr('verset {a}', {a: r.a}));
+    if (sh.p) p.push(tr('page {p}', {p: Q[r.s-1].a[r.a-1].p}));
   } else {
-    if (sh.s) p.push(MT[r.s].fr);
-    if (sh.v) p.push(`${MT[r.s].unit} ${r.a}`);
+    if (sh.s) p.push(MN(r.s));
+    if (sh.v) p.push(`${UNIT(MT[r.s].unit)} ${r.a}`);
   }
   return p.length ? `<p class="ref">${p.join(' · ')}</p>` : '';
 }
@@ -774,13 +821,13 @@ function setExpected(units){
     T.tok.forEach((w, i) => cur.flat.push({w, v, first: i === 0, ok: !!T.nw[i], nw: T.nw[i], sk: T.sk[i]})); });
 }
 function workUI(l = {}){
-  const rev = l.rev || 'Révéler la suite', voice = l.voice || '🎤 Réciter la suite', ph = l.ph || 'اكتب التكملة…', rows = l.rows || 3;
+  const rev = tr(l.rev || 'Révéler la suite'), voice = tr(l.voice || '🎤 Réciter la suite'), ph = l.ph || 'اكتب التكملة…', rows = l.rows || 3;
   return cfg.input === 'type'
     ? `<textarea id="ans" dir="rtl" lang="ar" rows="${rows}" placeholder="${ph}"></textarea>${kbd()}
-       <button class="pri" style="margin-top:8px" data-act="check">Vérifier</button>`
+       <button class="pri" style="margin-top:8px" data-act="check">${tr('Vérifier')}</button>`
     : cfg.input === 'voice' && SR
     ? `<button class="pri big" data-act="listen">${voice}</button><p class="ref" id="heard"></p>
-       <button class="link" data-act="reveal">Je préfère m'auto-évaluer</button>`
+       <button class="link" data-act="reveal">${tr("Je préfère m'auto-évaluer")}</button>`
     : `<button class="pri big" data-act="reveal">${rev}</button>`;
 }
 function flatHtml(mark){ // mark(x, i) -> classe ou ''
@@ -788,7 +835,7 @@ function flatHtml(mark){ // mark(x, i) -> classe ou ''
   return cur.flat.map((x, i) => {
     const sep = multi && x.first && cur.refs && x.v > 0 && cur.refs[x.v].s !== cur.refs[x.v - 1].s
       ? `<br><span class="ref">— ${esc(sname(cur.refs[x.v].s))} —</span><br>` : '';
-    const vn = multi && x.first ? `<sup class="vn">${cur.refs ? (cur.refs[x.v].bas ? 'basmala' : cur.refs[x.v].a) : x.v + 1}</sup>` : '';
+    const vn = multi && x.first ? `<sup class="vn">${cur.refs ? (cur.refs[x.v].bas ? tr('basmala') : cur.refs[x.v].a) : x.v + 1}</sup>` : '';
     return sep + vn + (x.ok ? mark(x, i) : esc(x.w));
   }).join(' ');
 }
@@ -798,22 +845,22 @@ function qNext(){
   const {r} = cur;
   setExpected([{text: verse(nextOf(r))}]);
   cur.audio = [r, nextOf(r)];
-  shell(`<p class="ref">${isQ(r.s) ? 'Quel est le verset qui suit ?' : 'Quelle est la suite ?'}</p>
+  shell(`<p class="ref">${isQ(r.s) ? tr('Quel est le verset qui suit ?') : tr('Quelle est la suite ?')}</p>
     <div class="ar">${esc(verse(r))}</div>${qref(r)}
     <div id="work">${workUI()}</div><div id="fb"></div>`);
 }
 function qHalf(){ // moutoun : première moitié donnée, on complète la seconde
   const {r} = cur, w = verse(r).split(/\s+/), m = book(r.s).a[r.a - 1].m || Math.ceil(w.length / 2);
   setExpected([{text: w.slice(m).join(' ')}]);
-  shell(`<p class="ref">Complète la seconde moitié.</p>
+  shell(`<p class="ref">${tr('Complète la seconde moitié.')}</p>
     <div class="ar">${esc(w.slice(0, m).join(' '))} …</div>${qref(r)}
     <div id="work">${workUI()}</div><div id="fb"></div>`);
 }
 function qPhrase(){ // prose : on donne la phrase précédente, on complète la suivante
   const {r} = cur, C = clausesOf(r), k = 1 + rnd(C.length - 1);
   setExpected([{text: C[k]}]);
-  cur.label = `${rlabel(r)} (partie ${k + 1}/${C.length})`;
-  shell(`<p class="ref">Quelle est la phrase suivante ?</p>
+  cur.label = `${rlabel(r)} ${tr('(partie {a}/{b})', {a: k + 1, b: C.length})}`;
+  shell(`<p class="ref">${tr('Quelle est la phrase suivante ?')}</p>
     <div class="ar">${esc(C.slice(Math.max(0, k - 2), k).join(' '))} …</div>${qref(r)}
     <div id="work">${workUI()}</div><div id="fb"></div>`);
 }
@@ -821,9 +868,9 @@ function qStart(){ // début de sourate
   const {r} = cur, first = {s: r.s, a: 1};
   cur.r = first; cur.audio = [first];
   setExpected([{text: verse(first)}]);
-  shell(`<p class="ref">Quel est le premier verset de la sourate…</p>
+  shell(`<p class="ref">${tr('Quel est le premier verset de la sourate…')}</p>
     <div class="ar" style="text-align:center">${esc(Q[r.s-1].ar)}</div>
-    <p class="ref" style="text-align:center">${r.s}. ${esc(Q[r.s-1].en)}${cfg.show.v ? ' · ' + Q[r.s-1].a.length + ' versets' : ''}</p>
+    <p class="ref" style="text-align:center">${r.s}. ${esc(SN(r.s))}${cfg.show.v ? ' · ' + trp(Q[r.s-1].a.length, '{n} verset|{n} versets') : ''}</p>
     <div id="work">${workUI({rev: 'Révéler le verset', voice: '🎤 Réciter le verset', ph: 'اكتب الآية الأولى…'})}</div><div id="fb"></div>`);
 }
 function startPassage(refs, label, intro, hint = ''){ // passage de plusieurs versets à réciter d'une traite
@@ -836,24 +883,25 @@ function startPassage(refs, label, intro, hint = ''){ // passage de plusieurs ve
 const range = (s, a, n) => Array.from({length: n}, (_, i) => ({s, a: a + i}));
 function qCont(){ // passage continu
   const {r} = cur, n = slen(r.s), L = Math.min(cfg.contLen, n), a = Math.min(r.a, n - L + 1);
-  const lbl = isQ(r.s) ? `Sourate ${r.s} – ${Q[r.s-1].en}, versets ${a} à ${a + L - 1}` : `${MT[r.s].fr}, ${MT[r.s].unit}s ${a} à ${a + L - 1}`;
+  const lbl = isQ(r.s) ? tr('Sourate {n} – {name}, versets {a} à {b}', {n: r.s, name: SN(r.s), a, b: a + L - 1})
+    : tr('{name}, {u} {a} à {b}', {name: MN(r.s), u: trp(L, ({vers: 'vers|vers', hadith: 'hadith|hadiths', passage: 'passage|passages'})[MT[r.s].unit] || 'passage|passages'), a, b: a + L - 1});
   const first = book(r.s).a[a - 1].t.split(/\s+/).slice(0, 2).join(' ');
-  startPassage(range(r.s, a, L), lbl, 'Récite de mémoire ce passage, d\'une traite :',
-    cfg.show.v ? `<p class="ref">Il commence par : <span class="ar" style="font-size:1.3rem">${esc(first)} …</span></p>` : '');
+  startPassage(range(r.s, a, L), lbl, tr("Récite de mémoire ce passage, d'une traite :"),
+    cfg.show.v ? `<p class="ref">${tr('Il commence par :')} <span class="ar" style="font-size:1.3rem">${esc(first)} …</span></p>` : '');
 }
 function qEnd(){ // fin de sourate
   const {r} = cur, S = Q[r.s - 1], L = Math.min(cfg.endLen, S.a.length), a = S.a.length - L + 1;
-  startPassage(range(r.s, a, L), `Sourate ${r.s} – ${S.en}, versets ${a} à ${S.a.length}`,
-    `Récite la fin de la sourate <b>${esc(S.ar)}</b> (${r.s}. ${esc(S.en)}) : ses ${L} dernier${L > 1 ? 's' : ''} verset${L > 1 ? 's' : ''}.`);
+  startPassage(range(r.s, a, L), tr('Sourate {n} – {name}, versets {a} à {b}', {n: r.s, name: SN(r.s), a, b: S.a.length}),
+    trp(L, 'Récite la fin de la sourate <b>{ar}</b> ({sn}. {name}) : son dernier verset.|Récite la fin de la sourate <b>{ar}</b> ({sn}. {name}) : ses {n} derniers versets.', {ar: esc(S.ar), sn: r.s, name: esc(SN(r.s))}));
 }
 function qLink(){ // fin d'une sourate + début de la suivante
   const {r} = cur, S = Q[r.s - 1], N = Q[r.s], L1 = Math.min(cfg.endLen, S.a.length), L2 = Math.min(cfg.begLen, N.a.length);
   const a = S.a.length - L1 + 1;
   const bas = N.n !== 9; // la sourate At-Tawba (9) est la seule à ne pas commencer par la basmala
   startPassage([...range(S.n, a, L1), ...(bas ? [{s: N.n, a: 0, bas: true}] : []), ...range(N.n, 1, L2)],
-    `${S.n}. ${S.en} ${a}–${S.a.length} → ${N.n}. ${N.en} 1${L2 > 1 ? '–' + L2 : ''}`,
-    `Récite la fin de la sourate <b>${esc(S.ar)}</b> (${L1} verset${L1 > 1 ? 's' : ''}) puis le début de la sourate suivante, <b>${esc(N.ar)}</b> (${L2} verset${L2 > 1 ? 's' : ''}). ${bas
-      ? 'N\'oublie pas la basmala entre les deux.' : 'La sourate 9 commence sans basmala : enchaîne directement.'}`);
+    `${S.n}. ${SN(S.n)} ${a}–${S.a.length} → ${N.n}. ${SN(N.n)} 1${L2 > 1 ? '–' + L2 : ''}`,
+    tr('Récite la fin de la sourate <b>{a}</b> ({x}) puis le début de la sourate suivante, <b>{b}</b> ({y}). {z}', {a: esc(S.ar), x: trp(L1, '{n} verset|{n} versets'), b: esc(N.ar), y: trp(L2, '{n} verset|{n} versets'),
+      z: bas ? tr("N'oublie pas la basmala entre les deux.") : tr('La sourate 9 commence sans basmala : enchaîne directement.')}));
 }
 function lcsMatch(exp, got, eq = same){ // indices de exp retrouvés dans l'ordre
   const n = exp.length, m = got.length, d = Array.from({length: n + 1}, () => new Array(m + 1).fill(0));
@@ -876,11 +924,11 @@ function qCloze(){
   const html = T.tok.map((w, i) => !hidden.has(i) ? esc(w)
     : cfg.input === 'type' ? `<input class="blankin" data-i="${i}" dir="rtl" lang="ar" autocomplete="off">`
     : `<span class="blank" data-act="blank" data-i="${i}">${esc(w)}</span>`).join(' ');
-  shell(`<p class="ref">Complète le verset (${k} mot${k > 1 ? 's' : ''} caché${k > 1 ? 's' : ''}).</p>
+  shell(`<p class="ref">${tr('Complète le verset ({x}).', {x: trp(k, '{n} mot caché|{n} mots cachés')})}</p>
     <div class="ar">${html}</div>${qref(r)}
     <div id="work">${cfg.input === 'type'
-      ? `${kbd()}<button class="pri" data-act="checkcloze">Vérifier</button>`
-      : `<button class="pri big" data-act="revealall">Tout révéler</button>`}</div>
+      ? `${kbd()}<button class="pri" data-act="checkcloze">${tr('Vérifier')}</button>`
+      : `<button class="pri big" data-act="revealall">${tr('Tout révéler')}</button>`}</div>
     <div id="fb"></div>`);
 }
 
@@ -891,7 +939,7 @@ function qWhich(){
   if (others.length < 3) others = (isQ(r.s) ? Q.map(s => s.n) : Object.keys(MT)).filter(s => s !== r.s);
   cur.opts = shuffle([r.s, ...shuffle(others).slice(0, 3)]);
   cur.correct = r.s;
-  shell(`<p class="ref">${isQ(r.s) ? 'De quelle sourate vient ce verset ?' : 'De quel matn vient ce passage ?'}</p>
+  shell(`<p class="ref">${isQ(r.s) ? tr('De quelle sourate vient ce verset ?') : tr('De quel matn vient ce passage ?')}</p>
     <div class="ar">${esc(verse(r))}</div>
     ${cur.opts.map(s => `<button class="opt" data-act="opt" data-v="${s}">${esc(sname(s))}</button>`).join('')}
     <div id="fb"></div>`);
@@ -909,7 +957,7 @@ function qMcq(){
   const {r} = cur, good = verse(nextOf(r));
   cur.audio = [r, nextOf(r)];
   cur.opts = shuffle([good, ...distractors(good, r, 3)]); cur.good = good;
-  shell(`<p class="ref">${isQ(r.s) ? 'Quel verset suit celui-ci ?' : 'Quelle est la suite ?'}</p>
+  shell(`<p class="ref">${isQ(r.s) ? tr('Quel verset suit celui-ci ?') : tr('Quelle est la suite ?')}</p>
     <div class="ar">${esc(verse(r))}</div>${qref(r)}
     ${cur.opts.map((t, i) => `<button class="opt ar" data-act="opt" data-v="${i}">${esc(t)}</button>`).join('')}
     <div id="fb"></div>`);
@@ -922,21 +970,21 @@ function qMutash(){
   const dis = [...new Set(sibs.map(x => verse(nextOf(x))).filter(t => t !== good))].slice(0, 3);
   if (dis.length < 3) for (const t of distractors(good, r, 6)) if (dis.length < 3 && !dis.includes(t)) dis.push(t);
   cur.opts = shuffle([good, ...dis]); cur.good = good;
-  shell(`<p class="ref">Attention, ce verset ressemble à d'autres. Quelle est sa vraie suite ?</p>
+  shell(`<p class="ref">${tr("Attention, ce verset ressemble à d'autres. Quelle est sa vraie suite ?")}</p>
     <div class="ar">${esc(verse(r))}</div>${qref(r)}
     ${cur.opts.map((t, i) => `<button class="opt ar" data-act="opt" data-v="${i}">${esc(t)}</button>`).join('')}
     <div id="fb"></div>`);
 }
-const sibHtml = () => cur.sibs && cur.sibs.length ? `<div class="sib"><span class="ref">Versets proches à ne pas confondre :</span>${cur.sibs.map(x =>
-  `<div class="ref" style="margin-top:6px">Sourate ${x.s} – ${esc(Q[x.s-1].en)}, verset ${x.a} (${x.p} % de ressemblance)</div><div class="ar">${esc(verse(x))}</div>`).join('')}</div>` : '';
+const sibHtml = () => cur.sibs && cur.sibs.length ? `<div class="sib"><span class="ref">${tr('Versets proches à ne pas confondre :')}</span>${cur.sibs.map(x =>
+  `<div class="ref" style="margin-top:6px">${tr('Sourate {n} – {name}, verset {a} ({p} % de ressemblance)', {n: x.s, name: esc(SN(x.s)), a: x.a, p: x.p})}</div><div class="ar">${esc(verse(x))}</div>`).join('')}</div>` : '';
 
 /* 6. Ordre des sourates */
 function qOrder(){
-  const {r} = cur; cur.r = {s: r.s, a: 1}; cur.correct = r.s + 1; cur.label = `${r.s}. ${Q[r.s - 1].en} → ${r.s + 1}. ${Q[r.s].en}`;
+  const {r} = cur; cur.r = {s: r.s, a: 1}; cur.correct = r.s + 1; cur.label = `${r.s}. ${SN(r.s)} → ${r.s + 1}. ${SN(r.s + 1)}`;
   const others = shuffle(Q.map(s => s.n).filter(n => n !== r.s + 1 && n !== r.s)).slice(0, 3);
   cur.opts = shuffle([r.s + 1, ...others]);
-  shell(`<p class="ref">Quelle sourate vient juste après…</p>
-    <div class="ar" style="text-align:center">${esc(Q[r.s-1].ar)}</div><p class="ref" style="text-align:center">${r.s}. ${esc(Q[r.s-1].en)}</p>
+  shell(`<p class="ref">${tr('Quelle sourate vient juste après…')}</p>
+    <div class="ar" style="text-align:center">${esc(Q[r.s-1].ar)}</div><p class="ref" style="text-align:center">${r.s}. ${esc(SN(r.s))}</p>
     ${cur.opts.map(s => `<button class="opt" data-act="opt" data-v="${s}">${esc(sname(s))}</button>`).join('')}
     <div id="fb"></div>`);
 }
@@ -950,7 +998,7 @@ function onOpt(el){
     const pv = x => isQ(cur.correct) ? +x : x;
     ok = pv(el.dataset.v) === cur.correct;
     btns.forEach(b => { const c = pv(b.dataset.v) === cur.correct ? 'c' : b === el ? 'w' : ''; if (c) b.classList.add(c); });
-    extra = ok ? '' : `<br>Bonne réponse : ${esc(sname(cur.correct))}`;
+    extra = ok ? '' : `<br>${tr('Bonne réponse :')} ${esc(sname(cur.correct))}`;
     cur.info = {ans: sname(pv(el.dataset.v))};
   } else {
     ok = cur.opts[+el.dataset.v] === cur.good;
@@ -974,14 +1022,17 @@ function evaluate(text, lenient){
     : multi ? (ratio === 1 ? 1 : ratio >= 0.85 ? 0.5 : 0)
     : ratio >= (lenient ? 0.8 : 0.9) ? 1 : ratio >= (lenient ? 0.5 : 0.6) ? 0.5 : 0;
   $('work').innerHTML = `<div class="ar">${flatHtml(x => `<span class="${x.hit ? 'w-ok' : 'w-ko'}">${esc(x.w)}</span>`)}</div>`;
-  let extra = lenient ? `<br><span class="ref">Entendu : ${esc(text)}</span>` : '';
+  let extra = lenient ? `<br><span class="ref">${tr('Entendu :')} ${esc(text)}</span>` : '';
   if (multi){
     const per = cur.units.map((_, v) => { const w = S.filter(x => x.v === v), h = w.filter(x => x.hit).length;
       return h === w.length ? 1 : (!strict && h / w.length >= 0.85) ? 0.5 : 0; });
     cur.perRef = cur.refs.map((x, v) => [x, per[v]]);
     const bad = per.findIndex(s => s < 1);
-    if (bad >= 0) extra += `<br><span class="ref">Premier écart : ${cur.refs[bad].bas ? 'la basmala' : (cur.refs[bad].s !== cur.refs[0].s ? 'sourate ' + cur.refs[bad].s + ', ' : '') + 'verset ' + cur.refs[bad].a} · ${per.filter(s => s < 1).length} partie(s) à revoir.</span>`;
-  } else if (strict && !score) extra += '<br><span class="ref">Correction stricte : tout doit être exact (en rouge : mots faux ou manquants).</span>';
+    if (bad >= 0){
+      const rb = cur.refs[bad], where = rb.bas ? tr('la basmala') : (rb.s !== cur.refs[0].s ? tr('sourate {n}', {n: rb.s}) + ', ' : '') + tr('verset {a}', {a: rb.a});
+      extra += `<br><span class="ref">${tr('Premier écart : {w}', {w: where})} · ${trp(per.filter(s => s < 1).length, '{n} partie à revoir|{n} parties à revoir')}.</span>`;
+    }
+  } else if (strict && !score) extra += `<br><span class="ref">${tr('Correction stricte : tout doit être exact (en rouge : mots faux ou manquants).')}</span>`;
   finish(score, extra);
 }
 function onCheckCloze(){
@@ -998,9 +1049,9 @@ function onCheckCloze(){
 /* récitation puis marquage mot à mot des erreurs */
 function markUI(){
   return `<div class="ar" id="marks">${flatHtml((x, i) => `<span class="wd" data-act="wd" data-i="${i}">${esc(x.w)}</span>`)}</div>
-    <p class="ref">Touche les mots que tu as faux ou oubliés.</p>
-    <div class="grades"><button data-act="mark-ok">✓ Tout juste</button><button data-act="mark-mid">~ J'ai hésité</button>
-    <button class="pri" id="mark-go" data-act="mark-go">Valider (0 erreur)</button></div>`;
+    <p class="ref">${tr('Touche les mots que tu as faux ou oubliés.')}</p>
+    <div class="grades"><button data-act="mark-ok">${tr('✓ Tout juste')}</button><button data-act="mark-mid">${tr("~ J'ai hésité")}</button>
+    <button class="pri" id="mark-go" data-act="mark-go">${trp(0, 'Valider ({n} erreur)|Valider ({n} erreurs)')}</button></div>`;
 }
 function markGo(){
   const bad = [...document.querySelectorAll('.wd.bad')].map(e => +e.dataset.i), tot = cur.flat.filter(x => x.ok).length;
@@ -1027,20 +1078,20 @@ function listen(){
     text = [...ev.results].map(r => r[0].transcript).join(' ');
     if (cont) heard.textContent = text;
   };
-  rec.onerror = ev => { heard.textContent = 'Micro indisponible (' + ev.error + ').'; };
+  rec.onerror = ev => { heard.textContent = tr('Micro indisponible ({e}).', {e: ev.error}); };
   rec.onend = () => {
-    btn.disabled = false; btn.textContent = '🎤 Réessayer'; btn.onclick = null;
-    if (text.trim()) evaluate(text, true); else if (!heard.textContent) heard.textContent = 'Rien entendu, réessaie.';
+    btn.disabled = false; btn.textContent = tr('🎤 Réessayer'); btn.onclick = null;
+    if (text.trim()) evaluate(text, true); else if (!heard.textContent) heard.textContent = tr('Rien entendu, réessaie.');
   };
   heard.textContent = '';
-  btn.textContent = cont ? '⏹ J\'ai fini de réciter' : '🎙️ Je t\'écoute… récite la suite';
+  btn.textContent = cont ? tr("⏹ J'ai fini de réciter") : tr("🎙️ Je t'écoute… récite la suite");
   if (cont){ btn.onclick = ev => { ev.stopPropagation(); if (!stopping){ stopping = true; rec.stop(); } }; } else btn.disabled = true;
   try { rec.start(); } catch { btn.disabled = false; }
 }
 
 /* ---------- écoute d'une portée ---------- */
 function lsOpen(){
-  if (cfg.scope.type === 'matn') return alert('L\'écoute audio est disponible pour le Coran.');
+  if (cfg.scope.type === 'matn') return alert(tr("L'écoute audio est disponible pour le Coran."));
   const refs = buildPool(cfg.scope); if (!refs.length) return;
   ls = {refs, i: 0, hide: false}; lsPlay();
 }
@@ -1049,13 +1100,13 @@ function lsRender(){
   setNav(false);
   const r = ls.refs[ls.i];
   $app.innerHTML = `
-  <div class="top"><button class="link" data-act="home">✕ Quitter</button><span>${ls.i + 1} / ${ls.refs.length}</span></div>
+  <div class="top"><button class="link" data-act="home">✕ ${tr('Quitter')}</button><span>${ls.i + 1} / ${ls.refs.length}</span></div>
   <div class="bar"><i style="width:${100 * (ls.i + 1) / ls.refs.length}%"></i></div>
   <div class="card"><p class="ref">${rlabel(r)}</p>
     <div class="ar">${ls.hide ? '• • • • •' : esc(verse(r))}</div>
     <div class="grades"><button data-act="ls-prev">⏮</button><button data-act="ls-toggle">⏯</button><button data-act="ls-next">⏭</button>
-    <button data-act="ls-hide">${ls.hide ? '👁 Afficher' : '🙈 Masquer le texte'}</button></div>
-    <p class="ref" id="audio-msg">Récitateur : ${(RECITERS.find(x => x[0] === cfg.reciter) || RECITERS[0])[1]}. Masque le texte pour t'entraîner à suivre de mémoire.</p></div>`;
+    <button data-act="ls-hide">${ls.hide ? '👁 ' + tr('Afficher') : '🙈 ' + tr('Masquer le texte')}</button></div>
+    <p class="ref" id="audio-msg">${tr("Récitateur : {r}. Masque le texte pour t'entraîner à suivre de mémoire.", {r: (RECITERS.find(x => x[0] === cfg.reciter) || RECITERS[0])[1]})}</p></div>`;
 }
 
 /* ---------- rappel quotidien : fichier .ics récurrent ---------- */
@@ -1066,8 +1117,8 @@ function exportIcs(){
   const url = location.protocol.startsWith('http') ? '\\n' + location.href : '';
   const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Hifz//FR', 'BEGIN:VEVENT', 'UID:hifz-rappel-quotidien',
     'DTSTAMP:' + ymd + 'T000000Z', `DTSTART:${ymd}T${p(h)}${p(m)}00`, 'DURATION:PT15M', 'RRULE:FREQ=DAILY',
-    'SUMMARY:Révision du Coran (Hifz)', 'DESCRIPTION:Fais ta révision du jour.' + url,
-    'BEGIN:VALARM', 'TRIGGER:PT0S', 'ACTION:DISPLAY', 'DESCRIPTION:Révision du Coran', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+    'SUMMARY:' + tr('Révision du Coran (Hifz)'), 'DESCRIPTION:' + tr('Fais ta révision du jour.') + url,
+    'BEGIN:VALARM', 'TRIGGER:PT0S', 'ACTION:DISPLAY', 'DESCRIPTION:' + tr('Révision du Coran'), 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   download('rappel-hifz.ics', ics, 'text/calendar');
 }
 function download(name, text, type){
@@ -1084,18 +1135,18 @@ async function importFile(f){
   try {
     const d = JSON.parse(await f.text());
     if (d.app !== 'hifz' || typeof d.stats !== 'object') throw new Error('format');
-    if (!confirm('Remplacer ta progression actuelle par cette sauvegarde ?')) return;
+    if (!confirm(tr('Remplacer ta progression actuelle par cette sauvegarde ?'))) return;
     store.set('hifz.cfg', d.cfg || {}); store.set('hifz.stats', d.stats); store.set('hifz.sched', d.sched || {});
     store.set('hifz.days', d.days || {}); store.set('hifz.custom', d.custom || []); store.set('hifz.errors', d.errors || []);
     location.reload();
-  } catch { alert('Fichier non reconnu : choisis une sauvegarde exportée depuis Hifz.'); }
+  } catch { alert(tr('Fichier non reconnu : choisis une sauvegarde exportée depuis Hifz.')); }
 }
 
 /* ---------- mes moutoun ---------- */
 function addCustom(){
   const title = $('cm-title').value.trim(), kind = $('cm-kind').value;
   const lines = $('cm-text').value.split('\n').map(s => s.trim()).filter(Boolean);
-  if (!title || !lines.length) return alert('Indique un titre et colle le texte.');
+  if (!title || !lines.length) return alert(tr('Indique un titre et colle le texte.'));
   const a = lines.map(l => {
     if (kind === 'poem'){
       const parts = l.split(/\s*(?:\*|\/\/|\\\\)\s*/).map(x => x.trim()).filter(Boolean);
@@ -1134,8 +1185,8 @@ const onClick = e => {
     case 'pcell': cfg.scope = {type: 'page', from: +v, to: +v}; go('train'); break;
     case 'start': {
       const pool = buildPool(cfg.scope);
-      if (cfg.mode === 'half' && !pool.some(r => !isQ(r.s))) return alert('Le mode demi-vers concerne les moutoun.');
-      if (cfg.mode === 'phrase' && !pool.some(r => !isQ(r.s) && book(r.s).kind === 'prose')) return alert('Le mode phrase concerne les textes en prose (ex. les Arbaʿūn).');
+      if (cfg.mode === 'half' && !pool.some(r => !isQ(r.s))) return alert(tr('Le mode demi-vers concerne les moutoun.'));
+      if (cfg.mode === 'phrase' && !pool.some(r => !isQ(r.s) && book(r.s).kind === 'prose')) return alert(tr('Le mode phrase concerne les textes en prose (ex. les Arbaʿūn).'));
       start(); break;
     }
     case 'review': start(shuffle(dueRefs().slice(0, 40)).slice(0, 15)); break;
@@ -1144,7 +1195,7 @@ const onClick = e => {
     case 'import': $('impfile').click(); break;
     case 'addcustom': addCustom(); break;
     case 'delcustom':
-      if (confirm('Supprimer ce matn ?')){ custom = custom.filter(t => t.id !== v); store.set('hifz.custom', custom); delete MT[v]; cfg.scope = {type: 'matn', id: 'all'}; saveCfg(); home(); } break;
+      if (confirm(tr('Supprimer ce matn ?'))){ custom = custom.filter(t => t.id !== v); store.set('hifz.custom', custom); delete MT[v]; cfg.scope = {type: 'matn', id: 'all'}; saveCfg(); home(); } break;
     case 'listen': listen(); break;
     case 'play': playUrls(cur.audio.map(audioUrl)); break;
     case 'stopaudio': stopAudio(); break;
@@ -1156,8 +1207,9 @@ const onClick = e => {
     case 'home': home(); break;
     case 'tab': go(v); break;
     case 'upd': forceUpdate(el); break;
+    case 'lang': setLang(v); break;
     case 'pw-eye': { const i = $(v), show = i.type === 'password'; i.type = show ? 'text' : 'password'; el.innerHTML = show ? EYE_OFF : EYE;
-      el.setAttribute('aria-pressed', String(show)); el.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe'); i.focus(); break; }
+      el.setAttribute('aria-pressed', String(show)); el.setAttribute('aria-label', show ? tr('Masquer le mot de passe') : tr('Afficher le mot de passe')); i.focus(); break; }
     case 'acc-open': openAccount(v); break;
     case 'acc-back': go('settings'); break;
     case 'acc-mode': keepEmail(); acc.d.pass = acc.d.pass2 = ''; acc.mode = v; acc.msg = ''; renderAccount(); break;
@@ -1174,31 +1226,35 @@ const onClick = e => {
     case 'adm-role': adminRole(v); break;
     case 'adm-block': adminBlock(v); break;
     case 'adm-del': adminDelete(v); break;
-    case 'rdopen': { const r = pk(v); openReader(r.s, r.a); break; }
+    case 'rdopen': { const r = pk(v); openReader((isQ(r.s) ? 'q:' : 'm:') + r.s, r.a); break; }
     case 'rdscope': {
-      const sc = cfg.scope, pool = buildPool(sc), r = pool[0] || {s: 1, a: 1};
-      openReader(sc.type === 'matn' && sc.id !== 'all' ? sc.id : r.s); break;
+      const sc = cfg.scope;
+      if (sc.type === 'matn') openReader('m:' + sc.id);
+      else if (sc.type === 'all') openReader('q:all');
+      else { const ss = [...new Set(buildPool(sc).map(r => r.s))]; if (ss.length === 1) openReader('q:' + ss[0]); else openReader('q:sel', 0, ss); }
+      break;
     }
     case 'rd-back': rdStop(); home(); break;
-    case 'rd-hide': cfg.rdHide = !cfg.rdHide; saveCfg(); { const f = rd.focus; rdStop(); rd.focus = 0; renderReader(); rd.focus = f; } break;
+    case 'rd-hide': cfg.rdHide = !cfg.rdHide; saveCfg(); { const y = scrollY; rdStop(); rd.focus = 0; renderReader(); scrollTo(0, y); } break;
     case 'rd-size': cfg.rdSize = Math.min(3.2, Math.max(1.1, +(cfg.rdSize + 0.2 * +v).toFixed(2))); saveCfg(); { const y = scrollY; rdStop(); rd.focus = 0; renderReader(); scrollTo(0, y); } break;
     case 'rd-prev': case 'rd-next': {
-      const ids = isQ(rd.s) ? null : Object.keys(MT), d = el.dataset.act === 'rd-next' ? 1 : -1;
-      rdStop(); openReader(isQ(rd.s) ? rd.s + d : ids[ids.indexOf(rd.s) + d]); break;
+      const k = rd.spec.slice(0, 1), id = rd.secs[0], ids = k === 'q' ? Array.from({length: 114}, (_, i) => i + 1) : Object.keys(MT);
+      rdStop(); openReader(k + ':' + ids[ids.indexOf(id) + (el.dataset.act === 'rd-next' ? 1 : -1)]); break;
     }
-    case 'rd-play': if (rd.playing) rdStop(); else rdPlay(1); break;
+    case 'rd-more-up': rdStop(); rd.i0 = Math.max(0, rd.i0 - 3); rd.focus = 0; renderReader(); window.scrollTo(0, 0); break;
+    case 'rd-play': if (rd.playing) rdStop(); else rdPlay(rd.secs[rd.i0], 1); break;
     case 'rv':
       if (el.classList.contains('hid')) el.classList.remove('hid');
-      else if (isQ(rd.s)){ rdStop(); rdPlay(+el.dataset.i); }
+      else if (rd.spec.startsWith('q')){ rdStop(); rdPlay(+el.dataset.s, +el.dataset.i); }
       break;
     case 'hist': go('errors'); break;
     case 'hfilter': hf = v; home(); break;
     case 'hview': hv = v; home(); break;
     case 'hreview': if (hrefs.length) start(shuffle(hrefs)); break;
-    case 'hclear': if (confirm('Effacer tout l\'historique des erreurs ?')){ errors = []; store.set('hifz.errors', errors); home(); } break;
+    case 'hclear': if (confirm(tr("Effacer tout l'historique des erreurs ?"))){ errors = []; store.set('hifz.errors', errors); home(); } break;
     case 'nextq': nextQ(); break;
     case 'reveal': $('work').innerHTML = markUI(); break;
-    case 'wd': el.classList.toggle('bad'); { const n = document.querySelectorAll('.wd.bad').length; $('mark-go').textContent = `Valider (${n} erreur${n > 1 ? 's' : ''})`; } break;
+    case 'wd': el.classList.toggle('bad'); { const n = document.querySelectorAll('.wd.bad').length; $('mark-go').textContent = trp(n, 'Valider ({n} erreur)|Valider ({n} erreurs)'); } break;
     case 'mark-ok': case 'mark-mid': {
       const sc = el.dataset.act === 'mark-ok' ? 1 : 0.5;
       if (cur.refs) cur.perRef = cur.refs.map(x => [x, sc]);
@@ -1215,76 +1271,111 @@ const onClick = e => {
     case 'opt': onOpt(el); break;
     case 'retry': start(ses.missed.slice()); break;
     case 'again': start(); break;
-    case 'reset': if (confirm('Effacer toutes tes statistiques et ton historique d\'erreurs ?')){ stats = {}; sched = {}; days = {}; errors = []; store.set('hifz.errors', errors); store.set('hifz.stats', stats); store.set('hifz.sched', sched); store.set('hifz.days', days); home(); } break;
+    case 'reset': if (confirm(tr("Effacer toutes tes statistiques et ton historique d'erreurs ?"))){ stats = {}; sched = {}; days = {}; errors = []; store.set('hifz.errors', errors); store.set('hifz.stats', stats); store.set('hifz.sched', sched); store.set('hifz.days', days); home(); } break;
   }
 };
 $app.addEventListener('click', onClick);
 $('nav').addEventListener('click', onClick);
 
-/* ---------- lecteur : texte complet d'une sourate ou d'un matn ---------- */
-let rd = null;
+/* ---------- lecteur : le Coran entier, une sourate, un matn ou tous les moutoun ---------- */
+let rd = null, rdObs = null;
 const arNum = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
-function openReader(s, focus = 0){ stopAudio(); rd = {s, focus, playing: false}; renderReader(); window.scrollTo(0, 0); }
-function renderReader(){
-  setNav(false);
-  const s = rd.s, q = isQ(s), B = book(s), n = B.a.length, ids = Object.keys(MT);
-  const first = q ? 1 : ids[0], last = q ? 114 : ids[ids.length - 1];
-  const sel = `<select id="rdsel"><optgroup label="Coran">${Q.map(x => `<option value="${x.n}" ${x.n === s ? 'selected' : ''}>${x.n}. ${esc(x.en)}</option>`).join('')}</optgroup>
-    <optgroup label="Moutoun">${Object.values(MT).map(t => `<option value="${t.id}" ${t.id === s ? 'selected' : ''}>${esc(t.fr)}</option>`).join('')}</optgroup></select>`;
-  let body, meta;
+const ALLQ = Array.from({length: 114}, (_, i) => i + 1);
+function readerSecs(spec){ // 'q:all' | 'q:12' | 'q:sel' | 'm:all' | 'm:<id>'
+  const k = spec.slice(0, 1), v = spec.slice(2);
+  if (k === 'q') return v === 'all' ? ALLQ : v === 'sel' ? rd.sel : [+v];
+  return v === 'all' ? Object.keys(MT) : [v];
+}
+function openReader(spec, focus = 0, sel = null){
+  stopAudio(); if (rdObs){ rdObs.disconnect(); rdObs = null; }
+  rd = {spec, sel, focus, playing: false, i0: 0};
+  rd.secs = readerSecs(spec);
+  if (focus && spec === 'q:all') rd.i0 = 0;
+  rd.upto = Math.min(rd.secs.length, rd.i0 + (rd.secs.length > 1 ? 3 : 1));
+  renderReader(); window.scrollTo(0, 0);
+}
+function secHtml(id){
+  const q = isQ(id), B = book(id), n = B.a.length, siz = cfg.rdSize;
   if (q){
-    const pages = `pages ${B.a[0].p}–${B.a[n - 1].p}`;
-    meta = `${n} versets · juz' ${B.a[0].j}${B.a[n - 1].j !== B.a[0].j ? '–' + B.a[n - 1].j : ''} · ${pages}`;
-    body = (s !== 1 && s !== 9 ? `<div class="ar" style="text-align:center;font-size:1.5rem">${esc(verse({s: 1, a: 1}))}</div>` : '')
-      + `<div class="rd" style="font-size:${cfg.rdSize}rem">${B.a.map((_, i) => `<span class="rv${cfg.rdHide ? ' hid' : ''}" data-act="rv" data-i="${i + 1}">${esc(verse({s, a: i + 1}))} <span class="vend">﴿${arNum(i + 1)}﴾</span></span>`).join(' ')}</div>`;
-  } else {
-    meta = `${n} ${B.unit}s · ${B.author || ''} ${B.topic ? '· ' + B.topic : ''}`;
-    body = B.a.map((u, i) => {
+    const bas = id !== 1 && id !== 9 ? `<div class="ar" style="text-align:center;font-size:1.5rem">${esc(verse({s: 1, a: 1}))}</div>` : '';
+    return `<section class="rsec" id="rs-${id}"><h3 class="rtitle"><span class="ar">${esc(B.ar)}</span><small>${id}. ${esc(SN(id))} · ${trp(n, '{n} verset|{n} versets')} · ${tr('pages {a}–{b}', {a: B.a[0].p, b: B.a[n - 1].p})}</small></h3>${bas}
+      <div class="rd" style="font-size:${siz}rem">${B.a.map((_, i) => `<span class="rv${cfg.rdHide ? ' hid' : ''}" data-act="rv" data-s="${id}" data-i="${i + 1}">${esc(verse({s: id, a: i + 1}))} <span class="vend">﴿${arNum(i + 1)}﴾</span></span>`).join(' ')}</div></section>`;
+  }
+  const unit = {vers: '{n} vers|{n} vers', hadith: '{n} hadith|{n} hadiths', passage: '{n} passage|{n} passages'}[B.unit] || '{n}';
+  return `<section class="rsec" id="rs-${id}"><h3 class="rtitle"><span class="ar">${esc(B.ar)}</span><small>${esc(MN(id))} · ${trp(n, unit)}${B.author ? ' · ' + esc(tr(B.author)) : ''}</small></h3>${srcNote({id})}
+    ${B.a.map((u, i) => {
       const w = u.t.split(/\s+/), h = B.kind === 'poem' && u.m ? u.m : 0;
       const txt = h ? `<span>${esc(w.slice(0, h).join(' '))}</span><span class="psep">✦</span><span>${esc(w.slice(h).join(' '))}</span>` : esc(u.t);
-      return `<div class="${h ? 'pl' : 'pp'} rd rv${cfg.rdHide ? ' hid' : ''}" style="font-size:${cfg.rdSize * 0.78}rem;line-height:2.1" data-act="rv" data-i="${i + 1}"><span class="pn">${i + 1}</span>${txt}</div>`;
-    }).join('');
-  }
+      return `<div class="${h ? 'pl' : 'pp'} rd rv${cfg.rdHide ? ' hid' : ''}" style="font-size:${siz * 0.78}rem;line-height:2.1" data-act="rv" data-s="${id}" data-i="${i + 1}"><span class="pn">${i + 1}</span>${txt}</div>`;
+    }).join('')}</section>`;
+}
+function renderReader(){
+  setNav(false);
+  const spec = rd.spec, k = spec.slice(0, 1), q = k === 'q', multi = rd.secs.length > 1;
+  const optSel = v => v === spec ? 'selected' : '';
+  const sel = `<label class="f" for="rdsel">${tr('Texte à lire')}</label><select id="rdsel">
+    <optgroup label="${tr('Coran')}"><option value="q:all" ${optSel('q:all')}>📖 ${tr('Tout le Coran (114 sourates)')}</option>${rd.sel ? `<option value="q:sel" ${optSel('q:sel')}>${tr('Ma sélection ({n} sourates)', {n: rd.sel.length})}</option>` : ''}
+      ${Q.map(x => `<option value="q:${x.n}" ${optSel('q:' + x.n)}>${x.n}. ${esc(SN(x.n))}</option>`).join('')}</optgroup>
+    <optgroup label="${tr('Moutoun')}"><option value="m:all" ${optSel('m:all')}>📜 ${tr('Tous les moutoun')}</option>
+      ${Object.values(MT).map(t => `<option value="m:${t.id}" ${optSel('m:' + t.id)}>${esc(MN(t.id))}</option>`).join('')}</optgroup></select>`;
+  const jump = multi ? `<label class="f" for="rdjump">${tr('Aller à…')}</label><select id="rdjump">${rd.secs.map(id => `<option value="${id}" ${id === rd.secs[rd.i0] ? 'selected' : ''}>${q ? id + '. ' + esc(SN(id)) : esc(MN(id))}</option>`).join('')}</select>` : '';
+  const first = q ? 1 : Object.keys(MT)[0], last = q ? 114 : Object.keys(MT).slice(-1)[0];
+  const id0 = rd.secs[0];
+  const total = q ? rd.secs.reduce((a, id) => a + slen(id), 0) : 0;
+  const info = multi ? (q ? `${trp(rd.secs.length, '{n} sourate|{n} sourates')} · ${trp(total, '{n} verset|{n} versets')}` : `${trp(rd.secs.length, '{n} matn|{n} moutoun')}`) : '';
   $app.innerHTML = `
-  <div class="top"><button class="link" data-act="rd-back">← Retour</button><span>${q ? 'Sourate ' + s : 'Matn'}</span></div>
-  <div class="card" style="margin-top:8px">${sel}
-    <div class="ar" style="text-align:center;font-size:2.2rem;line-height:1.8">${esc(B.ar)}</div>
-    <p class="ref" style="text-align:center;margin:0">${q ? `${s}. ${esc(B.en)}` : esc(B.fr)} · ${meta}</p>
-    ${q ? '' : srcNote({id: s})}
+  <div class="top"><button class="link" data-act="rd-back">${tr('← Retour')}</button><span>${q ? tr('Coran') : tr('Moutoun')}</span></div>
+  <div class="card" style="margin-top:8px">${sel}${jump}
+    ${info ? `<p class="ref" style="margin:8px 0 0">${info}</p>` : ''}
+    ${multi ? '' : `<div class="grades">
+      <button data-act="rd-prev" ${id0 === first ? 'disabled' : ''}>${tr('‹ Précédent')}</button>
+      <button data-act="rd-next" ${id0 === last ? 'disabled' : ''}>${tr('Suivant ›')}</button></div>`}
     <div class="grades">
-      <button data-act="rd-prev" ${s === first ? 'disabled' : ''}>‹ Précédent</button>
-      <button data-act="rd-next" ${s === last ? 'disabled' : ''}>Suivant ›</button>
+      <button data-act="rd-size" data-v="-1" aria-label="${tr('Réduire le texte')}">A−</button>
+      <button data-act="rd-size" data-v="1" aria-label="${tr('Agrandir le texte')}">A+</button>
+      <button data-act="rd-hide">${cfg.rdHide ? '👁 ' + tr('Tout afficher') : '🙈 ' + tr('Masquer le texte')}</button>
+      ${q ? `<button id="rdplay" data-act="rd-play">▶ ${tr('Écouter')}</button>` : ''}
     </div>
-    <div class="grades">
-      <button data-act="rd-size" data-v="-1" aria-label="Réduire le texte">A−</button>
-      <button data-act="rd-size" data-v="1" aria-label="Agrandir le texte">A+</button>
-      <button data-act="rd-hide">${cfg.rdHide ? '👁 Tout afficher' : '🙈 Masquer le texte'}</button>
-      ${q ? '<button id="rdplay" data-act="rd-play">▶ Écouter</button>' : ''}
-    </div>
-    <p class="ref" style="margin:8px 0 0">${cfg.rdHide ? 'Touche un passage pour le dévoiler.' : q ? 'Touche un verset pour l\'écouter à partir de là.' : ''}</p>
+    <p class="ref" style="margin:8px 0 0">${cfg.rdHide ? tr('Touche un passage pour le dévoiler.') : q ? tr("Touche un verset pour l'écouter à partir de là.") : ''}</p>
     <p class="ref" id="audio-msg" style="margin:0"></p>
   </div>
-  <div class="card">${body}</div>`;
-  $('rdsel').onchange = e => { const v = e.target.value; rdStop(); openReader(/^\d+$/.test(v) ? +v : v); };
+  ${rd.i0 > 0 ? `<button class="big" style="margin-bottom:12px" data-act="rd-more-up">⬆ ${tr('Sections précédentes')}</button>` : ''}
+  <div class="card" id="rbody">${rd.secs.slice(rd.i0, rd.upto).map(secHtml).join('')}</div>
+  <div id="rmore" class="rsentinel" ${rd.upto >= rd.secs.length ? 'hidden' : ''}>…</div>`;
+  $('rdsel').onchange = e => { const v = e.target.value; rdStop(); openReader(v, 0, v === 'q:sel' ? rd.sel : null); };
+  if ($('rdjump')) $('rdjump').onchange = e => { rdStop(); const id = rd.secs.find(x => String(x) === e.target.value); rd.i0 = rd.secs.indexOf(id); rd.upto = Math.min(rd.secs.length, rd.i0 + 3); rd.focus = 0; renderReader(); window.scrollTo(0, 0); };
+  if (rdObs){ rdObs.disconnect(); rdObs = null; }
+  if ($('rmore') && 'IntersectionObserver' in window){ rdObs = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) rdMore(); }, {rootMargin: '1500px'}); rdObs.observe($('rmore')); }
   if (rd.focus){
-    const el = document.querySelector(`.rv[data-i="${rd.focus}"]`);
+    const el = document.querySelector(`.rv[data-s="${rd.secs[0]}"][data-i="${rd.focus}"]`);
     if (el){ el.classList.remove('hid'); el.classList.add('focus'); setTimeout(() => el.scrollIntoView({block: 'center'}), 50); }
   }
 }
-function rdStop(){ stopAudio(); if (rd) rd.playing = false; document.querySelectorAll('.rv.playing').forEach(e => e.classList.remove('playing')); const b = $('rdplay'); if (b) b.textContent = '▶ Écouter'; }
-function rdPlay(i){
+function rdMore(n = 4){ // charge la suite au défilement
+  if (!rd || rd.upto >= rd.secs.length) return false;
+  const to = Math.min(rd.secs.length, rd.upto + n);
+  $('rbody').insertAdjacentHTML('beforeend', rd.secs.slice(rd.upto, to).map(secHtml).join(''));
+  rd.upto = to;
+  if (rd.upto >= rd.secs.length){ if (rdObs){ rdObs.disconnect(); rdObs = null; } if ($('rmore')) $('rmore').hidden = true; }
+  return true;
+}
+function rdStop(){ stopAudio(); if (rd) rd.playing = false; document.querySelectorAll('.rv.playing').forEach(e => e.classList.remove('playing')); const b = $('rdplay'); if (b) b.textContent = '▶ ' + tr('Écouter'); }
+function rdPlay(id, i){
   document.querySelectorAll('.rv.playing').forEach(e => e.classList.remove('playing'));
-  if (!rd || !isQ(rd.s) || i > slen(rd.s)) return rdStop();
-  rd.playing = true; const b = $('rdplay'); if (b) b.textContent = '⏹ Arrêter';
-  const el = document.querySelector(`.rv[data-i="${i}"]`);
-  if (el){ el.classList.remove('hid'); el.classList.add('playing'); el.scrollIntoView({block: 'center', behavior: 'smooth'}); }
-  playUrls([audioUrl({s: rd.s, a: i})], () => rdPlay(i + 1));
+  if (!rd || !rd.spec.startsWith('q')) return rdStop();
+  if (i > slen(id)){ const nx = rd.secs[rd.secs.indexOf(id) + 1]; if (nx === undefined) return rdStop(); id = nx; i = 1; }
+  let el = document.querySelector(`.rv[data-s="${id}"][data-i="${i}"]`);
+  while (!el && rdMore()) el = document.querySelector(`.rv[data-s="${id}"][data-i="${i}"]`);
+  if (!el) return rdStop();
+  rd.playing = true; const b = $('rdplay'); if (b) b.textContent = '⏹ ' + tr('Arrêter');
+  el.classList.remove('hid'); el.classList.add('playing'); el.scrollIntoView({block: 'center', behavior: 'smooth'});
+  playUrls([audioUrl({s: id, a: i})], () => rdPlay(id, i + 1));
 }
 
 /* ---------- historique des erreurs ---------- */
 let hf = 'all', hv = 'v', hrefs = [];
-const MODE_NAME = Object.fromEntries(MODES.map(([id, t]) => [id, t]));
-const fdate = t => new Date(t).toLocaleString('fr-FR', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
+const MODE_NAME = new Proxy({}, {get: (_o, id) => { const m = MODES.find(x => x[0] === id); return m ? tr(m[1]) : undefined; }}); // nom traduit de chaque exercice
+const fdate = t => new Date(t).toLocaleString(LOCALE(), {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
 function aggErrors(list){
   const agg = new Map();
   for (const e of list){
@@ -1303,47 +1394,47 @@ function tabErrors(){
   const chip = (id, cur_, t, act) => `<button class="${cur_ === id ? 'sel' : ''}" data-act="${act}" data-v="${id}">${t}</button>`;
   const body = hv === 'v'
     ? rows.slice(0, 80).map(a => `<div class="sib"><p class="ref" style="margin:0">${rlabel(a.r)}</p>
-        <p class="ref" style="margin:0"><b>raté ${a.n} fois</b> · dernière : ${fdate(a.last)} · ${esc([...a.modes].join(', '))}</p>
+        <p class="ref" style="margin:0"><b>${tr('raté {n} fois', {n: a.n})}</b> · ${tr('dernière :')} ${fdate(a.last)} · ${esc([...a.modes].join(', '))}</p>
         <div class="ar" style="font-size:1.35rem;line-height:2">${esc(verse(a.r))}</div>
-        <button class="link" data-act="rdopen" data-v="${a.k}">📖 Lire tout le texte</button>
-        ${a.bad.length ? `<p class="ref" style="margin:0">Mots souvent faux : <span class="ar" style="font-size:1.2rem;display:inline">${esc(a.bad.slice(0, 12).join(' · '))}</span></p>` : ''}</div>`).join('')
+        <button class="link" data-act="rdopen" data-v="${a.k}">📖 ${tr('Lire tout le texte')}</button>
+        ${a.bad.length ? `<p class="ref" style="margin:0">${tr('Mots souvent faux :')} <span class="ar" style="font-size:1.2rem;display:inline">${esc(a.bad.slice(0, 12).join(' · '))}</span></p>` : ''}</div>`).join('')
     : L.slice().reverse().slice(0, 100).map(e => { const r = pk(e.k);
-        return `<div class="sib"><p class="ref" style="margin:0">${fdate(e.t)} · ${esc(MODE_NAME[e.m] || e.m)} · ${e.sc === 0.5 ? 'hésité' : 'raté'}</p>
+        return `<div class="sib"><p class="ref" style="margin:0">${fdate(e.t)} · ${esc(MODE_NAME[e.m] || e.m)} · ${e.sc === 0.5 ? tr('hésité') : tr('raté')}</p>
         <p class="ref" style="margin:0"><b>${rlabel(r)}</b></p>
-        ${e.bad ? `<p class="ref" style="margin:0">Mots faux ou oubliés : <span class="ar" style="font-size:1.2rem;display:inline">${esc(e.bad.join(' · '))}</span></p>` : ''}
-        ${e.ans ? `<p class="ref" style="margin:0">Ta réponse : <span class="ar" style="font-size:1.2rem;display:inline">${esc(e.ans)}</span></p>` : ''}</div>`; }).join('');
+        ${e.bad ? `<p class="ref" style="margin:0">${tr('Mots faux ou oubliés :')} <span class="ar" style="font-size:1.2rem;display:inline">${esc(e.bad.join(' · '))}</span></p>` : ''}
+        ${e.ans ? `<p class="ref" style="margin:0">${tr('Ta réponse :')} <span class="ar" style="font-size:1.2rem;display:inline">${esc(e.ans)}</span></p>` : ''}</div>`; }).join('');
   return `
-  <h1>Erreurs</h1>
-  <p class="sub">${L.length} erreur${L.length > 1 ? 's' : ''} · ${rows.length} verset${rows.length > 1 ? 's' : ''} concerné${rows.length > 1 ? 's' : ''}</p>
-  <div class="chips" style="margin-bottom:8px">${chip('all', hf, 'Tout', 'hfilter')}${chip('7', hf, '7 derniers jours', 'hfilter')}${chip('q', hf, 'Coran', 'hfilter')}${chip('m', hf, 'Moutoun', 'hfilter')}</div>
-  <div class="chips" style="margin-bottom:12px">${chip('v', hv, 'Par verset', 'hview')}${chip('t', hv, 'Chronologie', 'hview')}</div>
-  ${rows.length ? `<button class="pri big" data-act="hreview">Réviser les ${hrefs.length} versets les plus ratés</button>` : ''}
-  <div class="card" style="margin-top:12px">${body || '<p class="sub" style="margin:0">Aucune erreur enregistrée pour ce filtre. Chaque erreur apparaîtra ici avec les mots faux et ta réponse.</p>'}</div>
-  ${errors.length ? '<p style="text-align:right"><button class="link" data-act="hclear">Effacer l\'historique</button></p>' : ''}`;
+  <h1>${tr('Erreurs')}</h1>
+  <p class="sub">${trp(L.length, '{n} erreur|{n} erreurs')} · ${trp(rows.length, '{n} verset concerné|{n} versets concernés')}</p>
+  <div class="chips" style="margin-bottom:8px">${chip('all', hf, tr('Tout'), 'hfilter')}${chip('7', hf, tr('7 derniers jours'), 'hfilter')}${chip('q', hf, tr('Coran'), 'hfilter')}${chip('m', hf, tr('Moutoun'), 'hfilter')}</div>
+  <div class="chips" style="margin-bottom:12px">${chip('v', hv, tr('Par verset'), 'hview')}${chip('t', hv, tr('Chronologie'), 'hview')}</div>
+  ${rows.length ? `<button class="pri big" data-act="hreview">${tr('Réviser les {n} versets les plus ratés', {n: hrefs.length})}</button>` : ''}
+  <div class="card" style="margin-top:12px">${body || `<p class="sub" style="margin:0">${tr('Aucune erreur enregistrée pour ce filtre. Chaque erreur apparaîtra ici avec les mots faux et ta réponse.')}</p>`}</div>
+  ${errors.length ? `<p style="text-align:end"><button class="link" data-act="hclear">${tr("Effacer l'historique")}</button></p>` : ''}`;
 }
 
 /* ---------- résultats ---------- */
 function results(){
   const pct = Math.round(100 * ses.score / ses.total);
-  const msg = pct >= 90 ? 'Machaa Allah, excellente mémorisation !' : pct >= 70 ? 'Très bien, continue ainsi.' : pct >= 50 ? 'Pas mal, quelques versets à consolider.' : 'Courage : relis puis réessaie.';
+  const msg = pct >= 90 ? tr('Machaa Allah, excellente mémorisation !') : pct >= 70 ? tr('Très bien, continue ainsi.') : pct >= 50 ? tr('Pas mal, quelques versets à consolider.') : tr('Courage : relis puis réessaie.');
   const missed = [...new Map(ses.missed.map(r => [key(r), r])).values()];
   ses.missed = missed; setNav(false);
   $app.innerHTML = `
-  <h1>Résultat</h1>
+  <h1>${tr('Résultat')}</h1>
   <div class="card"><div class="big-score">${pct} %</div>
     <p class="sub" style="text-align:center">${ses.score % 1 ? ses.score.toFixed(1) : ses.score} / ${ses.total} · ${msg}</p></div>
-  ${missed.length ? `<div class="card"><h2>À revoir (${missed.length})</h2>
+  ${missed.length ? `<div class="card"><h2>${tr('À revoir ({n})', {n: missed.length})}</h2>
     ${missed.map(r => `<p class="ref" style="margin:10px 0 0">${rlabel(r)}</p><div class="ar" style="font-size:1.5rem">${esc(verse(r))}</div>`).join('')}</div>` : ''}
-  ${missed.length ? `<button class="pri big" data-act="retry">Refaire mes erreurs</button>` : ''}
-  <button class="big" style="margin-top:8px" data-act="again">Nouvelle série</button>
-  <button class="big" style="margin-top:8px" data-act="tab" data-v="home">Accueil</button>`;
+  ${missed.length ? `<button class="pri big" data-act="retry">${tr('Refaire mes erreurs')}</button>` : ''}
+  <button class="big" style="margin-top:8px" data-act="again">${tr('Nouvelle série')}</button>
+  <button class="big" style="margin-top:8px" data-act="tab" data-v="home">${tr('Accueil')}</button>`;
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '20 oct. 2026 · v5';
+const APP_VERSION = '20 oct. 2026 · v6';
 async function forceUpdate(el){
-  if (!navigator.onLine) return alert('Pas de connexion : connecte-toi à internet pour mettre à jour.');
-  el.disabled = true; el.textContent = 'Mise à jour…';
+  if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
+  el.disabled = true; el.textContent = tr('Mise à jour…');
   try { // vide uniquement les fichiers de l'application en cache : la progression (localStorage) n'est pas touchée
     const regs = (await navigator.serviceWorker?.getRegistrations?.()) || [];
     await Promise.all(regs.map(r => r.unregister()));
@@ -1369,15 +1460,15 @@ cloudDirty = k => {
 };
 function friendly(e){
   const m = String(e?.message || e || '');
-  if (/Invalid login credentials/i.test(m)) return 'E-mail ou mot de passe incorrect.';
-  if (/Email not confirmed/i.test(m)) return 'Confirme d\'abord ton e-mail : clique le lien reçu par mail.';
-  if (/already registered|already been registered/i.test(m)) return 'Un compte existe déjà avec cet e-mail : connecte-toi.';
-  if (/rate limit|too many|security purposes/i.test(m)) return 'Trop de tentatives : réessaie dans quelques minutes.';
-  if (/Password should|weak password/i.test(m)) return 'Mot de passe trop faible (8 caractères minimum).';
-  if (/does not exist|schema cache|Could not find/i.test(m)) return 'La base n\'est pas prête : exécute supabase/schema.sql dans Supabase.';
-  if (/Failed to fetch|NetworkError|Load failed|hors ligne/i.test(m)) return 'Connexion impossible : vérifie ta connexion internet.';
-  if (/accès refusé|42501|permission denied|row-level security/i.test(m)) return 'Action refusée (droits insuffisants).';
-  return m || 'Erreur inconnue.';
+  if (/Invalid login credentials/i.test(m)) return tr('E-mail ou mot de passe incorrect.');
+  if (/Email not confirmed/i.test(m)) return tr("Confirme d'abord ton e-mail : clique le lien reçu par mail.");
+  if (/already registered|already been registered/i.test(m)) return tr('Un compte existe déjà avec cet e-mail : connecte-toi.');
+  if (/rate limit|too many|security purposes/i.test(m)) return tr('Trop de tentatives : réessaie dans quelques minutes.');
+  if (/Password should|weak password/i.test(m)) return tr('Mot de passe trop faible (8 caractères minimum).');
+  if (/does not exist|schema cache|Could not find/i.test(m)) return tr("La base n'est pas prête : exécute supabase/schema.sql dans Supabase.");
+  if (/Failed to fetch|NetworkError|Load failed|hors ligne|offline/i.test(m)) return tr('Connexion impossible : vérifie ta connexion internet.');
+  if (/accès refusé|42501|permission denied|row-level security/i.test(m)) return tr('Action refusée (droits insuffisants).');
+  return m || tr('Erreur inconnue.');
 }
 function loadSupabase(){
   return new Promise((res, rej) => {
@@ -1385,7 +1476,7 @@ function loadSupabase(){
     const sc = document.createElement('script');
     sc.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js';
     sc.integrity = 'sha384-JBR+x8blGwjDRO63aHCGiZMD4VNiTR4ZUGA+N6ZKLf3zNt1fK8IBpcgPaMrxqWBp'; sc.crossOrigin = 'anonymous';
-    sc.onload = res; sc.onerror = () => rej(new Error('Bibliothèque de compte indisponible (hors ligne ?)'));
+    sc.onload = res; sc.onerror = () => rej(new Error(tr('Bibliothèque de compte indisponible (hors ligne ?)')));
     document.head.appendChild(sc);
   });
 }
@@ -1402,7 +1493,7 @@ async function cloudInit(){
   try { const {data: {session}} = await sb.auth.getSession(); if (session) await loadMe(session); } catch {}
   authReady = true; home();
 }
-function renderLoading(){ setNav(false); $app.innerHTML = '<p class="sub" style="margin-top:40vh;text-align:center">Chargement…</p>'; }
+function renderLoading(){ setNav(false); $app.innerHTML = `<p class="sub" style="margin-top:40vh;text-align:center">${tr('Chargement…')}</p>`; }
 function refreshAccount(){
   if (screen === 'account' && me && acc.fromGate){ acc.fromGate = false; return go('home'); } // connexion réussie depuis l'écran d'accueil protégé
   if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else if (screen === 'tab' || !me) home();
@@ -1413,7 +1504,7 @@ async function loadMe(sess){
     const u = sess.user, {data: prof, error} = await sb.from('profiles').select('*').eq('id', u.id).maybeSingle();
     if (error) throw error;
     if (!prof) throw new Error('relation profiles does not exist (profil introuvable)');
-    if (prof.blocked){ await sb.auth.signOut(); me = null; acc.msg = 'Ce compte est suspendu.'; acc.ok = false; return; }
+    if (prof.blocked){ await sb.auth.signOut(); me = null; acc.msg = tr('Ce compte est suspendu.'); acc.ok = false; return; }
     me = {user: {id: u.id, email: u.email}, profile: prof}; store.set('hifz.me', me);
     sb.rpc('touch');
     await cloudSyncOnLogin();
@@ -1470,16 +1561,16 @@ async function cloudSyncOnLogin(){
     else if (!meta.t || Date.parse(remote.updated_at) > Date.parse(meta.t)){ applyRemote(remote.data); stamp(); }
     else acc.last = meta.t;
   } else if (!hasLocal()){ applyRemote(remote.data); stamp(); }
-  else { applyRemote(mergeData(snap(), remote.data)); await cloudPush(); acc.msg = 'La progression de cet appareil a été fusionnée avec celle de ton compte.'; acc.ok = true; }
+  else { applyRemote(mergeData(snap(), remote.data)); await cloudPush(); acc.msg = tr('La progression de cet appareil a été fusionnée avec celle de ton compte.'); acc.ok = true; }
 }
 
 /* écran Compte */
 function accountCard(){
-  if (!cloudOn()) return `<div class="card"><h2>Compte</h2><p class="ref" style="margin:0 0 8px">Les comptes ne sont pas encore activés sur ce site.</p><button data-act="acc-open">En savoir plus</button></div>`;
-  if (me) return `<div class="card"><h2>Compte</h2><p style="margin:0 0 8px">Connecté : <b>${esc(me.user.email)}</b> ${isAdmin() ? '<span class="ref">· administrateur</span>' : ''}</p>
-    <div class="row"><button data-act="acc-open">Mon compte</button>${isAdmin() ? '<button class="pri" data-act="adm-open">🛡 Espace admin</button>' : ''}</div></div>`;
-  return `<div class="card"><h2>Compte</h2><p class="ref" style="margin:0 0 8px">Sauvegarde ta progression et retrouve-la sur tous tes appareils.</p>
-    <div class="row"><button class="pri" data-act="acc-open" data-v="signup">Créer un compte</button><button data-act="acc-open" data-v="login">Se connecter</button></div></div>`;
+  if (!cloudOn()) return `<div class="card"><h2>${tr('Compte')}</h2><p class="ref" style="margin:0 0 8px">${tr('Les comptes ne sont pas encore activés sur ce site.')}</p><button data-act="acc-open">${tr('En savoir plus')}</button></div>`;
+  if (me) return `<div class="card"><h2>${tr('Compte')}</h2><p style="margin:0 0 8px">${tr('Connecté :')} <b>${esc(me.user.email)}</b> ${isAdmin() ? `<span class="ref">· ${tr('administrateur')}</span>` : ''}</p>
+    <div class="row"><button data-act="acc-open">${tr('Mon compte')}</button>${isAdmin() ? `<button class="pri" data-act="adm-open">🛡 ${tr('Espace admin')}</button>` : ''}</div></div>`;
+  return `<div class="card"><h2>${tr('Compte')}</h2><p class="ref" style="margin:0 0 8px">${tr('Sauvegarde ta progression et retrouve-la sur tous tes appareils.')}</p>
+    <div class="row"><button class="pri" data-act="acc-open" data-v="signup">${tr('Créer un compte')}</button><button data-act="acc-open" data-v="login">${tr('Se connecter')}</button></div></div>`;
 }
 function openAccount(mode){ if (mode) acc.mode = mode; if (!me && acc.mode === 'newpass') acc.mode = 'login'; renderAccount(); window.scrollTo(0, 0); }
 function renderAccount(){
@@ -1487,41 +1578,42 @@ function renderAccount(){
   const dk = {'ac-email': 'email', 'ac-pass': 'pass', 'ac-pass2': 'pass2'};
   const inp = (id, type, ac, extra) => `<input id="${id}" type="${type}" autocomplete="${ac}" value="${esc(acc.d[dk[id]] || '')}" ${extra}>`;
   const f = (id, label, type, ac, extra = '') => `<label class="f" for="${id}">${label}</label>` + (type === 'password'
-    ? `<div class="pw">${inp(id, type, ac, extra)}<button type="button" class="eye" data-act="pw-eye" data-v="${id}" aria-label="Afficher le mot de passe" aria-pressed="false">${EYE}</button></div>`
+    ? `<div class="pw">${inp(id, type, ac, extra)}<button type="button" class="eye" data-act="pw-eye" data-v="${id}" aria-label="${tr('Afficher le mot de passe')}" aria-pressed="false">${EYE}</button></div>`
     : inp(id, type, ac, extra));
   let body;
-  if (!cloudOn()) body = `<div class="card"><h2>Comptes non activés</h2><p class="sub" style="margin:0">Le propriétaire du site doit encore relier une base Supabase (voir <code>supabase/README.md</code> dans le dépôt). Ta progression reste pour l'instant sur cet appareil.</p></div>`;
-  else if (!sb) body = `<div class="card"><p class="sub" style="margin:0 0 10px">${esc(acc.msg || 'Chargement…')}</p><button class="pri" onclick="location.reload()">Réessayer</button></div>`;
+  if (!cloudOn()) body = `<div class="card"><h2>${tr('Comptes non activés')}</h2><p class="sub" style="margin:0">${tr("Le propriétaire du site doit encore relier une base Supabase (voir <code>supabase/README.md</code> dans le dépôt). Ta progression reste pour l'instant sur cet appareil.")}</p></div>`;
+  else if (!sb) body = `<div class="card"><p class="sub" style="margin:0 0 10px">${esc(acc.msg || tr('Chargement…'))}</p><button class="pri" onclick="location.reload()">${tr('Réessayer')}</button></div>`;
   else if (me){
     body = `<div class="card"><h2>${esc(me.user.email)}</h2>
-      <p class="ref" style="margin:0 0 8px">${isAdmin() ? 'Rôle : administrateur' : 'Rôle : utilisateur'} · inscrit le ${esc(new Date(me.profile.created_at).toLocaleDateString('fr-FR'))}</p>
-      <p class="ref" style="margin:0 0 10px">${acc.last ? 'Dernière synchronisation : ' + fdate(Date.parse(acc.last)) : 'Synchronisation automatique active'}${acc.syncErr ? ' · <span style="color:var(--ko)">' + esc(acc.syncErr) + '</span>' : ''}</p>
-      <div class="row"><button class="pri" data-act="acc-sync">🔄 Synchroniser maintenant</button>${isAdmin() ? '<button data-act="adm-open">🛡 Espace admin</button>' : ''}</div></div>
-      <div class="card"><h2>Mot de passe</h2>${f('ac-pass', 'Nouveau mot de passe (8 caractères minimum)', 'password', 'new-password', 'data-enter="ac-go"')}
-      <button id="ac-go" class="pri" style="margin-top:8px" data-act="acc-newpass">Changer le mot de passe</button></div>
-      <div class="card"><h2>Confidentialité</h2><p class="ref" style="margin:0">Sont enregistrés : ton e-mail, ta date d'inscription, ta dernière activité et ta progression (statistiques, erreurs, historique). L'administrateur du site peut les consulter. Tu peux tout supprimer à tout moment.</p>
-      <p style="margin:10px 0 0"><button class="link" data-act="acc-delete" style="color:var(--ko)">Supprimer mon compte et mes données</button></p></div>
-      <button class="big" data-act="acc-logout">Se déconnecter</button>`;
+      <p class="ref" style="margin:0 0 8px">${isAdmin() ? tr('Rôle : administrateur') : tr('Rôle : utilisateur')} · ${tr('inscrit le {d}', {d: esc(new Date(me.profile.created_at).toLocaleDateString(LOCALE()))})}</p>
+      <p class="ref" style="margin:0 0 10px">${acc.last ? tr('Dernière synchronisation :') + ' ' + fdate(Date.parse(acc.last)) : tr('Synchronisation automatique active')}${acc.syncErr ? ' · <span style="color:var(--ko)">' + esc(acc.syncErr) + '</span>' : ''}</p>
+      <div class="row"><button class="pri" data-act="acc-sync">🔄 ${tr('Synchroniser maintenant')}</button>${isAdmin() ? `<button data-act="adm-open">🛡 ${tr('Espace admin')}</button>` : ''}</div></div>
+      <div class="card"><h2>${tr('Mot de passe')}</h2>${f('ac-pass', tr('Nouveau mot de passe (8 caractères minimum)'), 'password', 'new-password', 'data-enter="ac-go"')}
+      <button id="ac-go" class="pri" style="margin-top:8px" data-act="acc-newpass">${tr('Changer le mot de passe')}</button></div>
+      <div class="card"><h2>${tr('Confidentialité')}</h2><p class="ref" style="margin:0">${tr("Sont enregistrés : ton e-mail, ta date d'inscription, ta dernière activité et ta progression (statistiques, erreurs, historique). L'administrateur du site peut les consulter. Tu peux tout supprimer à tout moment.")}</p>
+      <p style="margin:10px 0 0"><button class="link" data-act="acc-delete" style="color:var(--ko)">${tr('Supprimer mon compte et mes données')}</button></p></div>
+      <button class="big" data-act="acc-logout">${tr('Se déconnecter')}</button>`;
   } else if (acc.mode === 'newpass'){
-    body = `<div class="card"><h2>Nouveau mot de passe</h2>${f('ac-pass', 'Mot de passe (8 caractères minimum)', 'password', 'new-password', 'data-enter="ac-go"')}
-      <button id="ac-go" class="pri big" style="margin-top:10px" data-act="acc-newpass">Enregistrer</button></div>`;
+    body = `<div class="card"><h2>${tr('Nouveau mot de passe')}</h2>${f('ac-pass', tr('Mot de passe (8 caractères minimum)'), 'password', 'new-password', 'data-enter="ac-go"')}
+      <button id="ac-go" class="pri big" style="margin-top:10px" data-act="acc-newpass">${tr('Enregistrer')}</button></div>`;
   } else {
     const su = acc.mode === 'signup', rs = acc.mode === 'reset';
-    body = `<div class="seg" style="margin-bottom:10px"><button class="${!su && !rs ? 'sel' : ''}" data-act="acc-mode" data-v="login">Connexion</button>
-      <button class="${su ? 'sel' : ''}" data-act="acc-mode" data-v="signup">Créer un compte</button></div>
-      <div class="card"><h2>${su ? 'Créer un compte' : rs ? 'Mot de passe oublié' : 'Se connecter'}</h2>
-      ${f('ac-email', 'Adresse e-mail', 'email', 'email', `data-enter="ac-go"`)}
-      ${rs ? '' : f('ac-pass', su ? 'Mot de passe (8 caractères minimum)' : 'Mot de passe', 'password', su ? 'new-password' : 'current-password', 'data-enter="ac-go"')}
-      ${su ? f('ac-pass2', 'Confirmer le mot de passe', 'password', 'new-password', 'data-enter="ac-go"')
+    body = `<div class="seg" style="margin-bottom:10px"><button class="${!su && !rs ? 'sel' : ''}" data-act="acc-mode" data-v="login">${tr('Connexion')}</button>
+      <button class="${su ? 'sel' : ''}" data-act="acc-mode" data-v="signup">${tr('Créer un compte')}</button></div>
+      <div class="card"><h2>${su ? tr('Créer un compte') : rs ? tr('Mot de passe oublié') : tr('Se connecter')}</h2>
+      ${f('ac-email', tr('Adresse e-mail'), 'email', 'email', `data-enter="ac-go"`)}
+      ${rs ? '' : f('ac-pass', su ? tr('Mot de passe (8 caractères minimum)') : tr('Mot de passe'), 'password', su ? 'new-password' : 'current-password', 'data-enter="ac-go"')}
+      ${su ? f('ac-pass2', tr('Confirmer le mot de passe'), 'password', 'new-password', 'data-enter="ac-go"')
         + `<label class="consent"><input type="checkbox" id="ac-consent" ${acc.d.consent ? 'checked' : ''}>
-        <span>J'accepte que mon e-mail et ma progression soient enregistrés pour la synchronisation, et consultables par l'administrateur du site.</span></label>` : ''}
-      <button id="ac-go" class="pri big" style="margin-top:12px" data-act="${su ? 'acc-signup' : rs ? 'acc-reset' : 'acc-login'}">${su ? 'Créer mon compte' : rs ? 'Envoyer le lien' : 'Me connecter'}</button>
-      ${!su && !rs ? '<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="reset">Mot de passe oublié ?</button></p>' : ''}
-      ${rs ? '<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="login">← Retour à la connexion</button></p>' : ''}</div>`;
+        <span>${tr("J'accepte que mon e-mail et ma progression soient enregistrés pour la synchronisation, et consultables par l'administrateur du site.")}</span></label>` : ''}
+      <button id="ac-go" class="pri big" style="margin-top:12px" data-act="${su ? 'acc-signup' : rs ? 'acc-reset' : 'acc-login'}">${su ? tr('Créer mon compte') : rs ? tr('Envoyer le lien') : tr('Me connecter')}</button>
+      ${!su && !rs ? `<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="reset">${tr('Mot de passe oublié ?')}</button></p>` : ''}
+      ${rs ? `<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="login">${tr('← Retour à la connexion')}</button></p>` : ''}</div>`;
   }
   const gate = cloudOn() && !me; acc.fromGate = gate;
-  $app.innerHTML = `${gate ? '' : '<div class="top"><button class="link" data-act="acc-back">← Retour</button><span>Compte</span></div>'}
-    ${gate ? '<div class="hero" style="margin-top:8px"><div class="logo">حفظ</div><div><h1>Hifz</h1><p>Crée un compte ou connecte-toi pour accéder à l\'application.</p></div></div>' : '<h1 style="margin-top:8px">Mon compte</h1>'}
+  const langBar = `<div class="langs">${Object.entries(LANGS).map(([k, n]) => `<button class="${LANG === k ? 'sel' : ''}" data-act="lang" data-v="${k}" lang="${k}">${n}</button>`).join('')}</div>`;
+  $app.innerHTML = `${gate ? langBar : `<div class="top"><button class="link" data-act="acc-back">${tr('← Retour')}</button><span>${tr('Compte')}</span></div>`}
+    ${gate ? `<div class="hero" style="margin-top:8px"><div class="logo">حفظ</div><div><h1>Hifz</h1><p>${tr("Crée un compte ou connecte-toi pour accéder à l'application.")}</p></div></div>` : `<h1 style="margin-top:8px">${tr('Mon compte')}</h1>`}
     ${acc.msg && cloudOn() && sb ? `<div class="fb ${acc.ok ? 'ok' : 'ko'}">${esc(acc.msg)}</div>` : ''}${body}`;
 }
 const EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -1532,46 +1624,46 @@ async function busy(fn){ if (acc.busy) return; acc.busy = true; acc.msg = ''; tr
 const keepEmail = () => { acc.d = {email: val('ac-email') || acc.d.email, pass: $('ac-pass')?.value ?? acc.d.pass, pass2: $('ac-pass2')?.value ?? acc.d.pass2, consent: !!$('ac-consent')?.checked}; };
 const doLogin = () => busy(async () => {
   keepEmail(); const email = val('ac-email'), password = $('ac-pass').value;
-  if (!okEmail(email) || !password) throw new Error('Indique ton e-mail et ton mot de passe.');
+  if (!okEmail(email) || !password) throw new Error(tr('Indique ton e-mail et ton mot de passe.'));
   const {data, error} = await sb.auth.signInWithPassword({email, password}); if (error) throw error;
   await loadMe(data.session);
 });
 const doSignup = () => busy(async () => {
   keepEmail(); const email = val('ac-email'), pw = $('ac-pass').value;
-  if (!okEmail(email)) throw new Error('Adresse e-mail invalide.');
-  if (pw.length < 8) throw new Error('Le mot de passe doit faire 8 caractères au moins.');
-  if (pw !== $('ac-pass2').value) throw new Error('Les deux mots de passe ne correspondent pas.');
-  if (!$('ac-consent').checked) throw new Error('Coche la case pour accepter l\'enregistrement de tes données.');
+  if (!okEmail(email)) throw new Error(tr('Adresse e-mail invalide.'));
+  if (pw.length < 8) throw new Error(tr('Le mot de passe doit faire 8 caractères au moins.'));
+  if (pw !== $('ac-pass2').value) throw new Error(tr('Les deux mots de passe ne correspondent pas.'));
+  if (!$('ac-consent').checked) throw new Error(tr("Coche la case pour accepter l'enregistrement de tes données."));
   const {data, error} = await sb.auth.signUp({email, password: pw, options: {emailRedirectTo: REDIRECT()}}); if (error) throw error;
-  if (data.user && data.user.identities && data.user.identities.length === 0) throw new Error('Un compte existe déjà avec cet e-mail : connecte-toi.');
-  if (data.session){ await loadMe(data.session); acc.msg = 'Compte créé.'; acc.ok = true; return; }
-  acc.mode = 'login'; acc.ok = true; acc.msg = `Compte créé. Un e-mail de confirmation a été envoyé à ${email} : clique le lien, puis connecte-toi.`;
+  if (data.user && data.user.identities && data.user.identities.length === 0) throw new Error(tr('Un compte existe déjà avec cet e-mail : connecte-toi.'));
+  if (data.session){ await loadMe(data.session); acc.msg = tr('Compte créé.'); acc.ok = true; return; }
+  acc.mode = 'login'; acc.ok = true; acc.msg = tr('Compte créé. Un e-mail de confirmation a été envoyé à {email} : clique le lien, puis connecte-toi.', {email});
 });
 const doReset = () => busy(async () => {
-  keepEmail(); const email = val('ac-email'); if (!okEmail(email)) throw new Error('Adresse e-mail invalide.');
+  keepEmail(); const email = val('ac-email'); if (!okEmail(email)) throw new Error(tr('Adresse e-mail invalide.'));
   const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo: REDIRECT()}); if (error) throw error;
-  acc.mode = 'login'; acc.ok = true; acc.msg = 'Si un compte existe pour cette adresse, un lien de réinitialisation vient d\'être envoyé.';
+  acc.mode = 'login'; acc.ok = true; acc.msg = tr("Si un compte existe pour cette adresse, un lien de réinitialisation vient d'être envoyé.");
 });
 const doNewPass = () => busy(async () => {
-  const pw = $('ac-pass').value; if (pw.length < 8) throw new Error('Le mot de passe doit faire 8 caractères au moins.');
+  const pw = $('ac-pass').value; if (pw.length < 8) throw new Error(tr('Le mot de passe doit faire 8 caractères au moins.'));
   const {error} = await sb.auth.updateUser({password: pw}); if (error) throw error;
-  acc.mode = 'login'; acc.ok = true; acc.msg = 'Mot de passe mis à jour.';
+  acc.mode = 'login'; acc.ok = true; acc.msg = tr('Mot de passe mis à jour.');
 });
-const doSync = () => busy(async () => { await cloudSyncOnLogin(); await cloudPush(); if (!acc.syncErr){ acc.ok = true; acc.msg = 'Synchronisé.'; } });
+const doSync = () => busy(async () => { await cloudSyncOnLogin(); await cloudPush(); if (!acc.syncErr){ acc.ok = true; acc.msg = tr('Synchronisé.'); } });
 const doLogout = async () => {
-  if (!confirm('Te déconnecter ? La progression de cet appareil sera effacée (elle reste dans ton compte).')) return;
+  if (!confirm(tr('Te déconnecter ? La progression de cet appareil sera effacée (elle reste dans ton compte).'))) return;
   clearTimeout(pushTimer); await cloudPush();
-  if (acc.syncErr && !confirm('La dernière synchronisation a échoué : te déconnecter perdra les changements non envoyés. Continuer ?')) return;
+  if (acc.syncErr && !confirm(tr('La dernière synchronisation a échoué : te déconnecter perdra les changements non envoyés. Continuer ?'))) return;
   await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.me'); } catch {}
   syncPause = true; stats = {}; sched = {}; days = {}; errors = []; custom.forEach(t => { delete MT[t.id]; }); custom = [];
   ['hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.cloud'].forEach(k => { try { localStorage.removeItem(k); } catch {} });
-  syncPause = false; acc.msg = 'Déconnecté.'; acc.ok = true; acc.mode = 'login'; renderAccount();
+  syncPause = false; acc.msg = tr('Déconnecté.'); acc.ok = true; acc.mode = 'login'; renderAccount();
 };
 const doDeleteMe = () => busy(async () => {
-  if (!confirm('Supprimer définitivement ton compte et ta progression enregistrée ? Cette action est irréversible.')) return;
+  if (!confirm(tr('Supprimer définitivement ton compte et ta progression enregistrée ? Cette action est irréversible.'))) return;
   const {error} = await sb.rpc('delete_me'); if (error) throw error;
   await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.cloud'); localStorage.removeItem('hifz.me'); } catch {}
-  acc.mode = 'login'; acc.ok = true; acc.msg = 'Compte supprimé. La progression de cet appareil est conservée.';
+  acc.mode = 'login'; acc.ok = true; acc.msg = tr('Compte supprimé. La progression de cet appareil est conservée.');
 });
 
 /* espace admin : l'interface n'est qu'un affichage, les droits sont vérifiés par la base (voir supabase/schema.sql) */
@@ -1597,23 +1689,23 @@ function renderAdmin(){
     const self = me && u.id === me.user.id, rate = Number(u.answers) ? Math.round(100 * u.ok / u.answers) + ' %' : '—';
     const d = adm.detail && adm.detail.id === u.id ? adm.detail.data : null;
     let det = '';
-    if (d === false) det = '<p class="ref">Pas encore de progression enregistrée.</p>';
-    else if (d){ const x = summarize(d); det = `<div class="sib"><p class="ref" style="margin:0">${Math.round(x.tot)} réponses · ${x.tot ? Math.round(100 * x.ok / x.tot) : 0} % · ${x.seen} versets vus · ${Math.round(x.wk)} réponses sur 7 jours</p>
-      ${x.weak.length ? `<p class="ref" style="margin:4px 0 0"><b>À retravailler :</b> ${x.weak.map(([s, r]) => `${esc(book(/^\d+$/.test(s) ? +s : s) ? sname(/^\d+$/.test(s) ? +s : s) : s)} (${Math.round(r * 100)} %)`).join(' · ')}</p>` : ''}
-      ${x.last.length ? `<p class="ref" style="margin:4px 0 0"><b>Dernières erreurs :</b></p>${x.last.map(e => { const r = pk(e.k); return book(r.s) ? `<p class="ref" style="margin:0">${fdate(e.t)} · ${rlabel(r)}</p>` : ''; }).join('')}` : ''}</div>`; }
-    return `<div class="sib"><p style="margin:0"><b>${esc(u.email)}</b> ${u.role === 'admin' ? '<span class="ref">· 🛡 admin</span>' : ''}${u.blocked ? '<span class="ref" style="color:var(--ko)"> · suspendu</span>' : ''}${self ? '<span class="ref"> · toi</span>' : ''}</p>
-      <p class="ref" style="margin:0">Inscrit le ${when(u.created_at)} · actif ${when(u.last_seen)} · ${Math.round(u.answers)} réponses · réussite ${rate} · ${u.errors} erreurs</p>
-      <div class="grades"><button data-act="adm-detail" data-v="${u.id}">${adm.detail && adm.detail.id === u.id ? 'Masquer' : 'Progression'}</button>
-        <button data-act="adm-role" data-v="${u.id}" ${self ? 'disabled' : ''}>${u.role === 'admin' ? 'Retirer admin' : 'Nommer admin'}</button>
-        <button data-act="adm-block" data-v="${u.id}" ${self ? 'disabled' : ''}>${u.blocked ? 'Débloquer' : 'Bloquer'}</button>
-        <button data-act="adm-del" data-v="${u.id}" style="color:var(--ko)" ${self ? 'disabled' : ''}>Supprimer</button></div>${det}</div>`;
+    if (d === false) det = `<p class="ref">${tr('Pas encore de progression enregistrée.')}</p>`;
+    else if (d){ const x = summarize(d); det = `<div class="sib"><p class="ref" style="margin:0">${trp(Math.round(x.tot), '{n} réponse|{n} réponses')} · ${x.tot ? Math.round(100 * x.ok / x.tot) : 0} % · ${x.seen} ${tr('versets vus')} · ${tr('{n} réponses sur 7 jours', {n: Math.round(x.wk)})}</p>
+      ${x.weak.length ? `<p class="ref" style="margin:4px 0 0"><b>${tr('À retravailler :')}</b> ${x.weak.map(([s, r]) => `${esc(book(/^\d+$/.test(s) ? +s : s) ? sname(/^\d+$/.test(s) ? +s : s) : s)} (${Math.round(r * 100)} %)`).join(' · ')}</p>` : ''}
+      ${x.last.length ? `<p class="ref" style="margin:4px 0 0"><b>${tr('Dernières erreurs :')}</b></p>${x.last.map(e => { const r = pk(e.k); return book(r.s) ? `<p class="ref" style="margin:0">${fdate(e.t)} · ${rlabel(r)}</p>` : ''; }).join('')}` : ''}</div>`; }
+    return `<div class="sib"><p style="margin:0"><b>${esc(u.email)}</b> ${u.role === 'admin' ? `<span class="ref">· 🛡 ${tr('admin')}</span>` : ''}${u.blocked ? `<span class="ref" style="color:var(--ko)"> · ${tr('suspendu')}</span>` : ''}${self ? `<span class="ref"> · ${tr('toi')}</span>` : ''}</p>
+      <p class="ref" style="margin:0">${tr('Inscrit le {a} · actif {b} · {c} · réussite {d} · {e}', {a: when(u.created_at), b: when(u.last_seen), c: trp(Math.round(u.answers), '{n} réponse|{n} réponses'), d: rate, e: trp(u.errors, '{n} erreur|{n} erreurs')})}</p>
+      <div class="grades"><button data-act="adm-detail" data-v="${u.id}">${adm.detail && adm.detail.id === u.id ? tr('Masquer') : tr('Progression')}</button>
+        <button data-act="adm-role" data-v="${u.id}" ${self ? 'disabled' : ''}>${u.role === 'admin' ? tr('Retirer admin') : tr('Nommer admin')}</button>
+        <button data-act="adm-block" data-v="${u.id}" ${self ? 'disabled' : ''}>${u.blocked ? tr('Débloquer') : tr('Bloquer')}</button>
+        <button data-act="adm-del" data-v="${u.id}" style="color:var(--ko)" ${self ? 'disabled' : ''}>${tr('Supprimer')}</button></div>${det}</div>`;
   };
-  $app.innerHTML = `<div class="top"><button class="link" data-act="acc-back">← Retour</button><span>Administration</span></div>
-    <h1 style="margin-top:8px">Espace admin</h1>
-    <p class="sub">${adm.users ? `${adm.users.length} compte${adm.users.length > 1 ? 's' : ''} · ${active} actif${active > 1 ? 's' : ''} sur 7 jours` : 'Chargement…'}</p>
+  $app.innerHTML = `<div class="top"><button class="link" data-act="acc-back">${tr('← Retour')}</button><span>${tr('Administration')}</span></div>
+    <h1 style="margin-top:8px">${tr('Espace admin')}</h1>
+    <p class="sub">${adm.users ? `${trp(adm.users.length, '{n} compte|{n} comptes')} · ${trp(active, '{n} actif sur 7 jours|{n} actifs sur 7 jours')}` : tr('Chargement…')}</p>
     ${adm.msg ? `<div class="fb ko">${esc(adm.msg)}</div>` : ''}
-    <div class="row" style="margin-bottom:10px"><input type="text" id="adm-q" placeholder="Rechercher un e-mail" value="${esc(adm.q)}" autocomplete="off"><button data-act="adm-refresh" style="flex:0 0 auto">🔄 Actualiser</button></div>
-    <div class="card">${adm.users ? (list.map(row).join('') || '<p class="sub" style="margin:0">Aucun compte.</p>') : ''}</div>`;
+    <div class="row" style="margin-bottom:10px"><input type="text" id="adm-q" placeholder="${tr('Rechercher un e-mail')}" value="${esc(adm.q)}" autocomplete="off"><button data-act="adm-refresh" style="flex:0 0 auto">🔄 ${tr('Actualiser')}</button></div>
+    <div class="card">${adm.users ? (list.map(row).join('') || `<p class="sub" style="margin:0">${tr('Aucun compte.')}</p>`) : ''}</div>`;
   const q = $('adm-q'); if (q) q.oninput = () => { adm.q = q.value; const pos = q.selectionStart; renderAdmin(); const n = $('adm-q'); n.focus(); n.setSelectionRange(pos, pos); };
 }
 async function adminDetail(id){
@@ -1629,11 +1721,11 @@ async function adminAct(fn, okMsg){
 const userOf = id => (adm.users || []).find(u => u.id === id);
 function adminRole(id){ const u = userOf(id); if (!u) return;
   const to = u.role === 'admin' ? 'user' : 'admin';
-  if (confirm(`${to === 'admin' ? 'Nommer administrateur' : 'Retirer le rôle admin à'} ${u.email} ?`)) adminAct(() => sb.rpc('admin_set_role', {target: id, new_role: to})); }
+  if (confirm(tr(to === 'admin' ? 'Nommer administrateur {u} ?' : 'Retirer le rôle admin à {u} ?', {u: u.email}))) adminAct(() => sb.rpc('admin_set_role', {target: id, new_role: to})); }
 function adminBlock(id){ const u = userOf(id); if (!u) return;
-  if (confirm(`${u.blocked ? 'Débloquer' : 'Bloquer'} ${u.email} ?`)) adminAct(() => sb.rpc('admin_set_blocked', {target: id, b: !u.blocked})); }
+  if (confirm(tr(u.blocked ? 'Débloquer {u} ?' : 'Bloquer {u} ?', {u: u.email}))) adminAct(() => sb.rpc('admin_set_blocked', {target: id, b: !u.blocked})); }
 function adminDelete(id){ const u = userOf(id); if (!u) return;
-  if (confirm(`Supprimer définitivement le compte ${u.email} et toute sa progression ? Irréversible.`)) adminAct(() => sb.rpc('admin_delete_user', {target: id})); }
+  if (confirm(tr('Supprimer définitivement le compte {u} et toute sa progression ? Irréversible.', {u: u.email}))) adminAct(() => sb.rpc('admin_delete_user', {target: id})); }
 $app.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.enter){ e.preventDefault(); $(e.target.dataset.enter)?.click(); } });
 
 /* ---------- démarrage ---------- */
@@ -1643,9 +1735,9 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) naviga
   custom.forEach(t => { MT[t.id] = t; });
   try { await loadQuran(); if (cloudOn()){ renderLoading(); await cloudInit(); } else home(); }
   catch (err){
-    $app.innerHTML = `<h1>Chargement impossible</h1>
-      <p class="sub">Une connexion internet est nécessaire au premier lancement (${esc(err.message)}).</p>
-      <button class="pri" onclick="location.reload()">Réessayer</button>`;
+    $app.innerHTML = `<h1>${tr('Chargement impossible')}</h1>
+      <p class="sub">${tr('Une connexion internet est nécessaire au premier lancement ({e}).', {e: esc(err.message)})}</p>
+      <button class="pri" onclick="location.reload()">${tr('Réessayer')}</button>`;
   }
 })();
 </script>
