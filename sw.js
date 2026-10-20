@@ -1,9 +1,11 @@
 // Service worker Hifz : l'application fonctionne hors ligne, mais NE MET JAMAIS EN CACHE les échanges de compte (Supabase).
-const SHELL = 'hifz-shell-v3', RUNTIME = 'hifz-runtime-v3';
+const SHELL = 'hifz-shell-v4', RUNTIME = 'hifz-runtime-v4';
 const FILES = ['./', './index.html', './config.js', './i18n.js', './manifest.webmanifest', './icon.svg', './moutoun.js', './mutashabihat.js',
-  './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
-// seuls ces hôtes externes sont mis en cache (polices, texte du Coran, bibliothèque) ; tout le reste passe directement par le réseau
-const CACHEABLE = ['fonts.googleapis.com', 'fonts.gstatic.com', 'api.alquran.cloud', 'cdn.jsdelivr.net'];
+  './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
+  './fonts/fonts.css', './fonts/amiri-quran-arabic.woff2', './fonts/amiri-quran-latin.woff2', './fonts/cormorant-garamond-latin.woff2', './fonts/cormorant-garamond-latin-ext.woff2',
+  './fonts/inter-latin.woff2', './fonts/inter-latin-ext.woff2', './fonts/noto-sans-arabic-arabic.woff2'];
+// seuls ces hôtes externes sont mis en cache (texte du Coran, bibliothèque) ; tout le reste passe directement par le réseau. Les polices sont hébergées ici.
+const CACHEABLE = ['api.alquran.cloud', 'cdn.jsdelivr.net'];
 const keep = (cacheName, req, res) => { const copy = res.clone(); caches.open(cacheName).then(c => c.put(req, copy)).catch(() => {}); }; // clone AVANT de rendre la réponse
 self.addEventListener('install', e => { e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', e => e.waitUntil(

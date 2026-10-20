@@ -12,8 +12,9 @@
 <meta name="apple-mobile-web-app-title" content="Hifz">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Hifz – Teste ta mémorisation du Coran</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&family=Noto+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet" crossorigin>
+<link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/amiri-quran-arabic.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
 :root{
   --bg:#f3ead6; --card:#fcf7ea; --ink:#2b2218; --muted:#7a6a52; --line:#decfa9; --line-soft:#ecddb6;
@@ -661,6 +662,15 @@ function sabTest(){
   cur = {m: 'cont', r: refs[0], done: false};
   startPassage(refs, passageLabel(refs), tr('Récite de mémoire la portion à apprendre :'));
 }
+function planDefsHtml(open){ // définitions des trois étapes du plan
+  const ar = {Sabaq: 'السبق', Sabqi: 'السبقي', Manzil: 'المنزل'};
+  const item = (k, d) => `<p style="margin:0 0 8px"><b>${tr(k)}${LANG === 'ar' ? '' : ' · <span class="ar" style="font-size:1.15rem;line-height:1.4;padding:0">' + ar[k] + '</span>'}</b> — ${tr(d)}</p>`;
+  return `<details class="card" ${open ? 'open' : ''}><summary>${tr('Comprendre sabaq, sabqi et manzil')}</summary><div style="margin-top:10px">
+    ${item('Sabaq', "La leçon nouvelle : la portion que tu apprends aujourd'hui, par lecture, écoute et répétition jusqu'à pouvoir la réciter de mémoire.")}
+    ${item('Sabqi', "La révision des leçons récentes : chaque jour, tu récites les portions apprises ces derniers jours pour les ancrer avant qu'elles ne s'effacent.")}
+    ${item('Manzil', "La révision des anciennes leçons : tout ce que tu as déjà appris plus tôt, revu en rotation sur un cycle (de 14 à 60 jours dans le plan) pour que rien ne se perde.")}
+    <p class="ref" style="margin:0">${tr('Ces termes viennent de la tradition du hifz ; les durées varient selon les écoles et les enseignants. Tu peux les régler dans « Modifier le plan ».')}</p></div></details>`;
+}
 function planSetupHtml(){
   const d = pdraft || (pdraft = plan ? {from: plan.from, to: plan.to, order: plan.order, amt: plan.amt, recent: plan.recent, cycle: plan.cycle} : {from: 78, to: 114, order: 'desc', amt: 'v5', recent: 7, cycle: 30});
   const total = planUnits(d).length, per = d.amt[0] === 'v' ? +d.amt.slice(1) : +d.amt.slice(1) * 10.3, days = Math.ceil(total / per);
@@ -668,6 +678,7 @@ function planSetupHtml(){
   return `
   <h1>${tr('Mon plan de mémorisation')}</h1>
   <p class="sub">${tr("Chaque jour, l'application te dit quoi apprendre et quoi réviser.")}</p>
+  ${planDefsHtml(true)}
   <div class="card"><h2>${tr('Sourates du plan')}</h2>
     <div class="row"><div><label class="f" for="pf-from">${tr('De')}</label><select id="pf-from">${surahOpts(d.from)}</select></div>
       <div><label class="f" for="pf-to">${tr('À')}</label><select id="pf-to">${surahOpts(d.to)}</select></div></div>
@@ -701,7 +712,7 @@ function tabPlan(){
     : `<div class="card"><h2>${tr('Révision récente (sabqi)')}</h2><p class="sub" style="margin:0">${tr('Rien à réviser pour le moment.')}</p></div>`}
   ${T.man.length ? row(tr('Révision ancienne (manzil)'), trp(T.man.length, '{n} portion à revoir aujourd\'hui (cycle de {c} jours)|{n} portions à revoir aujourd\'hui (cycle de {c} jours)', {c: plan.cycle}), T.d.manzil, 'plan-manzil', tr('Réviser'))
     : `<div class="card"><h2>${tr('Révision ancienne (manzil)')}</h2><p class="sub" style="margin:0">${tr('Rien à réviser pour le moment.')}</p></div>`}
-  <p class="ref">${tr('Sabaq : la nouvelle portion du jour. Sabqi : révision des portions apprises ces derniers jours. Manzil : révision tournante de tout ce que tu as appris avant.')}</p>
+  ${planDefsHtml(false)}
   <div class="row"><button data-act="plan-edit">${tr('Modifier le plan')}</button><button data-act="plan-del" style="color:var(--ko)">${tr('Supprimer le plan')}</button></div>`;
 }
 
@@ -1621,7 +1632,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v7';
+const APP_VERSION = '21 oct. 2026 · v8';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -1881,7 +1892,7 @@ function renderLegal(){
       tr("Données techniques : comme sur tout site, les hébergeurs et services utilisés peuvent enregistrer des informations de connexion, par exemple l'adresse IP.")])}
     ${sec('Pourquoi ?', [tr("Pour créer ton compte, te connecter et synchroniser ta progression entre tes appareils. L'administrateur peut consulter la liste des comptes et la progression pour gérer le service. Les données ne sont ni vendues ni utilisées pour de la publicité.")])}
     ${sec('Sur quelle base ?', [tr("Ton consentement, donné en cochant la case à l'inscription. Tu peux le retirer à tout moment en supprimant ton compte.")])}
-    ${sec('Qui reçoit les données ?', [tr("L'administrateur du site, et les services techniques utilisés : Supabase (comptes et base de données{region}), GitHub (hébergement du site), jsDelivr (bibliothèque du site), Google Fonts (polices), AlQuran Cloud (texte du Coran et audio). Certains de ces services sont situés hors de l'Union européenne.", {region})])}
+    ${sec('Qui reçoit les données ?', [tr("L'administrateur du site, et les services techniques utilisés : Supabase (comptes et base de données{region}), GitHub (hébergement du site), jsDelivr (bibliothèque du site), AlQuran Cloud (texte du Coran et audio). Certains de ces services sont situés hors de l'Union européenne.", {region})])}
     ${sec('Combien de temps ?', [tr("Tant que ton compte existe. Tu peux le supprimer à tout moment (Réglages, puis Mon compte) : ton compte et ta progression enregistrée sont alors effacés.")])}
     ${sec('Tes droits', [tr("Tu peux demander l'accès à tes données, leur rectification, leur effacement, leur portabilité, la limitation de leur traitement, ou t'opposer à certains usages. Tu peux déjà supprimer ton compte et exporter ta progression toi-même dans l'application ; pour toute autre demande, écris à {contact}. Tu peux aussi saisir la CNIL : {cnil}.", {contact, cnil})])}
     ${sec('Stockage sur ton appareil', [tr("Ce site n'utilise ni cookies publicitaires ni outil de mesure d'audience. Il garde sur ton appareil (stockage local et cache du navigateur) ta session, ta progression et les fichiers de l'application pour fonctionner hors ligne.")])}
