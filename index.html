@@ -1,0 +1,1242 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f6b4f">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Hifz">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Hifz – Teste ta mémorisation du Coran</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f1e7; --card:#fffdf8; --ink:#1d2a24; --muted:#6a766f; --line:#e3dac8;
+  --accent:#0f6b4f; --accent-ink:#fff; --ok:#1c8a5a; --okbg:#dff3e7; --ko:#b8392f; --kobg:#f9e1de; --mid:#b7791f; --midbg:#faefd6;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0f1714; --card:#17231e; --ink:#e8efe9; --muted:#93a39a; --line:#27382f;
+  --accent:#4cc79b; --accent-ink:#06261b; --ok:#5fd6a0; --okbg:#173a2b; --ko:#ff8d82; --kobg:#401f1c; --mid:#f0b95a; --midbg:#3d311a;}
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif}
+main{max-width:720px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:1.5rem;margin:.2em 0}
+h2{font-size:1.05rem;margin:0 0 .6em}
+.sub{color:var(--muted);margin:0 0 1.2em}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+label.f{display:block;font-size:.85rem;color:var(--muted);margin:10px 0 4px}
+select,input[type=number],input[type=text],input[type=time],textarea,.blankin{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1;min-width:120px}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 14px}
+button:hover{border-color:var(--accent)}
+button:disabled{opacity:.5;cursor:default}
+button.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.big{width:100%;padding:14px;font-size:1.05rem}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mode{text-align:left;padding:12px}
+.mode b{display:block}
+.mode small{color:var(--muted)}
+.mode.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.seg{display:flex;gap:6px;flex-wrap:wrap}.seg button{flex:1;min-width:110px}.seg button.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.ar{font-family:"Amiri Quran","Traditional Arabic",serif;direction:rtl;text-align:right;font-size:1.9rem;line-height:2.3;padding:6px 2px}
+.ref{color:var(--muted);font-size:.85rem}
+.bar{height:6px;background:var(--line);border-radius:6px;overflow:hidden;margin:6px 0 16px}.bar i{display:block;height:100%;background:var(--accent)}
+.top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:.9rem}
+.blank{display:inline-block;min-width:3.2em;border-bottom:2px dashed var(--accent);color:transparent;cursor:pointer;user-select:none;margin:0 .15em}
+.blank.rev{color:var(--accent);border-bottom-style:solid}
+.blankin{display:inline-block;width:6.5em;padding:2px 6px;font:inherit;font-family:"Amiri Quran",serif;font-size:1.5rem;direction:rtl;margin:0 .15em}
+.w-ok{color:var(--ok)} .w-ko{color:var(--ko);text-decoration:underline wavy}
+.wd{cursor:pointer;border-radius:6px;padding:0 2px}.wd:hover{background:var(--line)}.wd.bad{color:var(--ko);text-decoration:underline wavy}
+sup.vn{font-family:Inter,sans-serif;font-size:.6rem;color:var(--muted);margin:0 3px}
+.opt{display:block;width:100%;margin:8px 0;text-align:right;padding:10px 14px}
+.opt.ar{font-size:1.45rem;line-height:2}
+.opt.c{background:var(--okbg);border-color:var(--ok)} .opt.w{background:var(--kobg);border-color:var(--ko)}
+.fb{padding:10px 14px;border-radius:10px;margin:12px 0}
+.fb.ok{background:var(--okbg)} .fb.ko{background:var(--kobg)} .fb.mid{background:var(--midbg)}
+.grades{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.grades button{flex:1;min-width:110px}
+.stat{display:flex;gap:10px}.stat div{flex:1;text-align:center;background:var(--bg);border-radius:10px;padding:10px}
+.stat b{display:block;font-size:1.4rem}
+.weak{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.big-score{font-size:3rem;font-weight:600;text-align:center;margin:.2em 0}
+.foot{color:var(--muted);font-size:.78rem;text-align:center;margin-top:24px}
+.link{background:none;border:none;color:var(--muted);text-decoration:underline;padding:4px}
+.kbd{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.kbd button{min-width:44px;font-size:1.4rem;padding:2px 10px;font-family:"Amiri Quran",serif}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips button.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.sib{border-top:1px solid var(--line);margin-top:8px;padding-top:6px}
+.sib .ar{font-size:1.3rem;line-height:2}
+/* carte de progression */
+.grid{display:flex;flex-wrap:wrap;gap:4px}
+.cell{width:34px;height:30px;padding:0;font-size:.72rem;border-radius:6px;background:var(--line);color:var(--ink)}
+.cell.sm{width:15px;height:15px;border-radius:3px;font-size:0}
+.cell.l1{background:color-mix(in srgb,var(--accent) 25%,var(--card))}
+.cell.l2{background:color-mix(in srgb,var(--accent) 50%,var(--card))}
+.cell.l3{background:color-mix(in srgb,var(--accent) 75%,var(--card));color:var(--accent-ink)}
+.cell.l4{background:var(--accent);color:var(--accent-ink)}
+.legend{display:flex;gap:6px;align-items:center;font-size:.75rem;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:3px}
+.week{display:flex;gap:6px;align-items:flex-end;height:90px;margin-top:8px}
+.week div{flex:1;text-align:center;font-size:.7rem;color:var(--muted);display:flex;flex-direction:column;justify-content:flex-end;height:100%}
+.week i{display:block;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px;margin-bottom:3px}
+.goal{height:8px;background:var(--line);border-radius:8px;overflow:hidden;margin:6px 0 4px}.goal i{display:block;height:100%;background:var(--accent)}
+details summary{cursor:pointer;font-weight:600}
+details textarea{min-height:120px;margin-top:6px}
+/* menu d'application */
+#nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+#nav .in{display:flex;max-width:720px;margin:0 auto}
+#nav button{flex:1;border:0;border-radius:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px 9px;font-size:.68rem;color:var(--muted);position:relative}
+#nav button.sel{color:var(--accent);font-weight:600}
+#nav svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#nav .badge{position:absolute;top:4px;left:calc(50% + 6px);background:var(--ko);color:#fff;border-radius:10px;font-size:.62rem;line-height:1;padding:3px 5px;font-weight:600}
+body.has-nav main{padding-bottom:96px}
+.cta{position:sticky;bottom:calc(66px + env(safe-area-inset-bottom));padding:10px 0 4px;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:5}
+.grid.named{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:6px}
+.cell.named{width:auto;height:auto;padding:5px 6px;display:flex;flex-direction:column;align-items:flex-start;text-align:left;line-height:1.2}
+.cell.named b{font-size:.85rem}.cell.named small{font-size:.68rem;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85}
+/* lecteur */
+.rd{font-family:"Amiri Quran","Traditional Arabic",serif;direction:rtl;text-align:justify;line-height:2.5;padding:4px 2px}
+.rv{border-radius:8px;transition:background .2s}
+.rv.hid{filter:blur(9px);cursor:pointer;user-select:none}
+.rv.playing,.rv.focus{background:color-mix(in srgb,var(--accent) 18%,transparent)}
+.vend{color:var(--accent);font-size:.8em;white-space:nowrap}
+.pl{display:flex;gap:10px;align-items:baseline;justify-content:flex-start;padding:2px 4px;border-bottom:1px solid var(--line)}
+.pl .psep{color:var(--accent);font-size:.7em;flex:none}.pl .pn,.pp .pn{font-family:Inter,sans-serif;font-size:.65rem;color:var(--muted);flex:none;min-width:1.6em;text-align:center}
+.pp{padding:4px;border-bottom:1px solid var(--line)}
+.hero{display:flex;align-items:center;gap:12px;margin:2px 0 14px}
+.hero .logo{width:44px;height:44px;border-radius:12px;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-family:"Amiri Quran",serif;font-size:1.3rem}
+.hero h1{margin:0;line-height:1.1}.hero p{margin:0;color:var(--muted);font-size:.9rem}
+.sumline{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
+.sumline span{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:.82rem}
+.list-btn{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;margin-top:8px}
+</style>
+</head>
+<body>
+<script src="moutoun.js"></script>
+<script src="mutashabihat.js"></script>
+<main id="app"><p class="sub">Chargement du texte du Coran…</p></main>
+<nav id="nav" hidden aria-label="Menu principal"></nav>
+
+<script>
+/* ---------- utilitaires ---------- */
+const $app = document.getElementById('app');
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const rnd = n => Math.floor(Math.random() * n);
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* Normalisation arabe (mode souple) : on ignore voyelles, signes coraniques, variantes d'alif/ya/ta marbuta */
+const norm = w => w
+  .replace(/[ؐ-ًؚ-ٰٟۖ-ۭـ࣓-ࣿ﻿]/g, '')
+  .replace(/[إأآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه')
+  .replace(/[^ء-ي]/g, '');
+function lev(a, b){
+  const d = Array.from({length: a.length + 1}, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+/* Orthographe uthmani ≠ courante (ex. الصلوة / الصلاة) : tolérance d'une lettre sur les mots longs (souple et moutoun) */
+const same = (a, b) => a === b || (a.length >= 5 && b.length >= 5 && lev(a, b) <= 1);
+/* Correction stricte/standard : lettres + voyelles (fatha, damma, kasra, soukoun, chadda, tanwin) exactes.
+   Toujours toléré (orthographe, pas mémoire) : signes de récitation, tatwil, madda, alif de prolongation (ٰ / ا / وٰ),
+   alif wasla ٱ = ا, ى = ي.
+   Niveau « standard » en plus : soukoun ignoré et chadda ignorée sur la 1re lettre d'un mot (assimilation / idghām,
+   que l'écriture courante ne note pas comme l'uthmani). */
+function skey(w, tol){
+  let t = w.replace(/ۡ/g, 'ْ').replace(/[وي]ٰ/g, '').replace(/ٱ/g, 'ا').replace(/ى/g, 'ي').replace(/آ/g, 'ءَا')
+    .replace(/[^ء-يً-ْ]/g, '');
+  if (tol) t = t.replace(/ْ/g, '').replace(/^(.[ً-ْ]*)/, m => m.replace(/ّ/g, ''));
+  t = t.replace(/[ً-ْ]+/g, m => [...m].sort().join(''));
+  return t ? t[0] + t.slice(1).replace(/ا(?![ً-ْ])/g, '') : '';
+}
+const ck = w => skey(w, cfg.corr === 'standard');
+function tokenize(text){
+  const tok = text.replace(/﻿/g, '').trim().split(/\s+/);
+  const nw = tok.map(norm);
+  const idx = nw.map((w, i) => w ? i : -1).filter(i => i >= 0);
+  return {tok, nw, idx, sk: tok.map(ck)};
+}
+function splitPoint(words){ // prose : coupe près du milieu, de préférence après une ponctuation
+  const n = words.length; let best = null;
+  for (let i = Math.floor(n * .35); i <= Math.floor(n * .65); i++)
+    if (i && /[،:؛.؟"”]$/.test(words[i - 1]) && (best === null || Math.abs(i - n / 2) < Math.abs(best - n / 2))) best = i;
+  return best || Math.ceil(n / 2);
+}
+
+/* ---------- données ---------- */
+let Q = null; // [{n, ar, en, a:[{t, j, p}]}]
+let MT = {};  // moutoun : id -> {ar, fr, author, kind, unit, source, a:[{t, m}]}
+let custom = store.get('hifz.custom', []); // moutoun ajoutés par l'utilisateur
+const MS = (window.MUTASHABIHAT && window.MUTASHABIHAT.pairs) || {}; // versets proches (calculés)
+let OFF = [], PAGE_LEN = [];
+const isQ = s => typeof s === 'number';
+const book = s => isQ(s) ? Q[s - 1] : MT[s];
+const pk = k => { const [s, a] = k.split(':'); return {s: /^\d+$/.test(s) ? +s : s, a: +a}; };
+const CACHE_KEY = 'hifz.quran.v2';
+async function loadQuran(){
+  Q = store.get(CACHE_KEY, null);
+  if (!(Q && Q.length === 114)){
+    const r = await fetch('https://api.alquran.cloud/v1/quran/quran-uthmani');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const surahs = (await r.json()).data.surahs;
+    Q = surahs.map(s => ({
+      n: s.number, ar: s.name, en: s.englishName,
+      a: s.ayahs.map((v, i) => {
+        let t = v.text.replace(/﻿/g, '').trim();
+        // l'API préfixe la basmala au verset 1 (sauf sourates 1 et 9) : on la retire
+        if (i === 0 && s.number !== 1 && s.number !== 9) t = t.split(/\s+/).slice(4).join(' ');
+        return {t, j: v.juz, p: v.page};
+      })
+    }));
+    store.set(CACHE_KEY, Q);
+  }
+  let n = 0; OFF = Q.map(s => { const o = n; n += s.a.length; return o; });
+  PAGE_LEN = new Array(605).fill(0); Q.forEach(s => s.a.forEach(v => PAGE_LEN[v.p]++));
+}
+
+/* ---------- état persistant ---------- */
+const DEF = {mode: 'mix', scope: {type: 'surah', from: 78, to: 114}, n: 10, input: 'recite', level: 40,
+  corr: 'standard', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9};
+const stored = store.get('hifz.cfg', {});
+let cfg = Object.assign({}, DEF, stored);
+if (stored.strict === false && !stored.corr) cfg.corr = 'soft';   // ancien réglage
+if (stored.strict === true && !stored.corr) cfg.corr = 'strict';
+let stats = store.get('hifz.stats', {}); // "s:a" -> [ok, ko]
+let errors = store.get('hifz.errors', []); // journal : {t, k, m, sc, ans?, bad?[]}
+let sched = store.get('hifz.sched', {}); // "s:a" -> {iv: jours, due: timestamp}
+let days = store.get('hifz.days', {});   // "AAAA-MM-JJ" -> nb de réponses
+const saveCfg = () => store.set('hifz.cfg', cfg);
+const today = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const key = r => r.s + ':' + r.a;
+const verse = r => book(r.s).a[r.a - 1].t;
+const slen = s => book(s).a.length;
+const sname = s => isQ(s) ? `${Q[s-1].en} · ${Q[s-1].ar}` : `${MT[s].fr} · ${MT[s].ar}`;
+const rlabel = r => isQ(r.s) ? `Sourate ${r.s} – ${Q[r.s-1].en}, verset ${r.a} · page ${Q[r.s-1].a[r.a-1].p}`
+  : `${MT[r.s].fr}, ${MT[r.s].unit} ${r.a}`;
+function record(r, score){
+  const [ok, ko] = stats[key(r)] || [0, 0];
+  stats[key(r)] = [ok + score, ko + (1 - score)];
+  store.set('hifz.stats', stats);
+  // répétition espacée : réussite → intervalle ×2,2 ; hésitation → inchangé ; raté → à revoir dans 6 h
+  const k = key(r), prev = sched[k]?.iv || 0;
+  const iv = score === 1 ? (prev ? prev * 2.2 : 1) : score >= 0.5 ? Math.max(prev, 1) : 0.25;
+  sched[k] = {iv, due: Date.now() + iv * 864e5};
+  store.set('hifz.sched', sched);
+  days[today()] = (days[today()] || 0) + 1;
+  store.set('hifz.days', days);
+}
+const dueRefs = () => Object.entries(sched).filter(([, v]) => v.due <= Date.now())
+  .sort((a, b) => a[1].due - b[1].due).map(([k]) => pk(k)).filter(r => book(r.s));
+function streak(){
+  let n = 0; const d = new Date();
+  if (!days[today(d)]) d.setDate(d.getDate() - 1);
+  while (days[today(d)]){ n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+
+function buildPool(sc){
+  const p = [];
+  if (sc.type === 'matn'){
+    for (const id of Object.keys(MT)) if (sc.id === 'all' || sc.id === id) MT[id].a.forEach((_, i) => p.push({s: id, a: i + 1}));
+    return p;
+  }
+  for (const S of Q){
+    if (sc.type === 'surah' && (S.n < sc.from || S.n > sc.to)) continue;
+    S.a.forEach((v, i) => {
+      if (sc.type === 'juz' && (v.j < sc.from || v.j > sc.to)) return;
+      if (sc.type === 'page' && (v.p < sc.from || v.p > sc.to)) return;
+      p.push({s: S.n, a: i + 1});
+    });
+  }
+  return p;
+}
+function pickWeighted(list){
+  const w = list.map(r => {
+    const [ok, ko] = stats[key(r)] || [0, 0];
+    return (ok + ko) === 0 ? 2 : 0.3 + 3 * ko / (ok + ko);
+  });
+  let x = Math.random() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < list.length; i++){ x -= w[i]; if (x <= 0) return list[i]; }
+  return list[list.length - 1];
+}
+
+/* ---------- audio (récitation verset par verset : cdn.islamic.network / AlQuran Cloud) ---------- */
+const RECITERS = [['ar.alafasy', 'Mishary Alafasy', 128], ['ar.husary', 'Al-Husary', 128], ['ar.husarymujawwad', 'Al-Husary (mujawwad)', 128],
+  ['ar.mahermuaiqly', 'Maher Al-Muaiqly', 128], ['ar.hudhaify', 'Al-Hudhaify', 128], ['ar.muhammadayyoub', 'Muhammad Ayyoub', 128],
+  ['ar.abdurrahmaansudais', 'Abdurrahmaan As-Sudais', 64], ['ar.saoodshuraym', 'Saood Ash-Shuraym', 64]];
+const audioUrl = r => {
+  const rc = RECITERS.find(x => x[0] === cfg.reciter) || RECITERS[0];
+  return `https://cdn.islamic.network/quran/audio/${rc[2]}/${rc[0]}/${OFF[r.s - 1] + r.a}.mp3`;
+};
+const player = new Audio();
+let playQ = [], playDone = null;
+function playUrls(urls, done){
+  stopAudio(); playQ = urls.slice(); playDone = done || null; step();
+}
+function step(){
+  if (!playQ.length){ const d = playDone; playDone = null; if (d) d(); return; }
+  player.src = playQ.shift();
+  player.play().catch(() => { playQ = []; const m = $('audio-msg'); if (m) m.textContent = 'Audio indisponible (connexion ?).'; });
+}
+player.onended = step;
+function stopAudio(){ playQ = []; playDone = null; try { player.pause(); } catch {} }
+const audioHtml = () => (cur && cur.audio && cur.audio.length && isQ(cur.audio[0].s))
+  ? `<div class="grades"><button data-act="play">🔊 Écouter (${(RECITERS.find(x => x[0] === cfg.reciter) || RECITERS[0])[1]})</button><button data-act="stopaudio" style="flex:0 0 auto;min-width:0">⏹</button></div><p class="ref" id="audio-msg"></p>` : '';
+
+/* ---------- écran d'accueil ---------- */
+const MODES = [
+  ['mix',    'Mélange',            'Tous les exercices'],
+  ['next',   'Verset suivant',     'Donne la suite du verset'],
+  ['cloze',  'Mots manquants',     'Complète le verset'],
+  ['which',  'Quelle sourate ?',   'Identifie d\'où vient le verset'],
+  ['mcq',    'Suite en QCM',       'Choisis le bon verset suivant'],
+  ['mutash', 'Versets proches',    'Ne confonds pas les versets qui se ressemblent', 'q'],
+  ['start',  'Début de sourate',   'Récite le premier verset', 'q'],
+  ['order',  'Ordre des sourates', 'Quelle sourate vient après ?', 'q'],
+  ['end',    'Fin de sourate',     'Récite les derniers versets', 'q'],
+  ['link',   'Fin + début suivant','Enchaîne la fin d\'une sourate et le début de la suivante', 'q'],
+  ['cont',   'Récitation continue','Un passage entier d\'une traite'],
+  ['half',   'Demi-vers',          'Complète la 2e moitié', 'm'],
+  ['phrase', 'Phrase suivante',    'Prose : complète la phrase suivante', 'm']
+];
+function opts(n, sel){ let h = ''; for (let i = 1; i <= n; i++) h += `<option value="${i}" ${i === sel ? 'selected' : ''}>${i}</option>`; return h; }
+function surahOpts(sel){ return Q.map(s => `<option value="${s.n}" ${s.n === sel ? 'selected' : ''}>${s.n}. ${s.en}</option>`).join(''); }
+function srcNote(sc){
+  const L = (sc.id === 'all' ? Object.values(MT) : [MT[sc.id]]).filter(Boolean);
+  return L.map(t => `<p class="ref" style="margin:8px 0 0"><b>${esc(t.fr)}</b>${t.author ? ` (${esc(t.author)})` : ''} — source : ${t.source.url
+    ? `<a href="${t.source.url}" target="_blank" rel="noopener">${esc(t.source.name)}</a>` : esc(t.source.name)}. ${esc(t.source.note)}.${t.custom
+    ? ` <button class="link" data-act="delcustom" data-v="${t.id}">Supprimer</button>` : ''}</p>`).join('');
+}
+
+/* progression par sourate / page / matn */
+function levelOf(e, len){
+  if (!e) return 0;
+  const m = (e.ok / ((e.ok + e.ko) || 1)) * (e.seen / len);
+  return m < .15 ? 1 : m < .4 ? 2 : m < .7 ? 3 : 4;
+}
+function mapHtml(){
+  const by = {}; // id -> {seen, ok, ko}
+  for (const [k, [ok, ko]] of Object.entries(stats)){
+    const r = pk(k); if (!book(r.s)) continue;
+    const id = cfg.map === 'p' ? (isQ(r.s) ? Q[r.s-1].a[r.a-1].p : null) : cfg.map === 's' ? (isQ(r.s) ? r.s : null) : (isQ(r.s) ? null : r.s);
+    if (id === null) continue;
+    const e = (by[id] ||= {seen: 0, ok: 0, ko: 0}); e.seen++; e.ok += ok; e.ko += ko;
+  }
+  const tabs = `<div class="seg" style="margin-bottom:10px">${[['s', 'Sourates'], ['p', 'Pages'], ['m', 'Moutoun']]
+    .map(([k, t]) => `<button class="${cfg.map === k ? 'sel' : ''}" data-act="maptab" data-v="${k}">${t}</button>`).join('')}</div>`;
+  let body;
+  if (cfg.map === 's') body = Q.map(S => { const lv = levelOf(by[S.n], S.a.length), e = by[S.n];
+    return `<button class="cell named l${lv}" data-act="cell" data-v="${S.n}" title="${S.n}. ${S.en}${e ? ' · ' + Math.round(100 * e.ok / (e.ok + e.ko)) + ' % · ' + e.seen + '/' + S.a.length + ' versets vus' : ''}"><b>${S.n}</b><small>${esc(S.en)}</small></button>`; }).join('');
+  else if (cfg.map === 'p') body = Array.from({length: 604}, (_, i) => { const p = i + 1, lv = levelOf(by[p], PAGE_LEN[p] || 1);
+    return `<button class="cell sm l${lv}" data-act="pcell" data-v="${p}" title="page ${p}"></button>`; }).join('');
+  else body = Object.values(MT).map(t => { const e = by[t.id], lv = levelOf(e, t.a.length);
+    return `<div class="weak" style="width:100%"><span>${esc(t.fr)}</span><span>${e ? Math.round(100 * e.ok / (e.ok + e.ko)) + ' % · ' + e.seen + '/' + t.a.length : 'pas commencé'}</span></div>`; }).join('');
+  return `${tabs}<div class="grid${cfg.map === 's' ? ' named' : ''}">${body}</div>
+    <div class="legend">pas vu <i class="cell" style="width:14px;height:14px"></i><i class="cell l1" style="width:14px;height:14px"></i><i class="cell l2" style="width:14px;height:14px"></i><i class="cell l3" style="width:14px;height:14px"></i><i class="cell l4" style="width:14px;height:14px"></i> maîtrisé</div>
+    <p class="ref" style="margin:4px 0 0">Maîtrise = réussite × part des versets déjà vus.${cfg.map === 'm' ? '' : ' Touche une case pour réviser.'}</p>`;
+}
+function weekHtml(){
+  const out = [], names = ['D', 'L', 'M', 'M', 'J', 'V', 'S']; let tot = 0, act = 0;
+  for (let i = 6; i >= 0; i--){ const d = new Date(); d.setDate(d.getDate() - i); const n = days[today(d)] || 0; tot += n; if (n) act++; out.push([names[d.getDay()], n]); }
+  const mx = Math.max(cfg.goal, ...out.map(x => x[1]));
+  return `<div class="week">${out.map(([l, n]) => `<div title="${n} réponses"><i style="height:${Math.round(70 * n / mx)}px"></i>${l}</div>`).join('')}</div>
+    <p class="ref" style="margin:4px 0 0">7 derniers jours : ${tot} réponses, ${act} jour${act > 1 ? 's' : ''} actif${act > 1 ? 's' : ''}.</p>`;
+}
+
+/* ---------- navigation : menu en bas, un écran à la fois ---------- */
+const TABS = [
+  ['home', 'Accueil', '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>'],
+  ['train', 'Réviser', '<path d="M12 6.5C10.5 5 8 4.5 4 4.5v13c4 0 6.5.5 8 2 1.5-1.5 4-2 8-2v-13c-4 0-6.5.5-8 2z"/><path d="M12 6.5v13"/>'],
+  ['progress', 'Progrès', '<path d="M5 20V11M12 20V4M19 20v-6"/>'],
+  ['errors', 'Erreurs', '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'],
+  ['settings', 'Réglages', '<path d="M4 6h8M16 6h4M4 12h2M10 12h10M4 18h10M18 18h2"/><circle cx="14" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="18" r="2"/>']
+];
+function setNav(on){
+  const n = $('nav'); n.hidden = !on; document.body.classList.toggle('has-nav', on);
+  if (!on) return;
+  const due = dueRefs().length;
+  n.innerHTML = `<div class="in">${TABS.map(([id, t, ico]) => `<button class="${cfg.tab === id ? 'sel' : ''}" data-act="tab" data-v="${id}" aria-label="${t}"${cfg.tab === id ? ' aria-current="page"' : ''}>
+    <svg viewBox="0 0 24 24" aria-hidden="true">${ico}</svg>${t}${id === 'home' && due ? `<span class="badge">${due > 99 ? '99+' : due}</span>` : ''}</button>`).join('')}</div>`;
+}
+const scopeLabel = sc => sc.type === 'matn' ? (sc.id === 'all' ? 'Tous les moutoun' : MT[sc.id]?.fr || 'Matn')
+  : sc.type === 'all' ? 'Tout le Coran'
+  : sc.type === 'surah' ? (sc.from === sc.to ? `Sourate ${sc.from} · ${Q[sc.from - 1].en}` : `Sourates ${sc.from} ${Q[sc.from - 1].en} → ${sc.to} ${Q[sc.to - 1].en}`)
+  : sc.type === 'juz' ? (sc.from === sc.to ? `Juz' ${sc.from}` : `Juz' ${sc.from}–${sc.to}`)
+  : (sc.from === sc.to ? `Page ${sc.from}` : `Pages ${sc.from}–${sc.to}`);
+const modeTitle = id => (MODES.find(m => m[0] === id) || [])[1] || id;
+const INPUTS = {recite: 'je récite', type: 'je tape', voice: 'à voix haute'};
+
+function home(){ // affiche l'écran du menu courant
+  stopAudio(); ls = null;
+  if (!TABS.some(t => t[0] === cfg.tab)) cfg.tab = 'home';
+  $app.innerHTML = ({home: tabHome, train: tabTrain, progress: tabProgress, errors: tabErrors, settings: tabSettings})[cfg.tab]();
+  setNav(true);
+  $app.querySelectorAll('select').forEach(el => { if (el.id.startsWith('cm-')) return;
+    el.onchange = () => { syncCfg(); if (['stype', 'sgoal'].includes(el.id)) home(); }; });
+  if ($('impfile')) $('impfile').onchange = e => importFile(e.target.files[0]);
+}
+function syncCfg(){
+  const v = id => $(id) ? $(id).value : null;
+  if ($('stype')){
+    const isM = cfg.scope.type === 'matn', t = isM ? 'matn' : v('stype');
+    if (t === 'matn'){ cfg.scope = {type: 'matn', id: v('smatn') || 'all'}; }
+    else {
+      let f = +v('sfrom'), e = +v('sto');
+      if (t !== cfg.scope.type){ [f, e] = {surah: [78, 114], juz: [30, 30], page: [582, 604], all: [1, 114]}[t]; }
+      if (f > e) [f, e] = [e, f];
+      cfg.scope = {type: t, from: f || 1, to: e || 114};
+    }
+  }
+  if ($('sn')){ cfg.n = +v('sn'); cfg.level = +v('slevel'); cfg.contLen = +v('scont'); cfg.endLen = +v('send'); cfg.begLen = +v('sbeg'); }
+  if ($('srec')){ cfg.reciter = v('srec'); cfg.goal = +v('sgoal'); }
+  saveCfg();
+}
+function go(tab){ cfg.tab = tab; saveCfg(); home(); window.scrollTo(0, 0); }
+
+/* -- Accueil : l'essentiel du jour -- */
+function tabHome(){
+  const due = dueRefs(), td = days[today()] || 0, st = streak();
+  const top = aggErrors(errors.filter(e => e.t >= Date.now() - 7 * 864e5)).slice(0, 3);
+  return `
+  <div class="hero"><div class="logo">حفظ</div><div><h1>Hifz</h1><p>Que ta mémorisation soit bénie.</p></div></div>
+
+  <div class="card"><h2>Aujourd'hui</h2>
+    <p class="sub" style="margin:0 0 4px">🔥 ${st} jour${st > 1 ? 's' : ''} d'affilée · objectif : ${Math.min(td, cfg.goal)} / ${cfg.goal}</p>
+    <div class="goal"><i style="width:${Math.min(100, 100 * td / cfg.goal)}%"></i></div>
+    ${td >= cfg.goal ? '<p class="ref" style="margin:0 0 8px">Objectif atteint, machaa Allah 🎉</p>' : ''}
+    ${due.length ? `<button class="pri big" style="margin-top:8px" data-act="review">Réviser mes versets dus (${due.length})</button>`
+      : `<p class="sub" style="margin:8px 0 0">Rien à revoir pour l'instant. Lance une série : les versets à retravailler reviendront ici au bon moment.</p>`}
+  </div>
+
+  <div class="card"><h2>Ma série</h2>
+    <div class="sumline"><span>${cfg.scope.type === 'matn' ? '📜 Moutoun' : '📖 Coran'}</span><span>${esc(scopeLabel(cfg.scope))}</span>
+      <span>${esc(modeTitle(cfg.mode))}</span><span>${cfg.n} questions</span><span>${INPUTS[cfg.input] || ''}</span></div>
+    <button class="pri big" data-act="start">Commencer</button>
+    <div class="row" style="margin-top:8px"><button data-act="tab" data-v="train">Modifier</button><button data-act="lsopen">🎧 Écouter</button></div>
+  </div>
+
+  ${top.length ? `<div class="card"><h2>Mes erreurs de la semaine</h2>${top.map(a => `<div class="weak"><span>${rlabel(a.r)}</span><span>${a.n}×</span></div>`).join('')}
+    <button class="list-btn" data-act="tab" data-v="errors"><span>Voir toutes mes erreurs</span><span>›</span></button></div>` : ''}`;
+}
+
+/* -- Réviser : tout pour préparer une série -- */
+function tabTrain(){
+  const sc = cfg.scope, isM = sc.type === 'matn';
+  return `
+  <h1>Réviser</h1>
+  <p class="sub">Choisis ce que tu veux travailler, puis lance la série.</p>
+
+  <div class="card"><h2>Je veux réviser</h2>
+    <div class="seg">
+      <button class="${isM ? '' : 'sel'}" data-act="corpus" data-v="quran">📖 Le Coran</button>
+      <button class="${isM ? 'sel' : ''}" data-act="corpus" data-v="matn">📜 Les moutoun</button>
+    </div>
+  </div>
+
+  <div class="card"><h2>Exercice</h2>
+    <div class="modes">${MODES.filter(([, , , w]) => !w || (w === 'm') === isM).map(([id, t, d]) =>
+      `<button class="mode ${cfg.mode === id ? 'sel' : ''}" data-act="mode" data-v="${id}"><b>${isM && id === 'which' ? 'Quel matn ?' : t}</b><small>${d}</small></button>`).join('')}</div>
+  </div>
+
+  <div class="card"><h2>Portée</h2>
+    <label class="f" ${isM ? 'hidden' : ''}>Réviser…</label>
+    <select id="stype" ${isM ? 'hidden' : ''}>
+      <option value="surah" ${sc.type === 'surah' ? 'selected' : ''}>Une plage de sourates</option>
+      <option value="juz" ${sc.type === 'juz' ? 'selected' : ''}>Un ou plusieurs juz'</option>
+      <option value="page" ${sc.type === 'page' ? 'selected' : ''}>Des pages du Mushaf (1–604)</option>
+      <option value="all" ${sc.type === 'all' ? 'selected' : ''}>Tout le Coran</option>
+    </select>
+    <div id="smatn-row" ${isM ? '' : 'hidden'}>
+      <label class="f">Matn</label>
+      <select id="smatn"><option value="all">Tous les moutoun</option>${Object.values(MT).map(t => `<option value="${t.id}" ${sc.id === t.id ? 'selected' : ''}>${esc(t.fr)} · ${esc(t.ar)} (${t.a.length})</option>`).join('')}</select>
+      ${isM ? srcNote(sc) : ''}
+      <details style="margin-top:12px"><summary>➕ Ajouter mon propre matn</summary>
+        <label class="f">Titre</label><input type="text" id="cm-title" placeholder="ex. Alfiyya – Ibn Mālik">
+        <label class="f">Type de texte</label>
+        <select id="cm-kind"><option value="poem">Poème (un vers par ligne, les deux moitiés séparées par *)</option><option value="prose">Prose (un passage par ligne)</option></select>
+        <label class="f">Texte (copie-le depuis ton édition de référence)</label>
+        <textarea id="cm-text" dir="rtl" lang="ar" placeholder="الحمد لله ربي * ..."></textarea>
+        <button class="pri" style="margin-top:8px" data-act="addcustom">Enregistrer ce matn</button>
+        <p class="ref">Le texte reste sur cet appareil. Si tu n'indiques pas de séparateur *, chaque vers est coupé au milieu.</p>
+      </details>
+    </div>
+    <div class="row" id="srange" ${sc.type === 'all' || isM ? 'hidden' : ''}>
+      <div><label class="f">De</label><select id="sfrom">${sc.type === 'juz' ? opts(30, sc.from) : sc.type === 'page' ? opts(604, sc.from) : surahOpts(sc.from)}</select></div>
+      <div><label class="f">À</label><select id="sto">${sc.type === 'juz' ? opts(30, sc.to) : sc.type === 'page' ? opts(604, sc.to) : surahOpts(sc.to)}</select></div>
+    </div>
+  </div>
+
+  <div class="card"><h2>Options de la série</h2>
+    <div class="row">
+      <div><label class="f">Nombre de questions</label>
+        <select id="sn">${[5, 10, 20, 30].map(n => `<option ${n === cfg.n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      <div><label class="f">Mots cachés (mots manquants)</label>
+        <select id="slevel">${[20, 40, 60, 80].map(n => `<option value="${n}" ${n === cfg.level ? 'selected' : ''}>${n} %</option>`).join('')}</select></div>
+      <div><label class="f">Versets en récitation continue</label>
+        <select id="scont">${[3, 5, 8, 10, 15].map(n => `<option ${n === cfg.contLen ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      <div ${isM ? 'hidden' : ''}><label class="f">Versets de fin de sourate</label>
+        <select id="send">${[1, 2, 3, 5].map(n => `<option ${n === cfg.endLen ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      <div ${isM ? 'hidden' : ''}><label class="f">Versets de début (sourate suivante)</label>
+        <select id="sbeg">${[1, 2, 3].map(n => `<option ${n === cfg.begLen ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+    </div>
+    <label class="f">Façon de répondre${SR ? '' : ' (la voix n\'est pas disponible dans ce navigateur : essaie Chrome ou Safari)'}</label>
+    <div class="seg">
+      <button class="${cfg.input === 'recite' ? 'sel' : ''}" data-act="input" data-v="recite">Je récite, puis je marque mes erreurs</button>
+      <button class="${cfg.input === 'type' ? 'sel' : ''}" data-act="input" data-v="type">Je tape en arabe</button>
+      ${SR ? `<button class="${cfg.input === 'voice' ? 'sel' : ''}" data-act="input" data-v="voice">🎤 Je récite à voix haute</button>` : ''}
+    </div>
+  </div>
+
+  <div class="row"><button class="big" data-act="rdscope">📖 Lire le texte complet</button><button class="big" data-act="lsopen">🎧 Écouter ma portée</button></div>
+  <div class="cta"><button class="pri big" data-act="start">Commencer · ${esc(scopeLabel(sc))}</button></div>`;
+}
+
+/* -- Progrès : statistiques et carte -- */
+function tabProgress(){
+  const tot = Object.values(stats).reduce((a, [o, k]) => [a[0] + o, a[1] + k], [0, 0]), answered = tot[0] + tot[1];
+  const per = {};
+  for (const [k, [o, ko]] of Object.entries(stats)){ const s = k.split(':')[0]; if (!book(pk(k).s)) continue; (per[s] ||= [0, 0]); per[s][0] += o; per[s][1] += ko; }
+  const weak = Object.entries(per).filter(([, [o, k]]) => o + k >= 3)
+    .map(([s, [o, k]]) => [s, o / (o + k), o + k]).sort((a, b) => a[1] - b[1]).slice(0, 5);
+  return `
+  <h1>Progrès</h1>
+  <p class="sub">Où tu en es, sourate par sourate.</p>
+  <div class="card">${answered ? `<div class="stat"><div><b>${Math.round(answered)}</b>réponses</div>
+    <div><b>${Math.round(100 * tot[0] / answered)} %</b>réussite</div>
+    <div><b>${Object.keys(stats).length}</b>versets vus</div></div>`
+    : `<p class="sub" style="margin:0">Pas encore de statistiques : fais ta première série.</p>`}</div>
+  <div class="card"><h2>Cette semaine</h2>${weekHtml()}</div>
+  <div class="card"><h2>Carte de progression</h2>${mapHtml()}</div>
+  ${weak.length ? `<div class="card">${weakHtml(weak)}</div>` : ''}`;
+}
+
+/* -- Réglages -- */
+function tabSettings(){
+  const isM = cfg.scope.type === 'matn';
+  const corrTxt = {strict: 'Chaque lettre, chaque voyelle, soukoun et chadda compris : une seule faute = raté.',
+    standard: 'Lettres et voyelles exactes ; soukoun et chadda d\'assimilation (idghām) tolérés comme dans l\'écriture courante.',
+    soft: 'Les voyelles sont ignorées et une petite faute de frappe est tolérée.'}[cfg.corr];
+  return `
+  <h1>Réglages</h1>
+  <p class="sub">Correction, indices, audio, sauvegarde.</p>
+
+  <div class="card"><h2>Correction de la saisie (Coran)</h2>
+    <div class="seg">${[['strict', 'Stricte'], ['standard', 'Standard'], ['soft', 'Souple']].map(([k, t]) =>
+      `<button class="${cfg.corr === k ? 'sel' : ''}" data-act="corr" data-v="${k}">${t}</button>`).join('')}</div>
+    <p class="ref" style="margin:8px 0 0">${corrTxt}${cfg.corr === 'soft' ? '' : ' La voix ne peut pas vérifier les voyelles.'} Les moutoun gardent une correction souple.</p>
+  </div>
+
+  <div class="card"><h2>Indices affichés avec le verset à compléter</h2>
+    <div class="chips">${[['s', 'Sourate / titre du matn'], ['v', 'N° du verset'], ['p', 'N° de page']]
+      .map(([k, t]) => `<button class="${cfg.show[k] ? 'sel' : ''}" data-act="show" data-v="${k}">${cfg.show[k] ? '✓ ' : ''}${t}</button>`).join('')}</div>
+  </div>
+
+  <div class="card"><h2>Audio et objectif</h2>
+    <div class="row">
+      <div><label class="f">Récitateur</label>
+        <select id="srec">${RECITERS.map(([id, n]) => `<option value="${id}" ${id === cfg.reciter ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      <div><label class="f">Objectif quotidien (réponses)</label>
+        <select id="sgoal">${[10, 20, 30, 50, 100].map(n => `<option ${n === cfg.goal ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+    </div>
+    <div class="row" style="margin-top:12px;align-items:end"><div><label class="f">Rappel quotidien (calendrier)</label><input type="time" id="rtime" value="20:00"></div>
+      <button data-act="ics">📅 Ajouter au calendrier</button></div>
+  </div>
+
+  <div class="card"><h2>Mes données</h2>
+    <div class="row"><button data-act="export">⬇ Exporter ma progression</button><button data-act="import">⬆ Importer</button></div>
+    <input type="file" id="impfile" accept="application/json,.json" hidden>
+    <p class="ref" style="margin:8px 0 0">Tout est stocké sur cet appareil. Exporte régulièrement pour ne rien perdre en changeant de téléphone.</p>
+    <p style="margin:6px 0 0"><button class="link" data-act="reset" style="color:var(--ko)">Réinitialiser statistiques et historique</button></p>
+  </div>
+
+  <div class="card"><h2>Sources</h2>
+    <p class="ref" style="margin:0">Coran : texte uthmani du projet Tanzil via api.alquran.cloud (lecture de Ḥafṣ). Audio : cdn.islamic.network (AlQuran Cloud). Moutoun : Wikisource arabe et hadith-api (voir l'écran Réviser pour chaque matn). Versets proches : calculés automatiquement.</p>
+  </div>`;
+}
+const weakHtml = weak => weak.length ? `<h2 style="margin-top:14px">À retravailler</h2>` + weak.map(([s, r, n]) =>
+  `<div class="weak"><span>${sname(pk(s + ':1').s)}</span><span>${Math.round(r * 100)} % · ${Math.round(n)} rép.</span></div>`).join('') : '';
+
+/* ---------- séance ---------- */
+let ses = null, cur = null, ls = null;
+function start(fixed){
+  const pool = fixed || buildPool(cfg.scope);
+  if (!pool.length) return alert('Aucun verset dans cette portée.');
+  ses = {pool, fixed: !!fixed, i: 0, score: 0, missed: [], used: new Set(), total: fixed ? fixed.length : cfg.n};
+  nextQ();
+}
+function shell(inner){
+  setNav(false);
+  $app.innerHTML = `
+  <div class="top"><button class="link" data-act="home">✕ Quitter</button><span>${ses.i} / ${ses.total}</span></div>
+  <div class="bar"><i style="width:${100 * (ses.i - 1) / ses.total}%"></i></div>
+  <div class="card">${inner}</div>`;
+}
+/* versets proches */
+const sibsOf = r => (MS[key(r)] || []).map(x => { const [s, a, p] = x.split(':').map(Number); return {s, a, p}; });
+const nextOf = r => ({s: r.s, a: r.a + 1});
+const mutashOk = r => r.a < slen(r.s) && sibsOf(r).some(x => x.a < slen(x.s) && verse(nextOf(x)) !== verse(nextOf(r)));
+/* phrases (prose) */
+function clausesOf(r){
+  const u = book(r.s).a[r.a - 1], w = u.t.split(/\s+/), out = []; let c = [];
+  if (book(r.s).kind === 'poem' && u.m) return [w.slice(0, u.m).join(' '), w.slice(u.m).join(' ')];
+  for (const t of w){ c.push(t); if (/[،:؛.؟!]["”]?$/.test(t) && c.length >= 3){ out.push(c.join(' ')); c = []; } }
+  if (c.length){ if (c.length < 3 && out.length) out[out.length - 1] += ' ' + c.join(' '); else out.push(c.join(' ')); }
+  return out;
+}
+function nextQ(){
+  stopAudio();
+  if (ses.i >= ses.total) return results();
+  ses.i++;
+  const hasQ = ses.pool.some(r => isQ(r.s)), hasM = ses.pool.some(r => !isQ(r.s));
+  let m = cfg.mode;
+  if (m === 'mix'){
+    const L = ['next', 'cloze', 'which', 'mcq'];
+    if (hasQ) L.push('mutash', 'start', 'order', 'end', 'link');
+    if (hasM) L.push('half', 'phrase');
+    m = L[rnd(L.length)];
+  }
+  let cands = ses.pool.filter(r => !ses.used.has(key(r)));
+  if (!cands.length){ ses.used.clear(); cands = ses.pool; }
+  const only = (f, fb) => { const c = cands.filter(f); if (c.length) cands = c; else m = fb; };
+  if (m === 'half') only(r => !isQ(r.s), 'cloze');
+  if (m === 'phrase') only(r => !isQ(r.s) && book(r.s).kind === 'prose' && clausesOf(r).length >= 2, 'half');
+  if (m === 'half') only(r => !isQ(r.s), 'cloze');
+  if (m === 'mutash') only(r => isQ(r.s) && mutashOk(r), 'mcq');
+  if (m === 'order') only(r => isQ(r.s) && r.s < 114, 'cloze');
+  if (m === 'start') only(r => isQ(r.s) && slen(r.s) >= 2, 'cloze');
+  if (m === 'next' || m === 'mcq') only(r => r.a < slen(r.s), 'cloze');
+  let r;
+  if (m === 'end' || m === 'link'){ // on tire une sourate, pas un verset : on pèse sur son dernier verset
+    let ss = [...new Set(cands.filter(x => isQ(x.s) && (m === 'end' || x.s < 114)).map(x => x.s))];
+    const fresh = ss.filter(s => !ses.used.has(s + ':' + slen(s))); if (fresh.length) ss = fresh;
+    if (ss.length) r = pickWeighted(ss.map(s => ({s, a: slen(s)}))); else m = 'cloze';
+  }
+  if (!r) r = pickWeighted(cands);
+  ses.used.add(key(r));
+  cur = {m, r, done: false};
+  ({next: qNext, cloze: qCloze, which: qWhich, mcq: qMcq, half: qHalf, phrase: qPhrase, mutash: qMutash, start: qStart, order: qOrder, cont: qCont, end: qEnd, link: qLink})[m]();
+}
+function logError(r, score, info = {}){
+  const e = {t: Date.now(), k: key(r), m: cur.m, sc: score};
+  if (info.ans) e.ans = String(info.ans).slice(0, 400);
+  if (info.bad && info.bad.length) e.bad = info.bad.slice(0, 40);
+  errors.push(e);
+  if (errors.length > 2000) errors = errors.slice(-2000);
+  store.set('hifz.errors', errors);
+}
+function finish(score, extra = ''){
+  if (cur.done) return; cur.done = true;
+  if (cur.perRef) cur.perRef.forEach(([x, sc], v) => { if (x.bas) return; record(x, sc); if (sc < 1){ ses.missed.push(x); logError(x, sc, {bad: cur.badV && cur.badV[v]}); } });
+  else { record(cur.r, score); if (score < 1){ ses.missed.push(cur.r); logError(cur.r, score, cur.info); } }
+  ses.score += score;
+  const cls = score === 1 ? 'ok' : score >= 0.5 ? 'mid' : 'ko';
+  const label = score === 1 ? 'Excellent ✓' : score >= 0.5 ? 'Presque' : 'À revoir';
+  $('fb').innerHTML =
+    `<div class="fb ${cls}"><b>${label}</b> · <span class="ref">${cur.label || rlabel(cur.r)}</span>${extra}</div>${audioHtml()}
+     <button class="pri big" style="margin-top:8px" data-act="nextq">${ses.i >= ses.total ? 'Voir le résultat' : 'Question suivante'}</button>`;
+}
+const gradeUI = () => `<div class="grades">
+  <button data-act="grade" data-v="1">✓ Je savais</button>
+  <button data-act="grade" data-v="0.5">~ J'ai hésité</button>
+  <button data-act="grade" data-v="0">✗ Raté</button></div>`;
+
+/* indices affichés avec la question, selon les réglages */
+function qref(r){
+  const sh = cfg.show, p = [];
+  if (isQ(r.s)){
+    if (sh.s) p.push(`Sourate ${r.s} – ${Q[r.s-1].en}`);
+    if (sh.v) p.push(`verset ${r.a}`);
+    if (sh.p) p.push(`page ${Q[r.s-1].a[r.a-1].p}`);
+  } else {
+    if (sh.s) p.push(MT[r.s].fr);
+    if (sh.v) p.push(`${MT[r.s].unit} ${r.a}`);
+  }
+  return p.length ? `<p class="ref">${p.join(' · ')}</p>` : '';
+}
+const useStrict = () => isQ(cur.r.s) && cfg.corr !== 'soft';
+const kbd = () => useStrict() && cfg.input === 'type'
+  ? `<div class="kbd">${['َ', 'ُ', 'ِ', 'ْ', 'ّ', 'ً', 'ٌ', 'ٍ'].map(c => `<button data-act="ins" data-v="${c}">◌${c}</button>`).join('')}</div>` : '';
+
+/* texte attendu : une ou plusieurs unités (versets), aplati en mots */
+function setExpected(units){
+  cur.units = units;
+  cur.flat = [];
+  units.forEach((u, v) => { const T = tokenize(u.text);
+    T.tok.forEach((w, i) => cur.flat.push({w, v, first: i === 0, ok: !!T.nw[i], nw: T.nw[i], sk: T.sk[i]})); });
+}
+function workUI(l = {}){
+  const rev = l.rev || 'Révéler la suite', voice = l.voice || '🎤 Réciter la suite', ph = l.ph || 'اكتب التكملة…', rows = l.rows || 3;
+  return cfg.input === 'type'
+    ? `<textarea id="ans" dir="rtl" lang="ar" rows="${rows}" placeholder="${ph}"></textarea>${kbd()}
+       <button class="pri" style="margin-top:8px" data-act="check">Vérifier</button>`
+    : cfg.input === 'voice' && SR
+    ? `<button class="pri big" data-act="listen">${voice}</button><p class="ref" id="heard"></p>
+       <button class="link" data-act="reveal">Je préfère m'auto-évaluer</button>`
+    : `<button class="pri big" data-act="reveal">${rev}</button>`;
+}
+function flatHtml(mark){ // mark(x, i) -> classe ou ''
+  const multi = cur.units.length > 1;
+  return cur.flat.map((x, i) => {
+    const sep = multi && x.first && cur.refs && x.v > 0 && cur.refs[x.v].s !== cur.refs[x.v - 1].s
+      ? `<br><span class="ref">— ${esc(sname(cur.refs[x.v].s))} —</span><br>` : '';
+    const vn = multi && x.first ? `<sup class="vn">${cur.refs ? (cur.refs[x.v].bas ? 'basmala' : cur.refs[x.v].a) : x.v + 1}</sup>` : '';
+    return sep + vn + (x.ok ? mark(x, i) : esc(x.w));
+  }).join(' ');
+}
+
+/* 1. Verset suivant */
+function qNext(){
+  const {r} = cur;
+  setExpected([{text: verse(nextOf(r))}]);
+  cur.audio = [r, nextOf(r)];
+  shell(`<p class="ref">${isQ(r.s) ? 'Quel est le verset qui suit ?' : 'Quelle est la suite ?'}</p>
+    <div class="ar">${esc(verse(r))}</div>${qref(r)}
+    <div id="work">${workUI()}</div><div id="fb"></div>`);
+}
+function qHalf(){ // moutoun : première moitié donnée, on complète la seconde
+  const {r} = cur, w = verse(r).split(/\s+/), m = book(r.s).a[r.a - 1].m || Math.ceil(w.length / 2);
+  setExpected([{text: w.slice(m).join(' ')}]);
+  shell(`<p class="ref">Complète la seconde moitié.</p>
+    <div class="ar">${esc(w.slice(0, m).join(' '))} …</div>${qref(r)}
+    <div id="work">${workUI()}</div><div id="fb"></div>`);
+}
+function qPhrase(){ // prose : on donne la phrase précédente, on complète la suivante
+  const {r} = cur, C = clausesOf(r), k = 1 + rnd(C.length - 1);
+  setExpected([{text: C[k]}]);
+  cur.label = `${rlabel(r)} (partie ${k + 1}/${C.length})`;
+  shell(`<p class="ref">Quelle est la phrase suivante ?</p>
+    <div class="ar">${esc(C.slice(Math.max(0, k - 2), k).join(' '))} …</div>${qref(r)}
+    <div id="work">${workUI()}</div><div id="fb"></div>`);
+}
+function qStart(){ // début de sourate
+  const {r} = cur, first = {s: r.s, a: 1};
+  cur.r = first; cur.audio = [first];
+  setExpected([{text: verse(first)}]);
+  shell(`<p class="ref">Quel est le premier verset de la sourate…</p>
+    <div class="ar" style="text-align:center">${esc(Q[r.s-1].ar)}</div>
+    <p class="ref" style="text-align:center">${r.s}. ${esc(Q[r.s-1].en)}${cfg.show.v ? ' · ' + Q[r.s-1].a.length + ' versets' : ''}</p>
+    <div id="work">${workUI({rev: 'Révéler le verset', voice: '🎤 Réciter le verset', ph: 'اكتب الآية الأولى…'})}</div><div id="fb"></div>`);
+}
+function startPassage(refs, label, intro, hint = ''){ // passage de plusieurs versets à réciter d'une traite
+  cur.r = refs[0]; cur.refs = refs; cur.label = label;
+  cur.audio = refs.map(x => x.bas ? {s: 1, a: 1} : x); // la basmala se lit comme le verset 1 de la Fatiha
+  setExpected(refs.map(x => ({text: x.bas ? verse({s: 1, a: 1}) : verse(x)})));
+  shell(`<p class="ref">${intro}</p><p><b>${esc(label)}</b></p>${hint}
+    <div id="work">${workUI({rev: 'Révéler le passage', voice: '🎤 Réciter le passage', ph: 'اكتب المقطع كاملا…', rows: 6})}</div><div id="fb"></div>`);
+}
+const range = (s, a, n) => Array.from({length: n}, (_, i) => ({s, a: a + i}));
+function qCont(){ // passage continu
+  const {r} = cur, n = slen(r.s), L = Math.min(cfg.contLen, n), a = Math.min(r.a, n - L + 1);
+  const lbl = isQ(r.s) ? `Sourate ${r.s} – ${Q[r.s-1].en}, versets ${a} à ${a + L - 1}` : `${MT[r.s].fr}, ${MT[r.s].unit}s ${a} à ${a + L - 1}`;
+  const first = book(r.s).a[a - 1].t.split(/\s+/).slice(0, 2).join(' ');
+  startPassage(range(r.s, a, L), lbl, 'Récite de mémoire ce passage, d\'une traite :',
+    cfg.show.v ? `<p class="ref">Il commence par : <span class="ar" style="font-size:1.3rem">${esc(first)} …</span></p>` : '');
+}
+function qEnd(){ // fin de sourate
+  const {r} = cur, S = Q[r.s - 1], L = Math.min(cfg.endLen, S.a.length), a = S.a.length - L + 1;
+  startPassage(range(r.s, a, L), `Sourate ${r.s} – ${S.en}, versets ${a} à ${S.a.length}`,
+    `Récite la fin de la sourate <b>${esc(S.ar)}</b> (${r.s}. ${esc(S.en)}) : ses ${L} dernier${L > 1 ? 's' : ''} verset${L > 1 ? 's' : ''}.`);
+}
+function qLink(){ // fin d'une sourate + début de la suivante
+  const {r} = cur, S = Q[r.s - 1], N = Q[r.s], L1 = Math.min(cfg.endLen, S.a.length), L2 = Math.min(cfg.begLen, N.a.length);
+  const a = S.a.length - L1 + 1;
+  const bas = N.n !== 9; // la sourate At-Tawba (9) est la seule à ne pas commencer par la basmala
+  startPassage([...range(S.n, a, L1), ...(bas ? [{s: N.n, a: 0, bas: true}] : []), ...range(N.n, 1, L2)],
+    `${S.n}. ${S.en} ${a}–${S.a.length} → ${N.n}. ${N.en} 1${L2 > 1 ? '–' + L2 : ''}`,
+    `Récite la fin de la sourate <b>${esc(S.ar)}</b> (${L1} verset${L1 > 1 ? 's' : ''}) puis le début de la sourate suivante, <b>${esc(N.ar)}</b> (${L2} verset${L2 > 1 ? 's' : ''}). ${bas
+      ? 'N\'oublie pas la basmala entre les deux.' : 'La sourate 9 commence sans basmala : enchaîne directement.'}`);
+}
+function lcsMatch(exp, got, eq = same){ // indices de exp retrouvés dans l'ordre
+  const n = exp.length, m = got.length, d = Array.from({length: n + 1}, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+    d[i][j] = eq(exp[i], got[j]) ? d[i+1][j+1] + 1 : Math.max(d[i+1][j], d[i][j+1]);
+  const hit = new Set(); let i = 0, j = 0;
+  while (i < n && j < m){
+    if (eq(exp[i], got[j])){ hit.add(i); i++; j++; }
+    else if (d[i+1][j] >= d[i][j+1]) i++; else j++;
+  }
+  return hit;
+}
+
+/* 2. Mots manquants */
+function qCloze(){
+  const {r} = cur, T = tokenize(verse(r));
+  const k = Math.max(1, Math.round(T.idx.length * cfg.level / 100));
+  const hidden = new Set(shuffle(T.idx).slice(0, k));
+  cur.T = T; cur.hidden = hidden; cur.audio = [r];
+  const html = T.tok.map((w, i) => !hidden.has(i) ? esc(w)
+    : cfg.input === 'type' ? `<input class="blankin" data-i="${i}" dir="rtl" lang="ar" autocomplete="off">`
+    : `<span class="blank" data-act="blank" data-i="${i}">${esc(w)}</span>`).join(' ');
+  shell(`<p class="ref">Complète le verset (${k} mot${k > 1 ? 's' : ''} caché${k > 1 ? 's' : ''}).</p>
+    <div class="ar">${html}</div>${qref(r)}
+    <div id="work">${cfg.input === 'type'
+      ? `${kbd()}<button class="pri" data-act="checkcloze">Vérifier</button>`
+      : `<button class="pri big" data-act="revealall">Tout révéler</button>`}</div>
+    <div id="fb"></div>`);
+}
+
+/* 3. Quelle sourate ? */
+function qWhich(){
+  const {r} = cur; cur.audio = [r];
+  let others = ses.pool.map(x => x.s).filter((s, i, a) => s !== r.s && a.indexOf(s) === i && isQ(s) === isQ(r.s));
+  if (others.length < 3) others = (isQ(r.s) ? Q.map(s => s.n) : Object.keys(MT)).filter(s => s !== r.s);
+  cur.opts = shuffle([r.s, ...shuffle(others).slice(0, 3)]);
+  cur.correct = r.s;
+  shell(`<p class="ref">${isQ(r.s) ? 'De quelle sourate vient ce verset ?' : 'De quel matn vient ce passage ?'}</p>
+    <div class="ar">${esc(verse(r))}</div>
+    ${cur.opts.map(s => `<button class="opt" data-act="opt" data-v="${s}">${esc(sname(s))}</button>`).join('')}
+    <div id="fb"></div>`);
+}
+
+/* 4. QCM suite */
+function distractors(good, r, n){
+  let src = ses.pool.length >= 12 ? ses.pool : buildPool(isQ(r.s) ? {type: 'all'} : {type: 'matn', id: 'all'});
+  src = src.filter(x => isQ(x.s) === isQ(r.s));
+  const L = good.length;
+  return shuffle(src).slice(0, 40).map(x => verse(x)).filter(t => t !== good && t !== verse(r))
+    .sort((a, b) => Math.abs(a.length - L) - Math.abs(b.length - L)).slice(0, n);
+}
+function qMcq(){
+  const {r} = cur, good = verse(nextOf(r));
+  cur.audio = [r, nextOf(r)];
+  cur.opts = shuffle([good, ...distractors(good, r, 3)]); cur.good = good;
+  shell(`<p class="ref">${isQ(r.s) ? 'Quel verset suit celui-ci ?' : 'Quelle est la suite ?'}</p>
+    <div class="ar">${esc(verse(r))}</div>${qref(r)}
+    ${cur.opts.map((t, i) => `<button class="opt ar" data-act="opt" data-v="${i}">${esc(t)}</button>`).join('')}
+    <div id="fb"></div>`);
+}
+
+/* 5. Versets proches : les mauvaises réponses sont les suites des versets qui ressemblent */
+function qMutash(){
+  const {r} = cur, good = verse(nextOf(r)); cur.audio = [r, nextOf(r)];
+  const sibs = sibsOf(r).filter(x => x.a < slen(x.s)); cur.sibs = sibs;
+  const dis = [...new Set(sibs.map(x => verse(nextOf(x))).filter(t => t !== good))].slice(0, 3);
+  if (dis.length < 3) for (const t of distractors(good, r, 6)) if (dis.length < 3 && !dis.includes(t)) dis.push(t);
+  cur.opts = shuffle([good, ...dis]); cur.good = good;
+  shell(`<p class="ref">Attention, ce verset ressemble à d'autres. Quelle est sa vraie suite ?</p>
+    <div class="ar">${esc(verse(r))}</div>${qref(r)}
+    ${cur.opts.map((t, i) => `<button class="opt ar" data-act="opt" data-v="${i}">${esc(t)}</button>`).join('')}
+    <div id="fb"></div>`);
+}
+const sibHtml = () => cur.sibs && cur.sibs.length ? `<div class="sib"><span class="ref">Versets proches à ne pas confondre :</span>${cur.sibs.map(x =>
+  `<div class="ref" style="margin-top:6px">Sourate ${x.s} – ${esc(Q[x.s-1].en)}, verset ${x.a} (${x.p} % de ressemblance)</div><div class="ar">${esc(verse(x))}</div>`).join('')}</div>` : '';
+
+/* 6. Ordre des sourates */
+function qOrder(){
+  const {r} = cur; cur.r = {s: r.s, a: 1}; cur.correct = r.s + 1; cur.label = `${r.s}. ${Q[r.s - 1].en} → ${r.s + 1}. ${Q[r.s].en}`;
+  const others = shuffle(Q.map(s => s.n).filter(n => n !== r.s + 1 && n !== r.s)).slice(0, 3);
+  cur.opts = shuffle([r.s + 1, ...others]);
+  shell(`<p class="ref">Quelle sourate vient juste après…</p>
+    <div class="ar" style="text-align:center">${esc(Q[r.s-1].ar)}</div><p class="ref" style="text-align:center">${r.s}. ${esc(Q[r.s-1].en)}</p>
+    ${cur.opts.map(s => `<button class="opt" data-act="opt" data-v="${s}">${esc(sname(s))}</button>`).join('')}
+    <div id="fb"></div>`);
+}
+
+/* ---------- actions ---------- */
+function onOpt(el){
+  if (cur.done) return;
+  const btns = [...document.querySelectorAll('.opt')];
+  let ok, extra = '';
+  if (cur.m === 'which' || cur.m === 'order'){
+    const pv = x => isQ(cur.correct) ? +x : x;
+    ok = pv(el.dataset.v) === cur.correct;
+    btns.forEach(b => { const c = pv(b.dataset.v) === cur.correct ? 'c' : b === el ? 'w' : ''; if (c) b.classList.add(c); });
+    extra = ok ? '' : `<br>Bonne réponse : ${esc(sname(cur.correct))}`;
+    cur.info = {ans: sname(pv(el.dataset.v))};
+  } else {
+    ok = cur.opts[+el.dataset.v] === cur.good;
+    btns.forEach(b => { const c = cur.opts[+b.dataset.v] === cur.good ? 'c' : b === el ? 'w' : ''; if (c) b.classList.add(c); });
+    if (cur.m === 'mutash') extra = sibHtml();
+    cur.info = {ans: cur.opts[+el.dataset.v]};
+  }
+  finish(ok ? 1 : 0, extra);
+}
+/* correction d'un texte tapé ou entendu */
+function evaluate(text, lenient){
+  const strict = useStrict() && !lenient; // la voix ne donne pas les voyelles : jamais stricte
+  const S = cur.flat.filter(x => x.ok), multi = cur.units.length > 1;
+  const got = text.split(/\s+/).map(strict ? ck : norm).filter(Boolean);
+  const hit = lcsMatch(S.map(x => strict ? x.sk : x.nw), got, strict ? (a, b) => a === b : same);
+  S.forEach((x, i) => { x.hit = hit.has(i); });
+  cur.info = {ans: text, bad: S.filter(x => !x.hit).map(x => x.w)};
+  cur.badV = cur.units.map((_, v) => S.filter(x => x.v === v && !x.hit).map(x => x.w));
+  const ratio = hit.size / S.length, perfect = hit.size === S.length && got.length === S.length;
+  const score = strict ? (perfect ? 1 : 0)
+    : multi ? (ratio === 1 ? 1 : ratio >= 0.85 ? 0.5 : 0)
+    : ratio >= (lenient ? 0.8 : 0.9) ? 1 : ratio >= (lenient ? 0.5 : 0.6) ? 0.5 : 0;
+  $('work').innerHTML = `<div class="ar">${flatHtml(x => `<span class="${x.hit ? 'w-ok' : 'w-ko'}">${esc(x.w)}</span>`)}</div>`;
+  let extra = lenient ? `<br><span class="ref">Entendu : ${esc(text)}</span>` : '';
+  if (multi){
+    const per = cur.units.map((_, v) => { const w = S.filter(x => x.v === v), h = w.filter(x => x.hit).length;
+      return h === w.length ? 1 : (!strict && h / w.length >= 0.85) ? 0.5 : 0; });
+    cur.perRef = cur.refs.map((x, v) => [x, per[v]]);
+    const bad = per.findIndex(s => s < 1);
+    if (bad >= 0) extra += `<br><span class="ref">Premier écart : ${cur.refs[bad].bas ? 'la basmala' : (cur.refs[bad].s !== cur.refs[0].s ? 'sourate ' + cur.refs[bad].s + ', ' : '') + 'verset ' + cur.refs[bad].a} · ${per.filter(s => s < 1).length} partie(s) à revoir.</span>`;
+  } else if (strict && !score) extra += '<br><span class="ref">Correction stricte : tout doit être exact (en rouge : mots faux ou manquants).</span>';
+  finish(score, extra);
+}
+function onCheckCloze(){
+  let good = 0; const strict = useStrict(), bad = [], given = [];
+  document.querySelectorAll('.blankin').forEach(inp => {
+    const i = +inp.dataset.i, ok = strict ? ck(inp.value) === cur.T.sk[i] : same(norm(inp.value), cur.T.nw[i]);
+    if (ok) good++; else { bad.push(cur.T.tok[i]); given.push(inp.value.trim() || '∅'); }
+    inp.outerHTML = `<span class="${ok ? 'w-ok' : 'w-ko'}">${esc(cur.T.tok[i])}</span>`;
+  });
+  $('work').innerHTML = '';
+  cur.info = {ans: given.join(' | '), bad};
+  finish(strict ? (good === cur.hidden.size ? 1 : 0) : good / cur.hidden.size);
+}
+/* récitation puis marquage mot à mot des erreurs */
+function markUI(){
+  return `<div class="ar" id="marks">${flatHtml((x, i) => `<span class="wd" data-act="wd" data-i="${i}">${esc(x.w)}</span>`)}</div>
+    <p class="ref">Touche les mots que tu as faux ou oubliés.</p>
+    <div class="grades"><button data-act="mark-ok">✓ Tout juste</button><button data-act="mark-mid">~ J'ai hésité</button>
+    <button class="pri" id="mark-go" data-act="mark-go">Valider (0 erreur)</button></div>`;
+}
+function markGo(){
+  const bad = [...document.querySelectorAll('.wd.bad')].map(e => +e.dataset.i), tot = cur.flat.filter(x => x.ok).length;
+  const strict = useStrict();
+  const score = bad.length === 0 ? 1 : strict ? 0 : bad.length / tot <= 0.1 ? 0.5 : 0;
+  cur.info = {bad: bad.map(i => cur.flat[i].w)};
+  cur.badV = cur.units.map((_, v) => bad.filter(i => cur.flat[i].v === v).map(i => cur.flat[i].w));
+  if (cur.units.length > 1){
+    cur.perRef = cur.refs.map((x, v) => { const w = cur.flat.map((f, i) => [f, i]).filter(([f]) => f.v === v && f.ok), b = w.filter(([, i]) => bad.includes(i)).length;
+      return [x, b === 0 ? 1 : (!strict && b / w.length <= 0.1) ? 0.5 : 0]; });
+  }
+  $('work').innerHTML = `<div class="ar">${flatHtml((x, i) => `<span class="${bad.includes(i) ? 'w-ko' : 'w-ok'}">${esc(x.w)}</span>`)}</div>`;
+  finish(score);
+}
+
+/* ---------- voix (Web Speech API, arabe) ---------- */
+function listen(){
+  if (cur.done) return;
+  const cont = cur.m === 'cont';
+  const btn = document.querySelector('[data-act="listen"]'), heard = $('heard');
+  const rec = new SR(); rec.lang = 'ar-SA'; rec.interimResults = cont; rec.continuous = cont; rec.maxAlternatives = 1;
+  let text = '', stopping = false;
+  rec.onresult = ev => {
+    text = [...ev.results].map(r => r[0].transcript).join(' ');
+    if (cont) heard.textContent = text;
+  };
+  rec.onerror = ev => { heard.textContent = 'Micro indisponible (' + ev.error + ').'; };
+  rec.onend = () => {
+    btn.disabled = false; btn.textContent = '🎤 Réessayer'; btn.onclick = null;
+    if (text.trim()) evaluate(text, true); else if (!heard.textContent) heard.textContent = 'Rien entendu, réessaie.';
+  };
+  heard.textContent = '';
+  btn.textContent = cont ? '⏹ J\'ai fini de réciter' : '🎙️ Je t\'écoute… récite la suite';
+  if (cont){ btn.onclick = ev => { ev.stopPropagation(); if (!stopping){ stopping = true; rec.stop(); } }; } else btn.disabled = true;
+  try { rec.start(); } catch { btn.disabled = false; }
+}
+
+/* ---------- écoute d'une portée ---------- */
+function lsOpen(){
+  if (cfg.scope.type === 'matn') return alert('L\'écoute audio est disponible pour le Coran.');
+  const refs = buildPool(cfg.scope); if (!refs.length) return;
+  ls = {refs, i: 0, hide: false}; lsPlay();
+}
+function lsPlay(){ lsRender(); playUrls([audioUrl(ls.refs[ls.i])], () => { if (ls && ls.i < ls.refs.length - 1){ ls.i++; lsPlay(); } else lsRender(); }); }
+function lsRender(){
+  setNav(false);
+  const r = ls.refs[ls.i];
+  $app.innerHTML = `
+  <div class="top"><button class="link" data-act="home">✕ Quitter</button><span>${ls.i + 1} / ${ls.refs.length}</span></div>
+  <div class="bar"><i style="width:${100 * (ls.i + 1) / ls.refs.length}%"></i></div>
+  <div class="card"><p class="ref">${rlabel(r)}</p>
+    <div class="ar">${ls.hide ? '• • • • •' : esc(verse(r))}</div>
+    <div class="grades"><button data-act="ls-prev">⏮</button><button data-act="ls-toggle">⏯</button><button data-act="ls-next">⏭</button>
+    <button data-act="ls-hide">${ls.hide ? '👁 Afficher' : '🙈 Masquer le texte'}</button></div>
+    <p class="ref" id="audio-msg">Récitateur : ${(RECITERS.find(x => x[0] === cfg.reciter) || RECITERS[0])[1]}. Masque le texte pour t'entraîner à suivre de mémoire.</p></div>`;
+}
+
+/* ---------- rappel quotidien : fichier .ics récurrent ---------- */
+function exportIcs(){
+  const [h, m] = ($('rtime').value || '20:00').split(':');
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  const ymd = d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate());
+  const url = location.protocol.startsWith('http') ? '\\n' + location.href : '';
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Hifz//FR', 'BEGIN:VEVENT', 'UID:hifz-rappel-quotidien',
+    'DTSTAMP:' + ymd + 'T000000Z', `DTSTART:${ymd}T${p(h)}${p(m)}00`, 'DURATION:PT15M', 'RRULE:FREQ=DAILY',
+    'SUMMARY:Révision du Coran (Hifz)', 'DESCRIPTION:Fais ta révision du jour.' + url,
+    'BEGIN:VALARM', 'TRIGGER:PT0S', 'ACTION:DISPLAY', 'DESCRIPTION:Révision du Coran', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  download('rappel-hifz.ics', ics, 'text/calendar');
+}
+function download(name, text, type){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name; a.click();
+}
+
+/* ---------- sauvegarde / restauration ---------- */
+function exportData(){
+  download('hifz-sauvegarde-' + today() + '.json', JSON.stringify({app: 'hifz', v: 1, cfg, stats, sched, days, custom, errors}), 'application/json');
+}
+async function importFile(f){
+  if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (d.app !== 'hifz' || typeof d.stats !== 'object') throw new Error('format');
+    if (!confirm('Remplacer ta progression actuelle par cette sauvegarde ?')) return;
+    store.set('hifz.cfg', d.cfg || {}); store.set('hifz.stats', d.stats); store.set('hifz.sched', d.sched || {});
+    store.set('hifz.days', d.days || {}); store.set('hifz.custom', d.custom || []); store.set('hifz.errors', d.errors || []);
+    location.reload();
+  } catch { alert('Fichier non reconnu : choisis une sauvegarde exportée depuis Hifz.'); }
+}
+
+/* ---------- mes moutoun ---------- */
+function addCustom(){
+  const title = $('cm-title').value.trim(), kind = $('cm-kind').value;
+  const lines = $('cm-text').value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!title || !lines.length) return alert('Indique un titre et colle le texte.');
+  const a = lines.map(l => {
+    if (kind === 'poem'){
+      const parts = l.split(/\s*(?:\*|\/\/|\\\\)\s*/).map(x => x.trim()).filter(Boolean);
+      if (parts.length >= 2){ const h2 = parts.slice(1).join(' '); return {t: (parts[0] + ' ' + h2).replace(/\s+/g, ' '), m: parts[0].split(/\s+/).length}; }
+    }
+    const w = l.split(/\s+/); return {t: w.join(' '), m: splitPoint(w)};
+  });
+  const t = {id: 'u' + Date.now().toString(36), ar: title, fr: title, author: '', kind, unit: kind === 'poem' ? 'vers' : 'passage',
+    source: {name: 'Saisi par toi', url: '', note: 'texte que tu as fourni : fais confiance à ton édition de référence'}, a, custom: true};
+  custom.push(t); store.set('hifz.custom', custom); MT[t.id] = t;
+  cfg.scope = {type: 'matn', id: t.id}; saveCfg(); home();
+}
+
+/* ---------- clics ---------- */
+let lastField = null;
+document.addEventListener('focusin', e => { if (e.target.matches('textarea, .blankin')) lastField = e.target; });
+const onClick = e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const v = el.dataset.v;
+  switch (el.dataset.act){
+    case 'mode': cfg.mode = v; saveCfg(); home(); break;
+    case 'corpus': {
+      const m = cfg.scope.type === 'matn';
+      if (v === 'matn' && !m){ cfg.lastQ = cfg.scope; cfg.scope = {type: 'matn', id: cfg.lastM || 'all'}; if (['mutash', 'start', 'order', 'end', 'link'].includes(cfg.mode)) cfg.mode = 'mix'; }
+      if (v === 'quran' && m){ cfg.lastM = cfg.scope.id; cfg.scope = cfg.lastQ || DEF.scope; if (['half', 'phrase'].includes(cfg.mode)) cfg.mode = 'mix'; }
+      saveCfg(); home(); break;
+    }
+    case 'ins':
+      if (lastField && document.contains(lastField)){ lastField.focus(); lastField.setRangeText(v, lastField.selectionStart, lastField.selectionEnd, 'end'); }
+      break;
+    case 'corr': cfg.corr = v; saveCfg(); home(); break;
+    case 'show': cfg.show[v] = !cfg.show[v]; saveCfg(); home(); break;
+    case 'input': cfg.input = v; saveCfg(); home(); break;
+    case 'maptab': cfg.map = v; saveCfg(); home(); break;
+    case 'cell': cfg.scope = {type: 'surah', from: +v, to: +v}; go('train'); break;
+    case 'pcell': cfg.scope = {type: 'page', from: +v, to: +v}; go('train'); break;
+    case 'start': {
+      const pool = buildPool(cfg.scope);
+      if (cfg.mode === 'half' && !pool.some(r => !isQ(r.s))) return alert('Le mode demi-vers concerne les moutoun.');
+      if (cfg.mode === 'phrase' && !pool.some(r => !isQ(r.s) && book(r.s).kind === 'prose')) return alert('Le mode phrase concerne les textes en prose (ex. les Arbaʿūn).');
+      start(); break;
+    }
+    case 'review': start(shuffle(dueRefs().slice(0, 40)).slice(0, 15)); break;
+    case 'ics': exportIcs(); break;
+    case 'export': exportData(); break;
+    case 'import': $('impfile').click(); break;
+    case 'addcustom': addCustom(); break;
+    case 'delcustom':
+      if (confirm('Supprimer ce matn ?')){ custom = custom.filter(t => t.id !== v); store.set('hifz.custom', custom); delete MT[v]; cfg.scope = {type: 'matn', id: 'all'}; saveCfg(); home(); } break;
+    case 'listen': listen(); break;
+    case 'play': playUrls(cur.audio.map(audioUrl)); break;
+    case 'stopaudio': stopAudio(); break;
+    case 'lsopen': lsOpen(); break;
+    case 'ls-prev': if (ls.i > 0){ ls.i--; } lsPlay(); break;
+    case 'ls-next': if (ls.i < ls.refs.length - 1){ ls.i++; } lsPlay(); break;
+    case 'ls-toggle': if (player.paused && player.src) player.play(); else player.pause(); break;
+    case 'ls-hide': ls.hide = !ls.hide; lsRender(); break;
+    case 'home': home(); break;
+    case 'tab': go(v); break;
+    case 'rdopen': { const r = pk(v); openReader(r.s, r.a); break; }
+    case 'rdscope': {
+      const sc = cfg.scope, pool = buildPool(sc), r = pool[0] || {s: 1, a: 1};
+      openReader(sc.type === 'matn' && sc.id !== 'all' ? sc.id : r.s); break;
+    }
+    case 'rd-back': rdStop(); home(); break;
+    case 'rd-hide': cfg.rdHide = !cfg.rdHide; saveCfg(); { const f = rd.focus; rdStop(); rd.focus = 0; renderReader(); rd.focus = f; } break;
+    case 'rd-size': cfg.rdSize = Math.min(3.2, Math.max(1.1, +(cfg.rdSize + 0.2 * +v).toFixed(2))); saveCfg(); { const y = scrollY; rdStop(); rd.focus = 0; renderReader(); scrollTo(0, y); } break;
+    case 'rd-prev': case 'rd-next': {
+      const ids = isQ(rd.s) ? null : Object.keys(MT), d = el.dataset.act === 'rd-next' ? 1 : -1;
+      rdStop(); openReader(isQ(rd.s) ? rd.s + d : ids[ids.indexOf(rd.s) + d]); break;
+    }
+    case 'rd-play': if (rd.playing) rdStop(); else rdPlay(1); break;
+    case 'rv':
+      if (el.classList.contains('hid')) el.classList.remove('hid');
+      else if (isQ(rd.s)){ rdStop(); rdPlay(+el.dataset.i); }
+      break;
+    case 'hist': go('errors'); break;
+    case 'hfilter': hf = v; home(); break;
+    case 'hview': hv = v; home(); break;
+    case 'hreview': if (hrefs.length) start(shuffle(hrefs)); break;
+    case 'hclear': if (confirm('Effacer tout l\'historique des erreurs ?')){ errors = []; store.set('hifz.errors', errors); home(); } break;
+    case 'nextq': nextQ(); break;
+    case 'reveal': $('work').innerHTML = markUI(); break;
+    case 'wd': el.classList.toggle('bad'); { const n = document.querySelectorAll('.wd.bad').length; $('mark-go').textContent = `Valider (${n} erreur${n > 1 ? 's' : ''})`; } break;
+    case 'mark-ok': case 'mark-mid': {
+      const sc = el.dataset.act === 'mark-ok' ? 1 : 0.5;
+      if (cur.refs) cur.perRef = cur.refs.map(x => [x, sc]);
+      $('work').innerHTML = ''; finish(sc); break;
+    }
+    case 'mark-go': markGo(); break;
+    case 'blank': el.classList.toggle('rev'); break;
+    case 'revealall':
+      document.querySelectorAll('.blank').forEach(b => b.classList.add('rev'));
+      $('work').innerHTML = gradeUI(); break;
+    case 'grade': finish(+v); $('work').innerHTML = ''; break;
+    case 'check': evaluate($('ans').value); break;
+    case 'checkcloze': onCheckCloze(); break;
+    case 'opt': onOpt(el); break;
+    case 'retry': start(ses.missed.slice()); break;
+    case 'again': start(); break;
+    case 'reset': if (confirm('Effacer toutes tes statistiques et ton historique d\'erreurs ?')){ stats = {}; sched = {}; days = {}; errors = []; store.set('hifz.errors', errors); store.set('hifz.stats', stats); store.set('hifz.sched', sched); store.set('hifz.days', days); home(); } break;
+  }
+};
+$app.addEventListener('click', onClick);
+$('nav').addEventListener('click', onClick);
+
+/* ---------- lecteur : texte complet d'une sourate ou d'un matn ---------- */
+let rd = null;
+const arNum = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+function openReader(s, focus = 0){ stopAudio(); rd = {s, focus, playing: false}; renderReader(); window.scrollTo(0, 0); }
+function renderReader(){
+  setNav(false);
+  const s = rd.s, q = isQ(s), B = book(s), n = B.a.length, ids = Object.keys(MT);
+  const first = q ? 1 : ids[0], last = q ? 114 : ids[ids.length - 1];
+  const sel = `<select id="rdsel"><optgroup label="Coran">${Q.map(x => `<option value="${x.n}" ${x.n === s ? 'selected' : ''}>${x.n}. ${esc(x.en)}</option>`).join('')}</optgroup>
+    <optgroup label="Moutoun">${Object.values(MT).map(t => `<option value="${t.id}" ${t.id === s ? 'selected' : ''}>${esc(t.fr)}</option>`).join('')}</optgroup></select>`;
+  let body, meta;
+  if (q){
+    const pages = `pages ${B.a[0].p}–${B.a[n - 1].p}`;
+    meta = `${n} versets · juz' ${B.a[0].j}${B.a[n - 1].j !== B.a[0].j ? '–' + B.a[n - 1].j : ''} · ${pages}`;
+    body = (s !== 1 && s !== 9 ? `<div class="ar" style="text-align:center;font-size:1.5rem">${esc(verse({s: 1, a: 1}))}</div>` : '')
+      + `<div class="rd" style="font-size:${cfg.rdSize}rem">${B.a.map((_, i) => `<span class="rv${cfg.rdHide ? ' hid' : ''}" data-act="rv" data-i="${i + 1}">${esc(verse({s, a: i + 1}))} <span class="vend">﴿${arNum(i + 1)}﴾</span></span>`).join(' ')}</div>`;
+  } else {
+    meta = `${n} ${B.unit}s · ${B.author || ''} ${B.topic ? '· ' + B.topic : ''}`;
+    body = B.a.map((u, i) => {
+      const w = u.t.split(/\s+/), h = B.kind === 'poem' && u.m ? u.m : 0;
+      const txt = h ? `<span>${esc(w.slice(0, h).join(' '))}</span><span class="psep">✦</span><span>${esc(w.slice(h).join(' '))}</span>` : esc(u.t);
+      return `<div class="${h ? 'pl' : 'pp'} rd rv${cfg.rdHide ? ' hid' : ''}" style="font-size:${cfg.rdSize * 0.78}rem;line-height:2.1" data-act="rv" data-i="${i + 1}"><span class="pn">${i + 1}</span>${txt}</div>`;
+    }).join('');
+  }
+  $app.innerHTML = `
+  <div class="top"><button class="link" data-act="rd-back">← Retour</button><span>${q ? 'Sourate ' + s : 'Matn'}</span></div>
+  <div class="card" style="margin-top:8px">${sel}
+    <div class="ar" style="text-align:center;font-size:2.2rem;line-height:1.8">${esc(B.ar)}</div>
+    <p class="ref" style="text-align:center;margin:0">${q ? `${s}. ${esc(B.en)}` : esc(B.fr)} · ${meta}</p>
+    ${q ? '' : srcNote({id: s})}
+    <div class="grades">
+      <button data-act="rd-prev" ${s === first ? 'disabled' : ''}>‹ Précédent</button>
+      <button data-act="rd-next" ${s === last ? 'disabled' : ''}>Suivant ›</button>
+    </div>
+    <div class="grades">
+      <button data-act="rd-size" data-v="-1" aria-label="Réduire le texte">A−</button>
+      <button data-act="rd-size" data-v="1" aria-label="Agrandir le texte">A+</button>
+      <button data-act="rd-hide">${cfg.rdHide ? '👁 Tout afficher' : '🙈 Masquer le texte'}</button>
+      ${q ? '<button id="rdplay" data-act="rd-play">▶ Écouter</button>' : ''}
+    </div>
+    <p class="ref" style="margin:8px 0 0">${cfg.rdHide ? 'Touche un passage pour le dévoiler.' : q ? 'Touche un verset pour l\'écouter à partir de là.' : ''}</p>
+    <p class="ref" id="audio-msg" style="margin:0"></p>
+  </div>
+  <div class="card">${body}</div>`;
+  $('rdsel').onchange = e => { const v = e.target.value; rdStop(); openReader(/^\d+$/.test(v) ? +v : v); };
+  if (rd.focus){
+    const el = document.querySelector(`.rv[data-i="${rd.focus}"]`);
+    if (el){ el.classList.remove('hid'); el.classList.add('focus'); setTimeout(() => el.scrollIntoView({block: 'center'}), 50); }
+  }
+}
+function rdStop(){ stopAudio(); if (rd) rd.playing = false; document.querySelectorAll('.rv.playing').forEach(e => e.classList.remove('playing')); const b = $('rdplay'); if (b) b.textContent = '▶ Écouter'; }
+function rdPlay(i){
+  document.querySelectorAll('.rv.playing').forEach(e => e.classList.remove('playing'));
+  if (!rd || !isQ(rd.s) || i > slen(rd.s)) return rdStop();
+  rd.playing = true; const b = $('rdplay'); if (b) b.textContent = '⏹ Arrêter';
+  const el = document.querySelector(`.rv[data-i="${i}"]`);
+  if (el){ el.classList.remove('hid'); el.classList.add('playing'); el.scrollIntoView({block: 'center', behavior: 'smooth'}); }
+  playUrls([audioUrl({s: rd.s, a: i})], () => rdPlay(i + 1));
+}
+
+/* ---------- historique des erreurs ---------- */
+let hf = 'all', hv = 'v', hrefs = [];
+const MODE_NAME = Object.fromEntries(MODES.map(([id, t]) => [id, t]));
+const fdate = t => new Date(t).toLocaleString('fr-FR', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
+function aggErrors(list){
+  const agg = new Map();
+  for (const e of list){
+    const r = pk(e.k); if (!book(r.s)) continue;
+    const a = agg.get(e.k) || {k: e.k, r, n: 0, last: 0, modes: new Set(), bad: []};
+    a.n++; a.last = Math.max(a.last, e.t); a.modes.add(MODE_NAME[e.m] || e.m);
+    (e.bad || []).forEach(w => { if (!a.bad.includes(w)) a.bad.push(w); });
+    agg.set(e.k, a);
+  }
+  return [...agg.values()].sort((x, y) => y.n - x.n || y.last - x.last);
+}
+function tabErrors(){
+  const lim = Date.now() - 7 * 864e5;
+  const L = errors.filter(e => { const r = pk(e.k); return book(r.s) && (hf === 'all' || (hf === 'q' && isQ(r.s)) || (hf === 'm' && !isQ(r.s)) || (hf === '7' && e.t >= lim)); });
+  const rows = aggErrors(L); hrefs = rows.slice(0, 15).map(a => a.r);
+  const chip = (id, cur_, t, act) => `<button class="${cur_ === id ? 'sel' : ''}" data-act="${act}" data-v="${id}">${t}</button>`;
+  const body = hv === 'v'
+    ? rows.slice(0, 80).map(a => `<div class="sib"><p class="ref" style="margin:0">${rlabel(a.r)}</p>
+        <p class="ref" style="margin:0"><b>raté ${a.n} fois</b> · dernière : ${fdate(a.last)} · ${esc([...a.modes].join(', '))}</p>
+        <div class="ar" style="font-size:1.35rem;line-height:2">${esc(verse(a.r))}</div>
+        <button class="link" data-act="rdopen" data-v="${a.k}">📖 Lire tout le texte</button>
+        ${a.bad.length ? `<p class="ref" style="margin:0">Mots souvent faux : <span class="ar" style="font-size:1.2rem;display:inline">${esc(a.bad.slice(0, 12).join(' · '))}</span></p>` : ''}</div>`).join('')
+    : L.slice().reverse().slice(0, 100).map(e => { const r = pk(e.k);
+        return `<div class="sib"><p class="ref" style="margin:0">${fdate(e.t)} · ${esc(MODE_NAME[e.m] || e.m)} · ${e.sc === 0.5 ? 'hésité' : 'raté'}</p>
+        <p class="ref" style="margin:0"><b>${rlabel(r)}</b></p>
+        ${e.bad ? `<p class="ref" style="margin:0">Mots faux ou oubliés : <span class="ar" style="font-size:1.2rem;display:inline">${esc(e.bad.join(' · '))}</span></p>` : ''}
+        ${e.ans ? `<p class="ref" style="margin:0">Ta réponse : <span class="ar" style="font-size:1.2rem;display:inline">${esc(e.ans)}</span></p>` : ''}</div>`; }).join('');
+  return `
+  <h1>Erreurs</h1>
+  <p class="sub">${L.length} erreur${L.length > 1 ? 's' : ''} · ${rows.length} verset${rows.length > 1 ? 's' : ''} concerné${rows.length > 1 ? 's' : ''}</p>
+  <div class="chips" style="margin-bottom:8px">${chip('all', hf, 'Tout', 'hfilter')}${chip('7', hf, '7 derniers jours', 'hfilter')}${chip('q', hf, 'Coran', 'hfilter')}${chip('m', hf, 'Moutoun', 'hfilter')}</div>
+  <div class="chips" style="margin-bottom:12px">${chip('v', hv, 'Par verset', 'hview')}${chip('t', hv, 'Chronologie', 'hview')}</div>
+  ${rows.length ? `<button class="pri big" data-act="hreview">Réviser les ${hrefs.length} versets les plus ratés</button>` : ''}
+  <div class="card" style="margin-top:12px">${body || '<p class="sub" style="margin:0">Aucune erreur enregistrée pour ce filtre. Chaque erreur apparaîtra ici avec les mots faux et ta réponse.</p>'}</div>
+  ${errors.length ? '<p style="text-align:right"><button class="link" data-act="hclear">Effacer l\'historique</button></p>' : ''}`;
+}
+
+/* ---------- résultats ---------- */
+function results(){
+  const pct = Math.round(100 * ses.score / ses.total);
+  const msg = pct >= 90 ? 'Machaa Allah, excellente mémorisation !' : pct >= 70 ? 'Très bien, continue ainsi.' : pct >= 50 ? 'Pas mal, quelques versets à consolider.' : 'Courage : relis puis réessaie.';
+  const missed = [...new Map(ses.missed.map(r => [key(r), r])).values()];
+  ses.missed = missed; setNav(false);
+  $app.innerHTML = `
+  <h1>Résultat</h1>
+  <div class="card"><div class="big-score">${pct} %</div>
+    <p class="sub" style="text-align:center">${ses.score % 1 ? ses.score.toFixed(1) : ses.score} / ${ses.total} · ${msg}</p></div>
+  ${missed.length ? `<div class="card"><h2>À revoir (${missed.length})</h2>
+    ${missed.map(r => `<p class="ref" style="margin:10px 0 0">${rlabel(r)}</p><div class="ar" style="font-size:1.5rem">${esc(verse(r))}</div>`).join('')}</div>` : ''}
+  ${missed.length ? `<button class="pri big" data-act="retry">Refaire mes erreurs</button>` : ''}
+  <button class="big" style="margin-top:8px" data-act="again">Nouvelle série</button>
+  <button class="big" style="margin-top:8px" data-act="tab" data-v="home">Accueil</button>`;
+}
+
+/* ---------- démarrage ---------- */
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+(async function init(){
+  MT = Object.fromEntries((window.MOUTOUN?.texts || []).map(t => [t.id, t]));
+  custom.forEach(t => { MT[t.id] = t; });
+  try { await loadQuran(); home(); }
+  catch (err){
+    $app.innerHTML = `<h1>Chargement impossible</h1>
+      <p class="sub">Une connexion internet est nécessaire au premier lancement (${esc(err.message)}).</p>
+      <button class="pri" onclick="location.reload()">Réessayer</button>`;
+  }
+})();
+</script>
+</body>
+</html>
