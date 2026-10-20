@@ -568,6 +568,10 @@ function tabSettings(){
     <p style="margin:6px 0 0"><button class="link" data-act="reset" style="color:var(--ko)">Réinitialiser statistiques et historique</button></p>
   </div>
 
+  <div class="card"><h2>Application</h2>
+    <p class="ref" style="margin:0 0 8px">Version ${APP_VERSION}. Une fois installée sur le téléphone, l'application se met à jour toute seule à l'ouverture quand tu es en ligne ; si tu ne vois pas les nouveautés, utilise ce bouton (ta progression n'est pas touchée).</p>
+    <button data-act="upd">🔄 Chercher les mises à jour</button></div>
+
   <div class="card"><h2>Sources</h2>
     <p class="ref" style="margin:0">Coran : texte uthmani du projet Tanzil via api.alquran.cloud (lecture de Ḥafṣ). Audio : cdn.islamic.network (AlQuran Cloud). Moutoun : Wikisource arabe et hadith-api (voir l'écran Réviser pour chaque matn). Versets proches : calculés automatiquement.</p>
   </div>`;
@@ -1065,6 +1069,7 @@ const onClick = e => {
     case 'ls-hide': ls.hide = !ls.hide; lsRender(); break;
     case 'home': home(); break;
     case 'tab': go(v); break;
+    case 'upd': forceUpdate(el); break;
     case 'acc-open': openAccount(v); break;
     case 'acc-back': go('settings'); break;
     case 'acc-mode': keepEmail(); acc.d.pass = acc.d.pass2 = ''; acc.mode = v; acc.msg = ''; renderAccount(); break;
@@ -1247,6 +1252,17 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
+const APP_VERSION = '20 oct. 2026';
+async function forceUpdate(el){
+  if (!navigator.onLine) return alert('Pas de connexion : connecte-toi à internet pour mettre à jour.');
+  el.disabled = true; el.textContent = 'Mise à jour…';
+  try { // vide uniquement les fichiers de l'application en cache : la progression (localStorage) n'est pas touchée
+    const regs = (await navigator.serviceWorker?.getRegistrations?.()) || [];
+    await Promise.all(regs.map(r => r.unregister()));
+    await Promise.all((await caches.keys()).map(k => caches.delete(k)));
+  } catch {}
+  location.reload();
+}
 const CLOUD = window.HIFZ_CLOUD || {};
 const cloudOn = () => !!(CLOUD.url && CLOUD.anonKey);
 let sb = null, me = null, screen = 'tab', loadingMe = false;
