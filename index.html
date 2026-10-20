@@ -121,6 +121,7 @@ body.has-nav main{padding-bottom:96px}
 <body>
 <script src="moutoun.js"></script>
 <script src="mutashabihat.js"></script>
+<script src="config.js"></script>
 <main id="app"><p class="sub">Chargement du texte du Coran…</p></main>
 <nav id="nav" hidden aria-label="Menu principal"></nav>
 
@@ -128,9 +129,10 @@ body.has-nav main{padding-bottom:96px}
 /* ---------- utilitaires ---------- */
 const $app = document.getElementById('app');
 const $ = id => document.getElementById(id);
+let cloudDirty = () => {}; // branché plus bas : envoie la progression au compte quand elle change
 const store = {
   get(k, d){ try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
-  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} cloudDirty(k); }
 };
 const rnd = n => Math.floor(Math.random() * n);
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -366,7 +368,7 @@ const TABS = [
   ['settings', 'Réglages', '<path d="M4 6h8M16 6h4M4 12h2M10 12h10M4 18h10M18 18h2"/><circle cx="14" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="18" r="2"/>']
 ];
 function setNav(on){
-  const n = $('nav'); n.hidden = !on; document.body.classList.toggle('has-nav', on);
+  const n = $('nav'); n.hidden = !on; document.body.classList.toggle('has-nav', on); screen = on ? 'tab' : 'full';
   if (!on) return;
   const due = dueRefs().length;
   n.innerHTML = `<div class="in">${TABS.map(([id, t, ico]) => `<button class="${cfg.tab === id ? 'sel' : ''}" data-act="tab" data-v="${id}" aria-label="${t}"${cfg.tab === id ? ' aria-current="page"' : ''}>
@@ -412,7 +414,9 @@ function tabHome(){
   const due = dueRefs(), td = days[today()] || 0, st = streak();
   const top = aggErrors(errors.filter(e => e.t >= Date.now() - 7 * 864e5)).slice(0, 3);
   return `
-  <div class="hero"><div class="logo">حفظ</div><div><h1>Hifz</h1><p>Que ta mémorisation soit bénie.</p></div></div>
+  <div class="hero"><div class="logo">حفظ</div><div><h1>Hifz</h1><p>${me ? esc(me.user.email) : 'Que ta mémorisation soit bénie.'}</p></div></div>
+  ${cloudOn() && !me ? `<div class="card"><h2>Sauvegarde ta progression</h2><p class="sub" style="margin:0 0 8px">Crée un compte gratuit pour retrouver tes séries, tes erreurs et ton historique sur tous tes appareils.</p>
+    <div class="row"><button class="pri" data-act="acc-open" data-v="signup">Créer un compte</button><button data-act="acc-open" data-v="login">Se connecter</button></div></div>` : ''}
 
   <div class="card"><h2>Aujourd'hui</h2>
     <p class="sub" style="margin:0 0 4px">🔥 ${st} jour${st > 1 ? 's' : ''} d'affilée · objectif : ${Math.min(td, cfg.goal)} / ${cfg.goal}</p>
@@ -532,7 +536,8 @@ function tabSettings(){
     soft: 'Les voyelles sont ignorées et une petite faute de frappe est tolérée.'}[cfg.corr];
   return `
   <h1>Réglages</h1>
-  <p class="sub">Correction, indices, audio, sauvegarde.</p>
+  <p class="sub">Compte, correction, indices, audio, sauvegarde.</p>
+  ${accountCard()}
 
   <div class="card"><h2>Correction de la saisie (Coran)</h2>
     <div class="seg">${[['strict', 'Stricte'], ['standard', 'Standard'], ['soft', 'Souple']].map(([k, t]) =>
@@ -1060,6 +1065,22 @@ const onClick = e => {
     case 'ls-hide': ls.hide = !ls.hide; lsRender(); break;
     case 'home': home(); break;
     case 'tab': go(v); break;
+    case 'acc-open': openAccount(v); break;
+    case 'acc-back': go('settings'); break;
+    case 'acc-mode': keepEmail(); acc.d.pass = acc.d.pass2 = ''; acc.mode = v; acc.msg = ''; renderAccount(); break;
+    case 'acc-login': doLogin(); break;
+    case 'acc-signup': doSignup(); break;
+    case 'acc-reset': doReset(); break;
+    case 'acc-newpass': doNewPass(); break;
+    case 'acc-logout': doLogout(); break;
+    case 'acc-sync': doSync(); break;
+    case 'acc-delete': doDeleteMe(); break;
+    case 'adm-open': openAdmin(); break;
+    case 'adm-refresh': adminLoad(); break;
+    case 'adm-detail': adminDetail(v); break;
+    case 'adm-role': adminRole(v); break;
+    case 'adm-block': adminBlock(v); break;
+    case 'adm-del': adminDelete(v); break;
     case 'rdopen': { const r = pk(v); openReader(r.s, r.a); break; }
     case 'rdscope': {
       const sc = cfg.scope, pool = buildPool(sc), r = pool[0] || {s: 1, a: 1};
@@ -1225,12 +1246,282 @@ function results(){
   <button class="big" style="margin-top:8px" data-act="tab" data-v="home">Accueil</button>`;
 }
 
+/* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
+const CLOUD = window.HIFZ_CLOUD || {};
+const cloudOn = () => !!(CLOUD.url && CLOUD.anonKey);
+let sb = null, me = null, screen = 'tab', loadingMe = false;
+let acc = {mode: 'login', msg: '', ok: false, busy: false, last: '', syncErr: '', d: {email: '', pass: '', pass2: '', consent: false}}; // d : brouillon du formulaire (gardé en mémoire seulement)
+let adm = {users: null, q: '', detail: null, msg: ''};
+const SYNC_KEYS = ['hifz.cfg', 'hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom'];
+let syncPause = false, pushTimer = null;
+const cmeta = () => store.get('hifz.cloud', {});
+const isAdmin = () => !!(me && me.profile && me.profile.role === 'admin');
+const REDIRECT = () => location.origin + location.pathname;
+
+cloudDirty = k => {
+  if (syncPause || !me || !SYNC_KEYS.includes(k)) return;
+  store.set('hifz.cloud', {...cmeta(), dirty: true});
+  clearTimeout(pushTimer); pushTimer = setTimeout(cloudPush, 3000);
+};
+function friendly(e){
+  const m = String(e?.message || e || '');
+  if (/Invalid login credentials/i.test(m)) return 'E-mail ou mot de passe incorrect.';
+  if (/Email not confirmed/i.test(m)) return 'Confirme d\'abord ton e-mail : clique le lien reçu par mail.';
+  if (/already registered|already been registered/i.test(m)) return 'Un compte existe déjà avec cet e-mail : connecte-toi.';
+  if (/rate limit|too many|security purposes/i.test(m)) return 'Trop de tentatives : réessaie dans quelques minutes.';
+  if (/Password should|weak password/i.test(m)) return 'Mot de passe trop faible (8 caractères minimum).';
+  if (/does not exist|schema cache|Could not find/i.test(m)) return 'La base n\'est pas prête : exécute supabase/schema.sql dans Supabase.';
+  if (/Failed to fetch|NetworkError|Load failed|hors ligne/i.test(m)) return 'Connexion impossible : vérifie ta connexion internet.';
+  if (/accès refusé|42501|permission denied|row-level security/i.test(m)) return 'Action refusée (droits insuffisants).';
+  return m || 'Erreur inconnue.';
+}
+function loadSupabase(){
+  return new Promise((res, rej) => {
+    if (window.supabase) return res();
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js';
+    sc.integrity = 'sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug'; sc.crossOrigin = 'anonymous';
+    sc.onload = res; sc.onerror = () => rej(new Error('Bibliothèque de compte indisponible (hors ligne ?)'));
+    document.head.appendChild(sc);
+  });
+}
+async function cloudInit(){
+  if (!cloudOn()) return;
+  try { await loadSupabase(); } catch (e){ acc.msg = friendly(e); return; }
+  sb = window.supabase.createClient(CLOUD.url, CLOUD.anonKey, {auth: {persistSession: true, autoRefreshToken: true, detectSessionInUrl: true}});
+  sb.auth.onAuthStateChange((ev, sess) => setTimeout(async () => { // jamais d'appel Supabase directement dans ce rappel
+    if (ev === 'SIGNED_OUT'){ me = null; refreshAccount(); return; }
+    if (ev === 'PASSWORD_RECOVERY'){ await loadMe(sess); acc.mode = 'newpass'; openAccount('newpass'); return; }
+    if (sess && ['SIGNED_IN', 'INITIAL_SESSION'].includes(ev) && !me) await loadMe(sess);
+  }, 0));
+  refreshAccount();
+}
+function refreshAccount(){ if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else if (screen === 'tab') home(); }
+async function loadMe(sess){
+  if (!sess || loadingMe) return; loadingMe = true;
+  try {
+    const u = sess.user, {data: prof, error} = await sb.from('profiles').select('*').eq('id', u.id).maybeSingle();
+    if (error) throw error;
+    if (!prof) throw new Error('relation profiles does not exist (profil introuvable)');
+    if (prof.blocked){ await sb.auth.signOut(); me = null; acc.msg = 'Ce compte est suspendu.'; acc.ok = false; return; }
+    me = {user: u, profile: prof};
+    sb.rpc('touch');
+    await cloudSyncOnLogin();
+  } catch (e){ acc.msg = friendly(e); acc.ok = false; }
+  finally { loadingMe = false; refreshAccount(); }
+}
+
+/* synchronisation : un document JSON par utilisateur */
+function snap(){ const c = {...cfg}; delete c.tab; return {v: 1, cfg: c, stats, sched, days, errors, custom}; }
+const hasLocal = () => Object.keys(stats).length > 0 || errors.length > 0 || custom.length > 0;
+function applyRemote(d){
+  syncPause = true;
+  try {
+    stats = d.stats || {}; sched = d.sched || {}; days = d.days || {}; errors = d.errors || [];
+    custom.forEach(t => { delete MT[t.id]; }); custom = d.custom || []; custom.forEach(t => { MT[t.id] = t; });
+    if (d.cfg){ const keep = cfg.tab; Object.assign(cfg, d.cfg); cfg.tab = keep; }
+    store.set('hifz.stats', stats); store.set('hifz.sched', sched); store.set('hifz.days', days);
+    store.set('hifz.errors', errors); store.set('hifz.custom', custom); saveCfg();
+  } finally { syncPause = false; }
+}
+function mergeData(a, b){ // a = cet appareil, b = compte : on ne perd rien
+  const st = {...(b.stats || {})};
+  for (const [k, [o, e]] of Object.entries(a.stats || {})){ const x = st[k] || [0, 0]; st[k] = [Math.max(o, x[0]), Math.max(e, x[1])]; }
+  const sc = {...(b.sched || {})}; for (const [k, v] of Object.entries(a.sched || {})) if (!sc[k] || v.due > sc[k].due) sc[k] = v;
+  const dy = {...(b.days || {})}; for (const [k, n] of Object.entries(a.days || {})) dy[k] = Math.max(n, dy[k] || 0);
+  const seen = new Set();
+  const er = [...(b.errors || []), ...(a.errors || [])].filter(e => { const id = e.t + ':' + e.k; if (seen.has(id)) return false; seen.add(id); return true; })
+    .sort((x, y) => x.t - y.t).slice(-2000);
+  const cu = new Map(); [...(b.custom || []), ...(a.custom || [])].forEach(t => cu.set(t.id, t));
+  return {...b, cfg: a.cfg || b.cfg, stats: st, sched: sc, days: dy, errors: er, custom: [...cu.values()]};
+}
+async function cloudPush(){
+  if (!me || !sb) return;
+  try {
+    const t = new Date().toISOString();
+    const {error} = await sb.from('user_data').upsert({user_id: me.user.id, data: snap(), updated_at: t});
+    if (error) throw error;
+    store.set('hifz.cloud', {uid: me.user.id, t, dirty: false}); acc.last = t; acc.syncErr = '';
+  } catch (e){ acc.syncErr = friendly(e); }
+  if (screen === 'account') renderAccount();
+}
+async function cloudSyncOnLogin(){
+  const meta = cmeta(), uid = me.user.id;
+  const {data: remote, error} = await sb.from('user_data').select('data,updated_at').eq('user_id', uid).maybeSingle();
+  if (error) throw error;
+  const stamp = () => { acc.last = new Date().toISOString(); store.set('hifz.cloud', {uid, t: acc.last, dirty: false}); };
+  if (!remote){ if (hasLocal()) await cloudPush(); else stamp(); return; }
+  if (meta.uid === uid){
+    if (meta.dirty) await cloudPush();                                                // modifications locales non envoyées : elles gagnent
+    else if (!meta.t || Date.parse(remote.updated_at) > Date.parse(meta.t)){ applyRemote(remote.data); stamp(); }
+    else acc.last = meta.t;
+  } else if (!hasLocal()){ applyRemote(remote.data); stamp(); }
+  else { applyRemote(mergeData(snap(), remote.data)); await cloudPush(); acc.msg = 'La progression de cet appareil a été fusionnée avec celle de ton compte.'; acc.ok = true; }
+}
+
+/* écran Compte */
+function accountCard(){
+  if (!cloudOn()) return `<div class="card"><h2>Compte</h2><p class="ref" style="margin:0 0 8px">Les comptes ne sont pas encore activés sur ce site.</p><button data-act="acc-open">En savoir plus</button></div>`;
+  if (me) return `<div class="card"><h2>Compte</h2><p style="margin:0 0 8px">Connecté : <b>${esc(me.user.email)}</b> ${isAdmin() ? '<span class="ref">· administrateur</span>' : ''}</p>
+    <div class="row"><button data-act="acc-open">Mon compte</button>${isAdmin() ? '<button class="pri" data-act="adm-open">🛡 Espace admin</button>' : ''}</div></div>`;
+  return `<div class="card"><h2>Compte</h2><p class="ref" style="margin:0 0 8px">Sauvegarde ta progression et retrouve-la sur tous tes appareils.</p>
+    <div class="row"><button class="pri" data-act="acc-open" data-v="signup">Créer un compte</button><button data-act="acc-open" data-v="login">Se connecter</button></div></div>`;
+}
+function openAccount(mode){ if (mode) acc.mode = mode; if (!me && acc.mode === 'newpass') acc.mode = 'login'; renderAccount(); window.scrollTo(0, 0); }
+function renderAccount(){
+  setNav(false); screen = 'account';
+  const dk = {'ac-email': 'email', 'ac-pass': 'pass', 'ac-pass2': 'pass2'};
+  const f = (id, label, type, ac, extra = '') => `<label class="f" for="${id}">${label}</label><input id="${id}" type="${type}" autocomplete="${ac}" value="${esc(acc.d[dk[id]] || '')}" ${extra}>`;
+  let body;
+  if (!cloudOn()) body = `<div class="card"><h2>Comptes non activés</h2><p class="sub" style="margin:0">Le propriétaire du site doit encore relier une base Supabase (voir <code>supabase/README.md</code> dans le dépôt). Ta progression reste pour l'instant sur cet appareil.</p></div>`;
+  else if (!sb) body = `<div class="card"><p class="sub" style="margin:0">${esc(acc.msg || 'Chargement…')}</p></div>`;
+  else if (me){
+    body = `<div class="card"><h2>${esc(me.user.email)}</h2>
+      <p class="ref" style="margin:0 0 8px">${isAdmin() ? 'Rôle : administrateur' : 'Rôle : utilisateur'} · inscrit le ${esc(new Date(me.profile.created_at).toLocaleDateString('fr-FR'))}</p>
+      <p class="ref" style="margin:0 0 10px">${acc.last ? 'Dernière synchronisation : ' + fdate(Date.parse(acc.last)) : 'Synchronisation automatique active'}${acc.syncErr ? ' · <span style="color:var(--ko)">' + esc(acc.syncErr) + '</span>' : ''}</p>
+      <div class="row"><button class="pri" data-act="acc-sync">🔄 Synchroniser maintenant</button>${isAdmin() ? '<button data-act="adm-open">🛡 Espace admin</button>' : ''}</div></div>
+      <div class="card"><h2>Mot de passe</h2>${f('ac-pass', 'Nouveau mot de passe (8 caractères minimum)', 'password', 'new-password', 'data-enter="ac-go"')}
+      <button id="ac-go" class="pri" style="margin-top:8px" data-act="acc-newpass">Changer le mot de passe</button></div>
+      <div class="card"><h2>Confidentialité</h2><p class="ref" style="margin:0">Sont enregistrés : ton e-mail, ta date d'inscription, ta dernière activité et ta progression (statistiques, erreurs, historique). L'administrateur du site peut les consulter. Tu peux tout supprimer à tout moment.</p>
+      <p style="margin:10px 0 0"><button class="link" data-act="acc-delete" style="color:var(--ko)">Supprimer mon compte et mes données</button></p></div>
+      <button class="big" data-act="acc-logout">Se déconnecter</button>`;
+  } else if (acc.mode === 'newpass'){
+    body = `<div class="card"><h2>Nouveau mot de passe</h2>${f('ac-pass', 'Mot de passe (8 caractères minimum)', 'password', 'new-password', 'data-enter="ac-go"')}
+      <button id="ac-go" class="pri big" style="margin-top:10px" data-act="acc-newpass">Enregistrer</button></div>`;
+  } else {
+    const su = acc.mode === 'signup', rs = acc.mode === 'reset';
+    body = `<div class="seg" style="margin-bottom:10px"><button class="${!su && !rs ? 'sel' : ''}" data-act="acc-mode" data-v="login">Connexion</button>
+      <button class="${su ? 'sel' : ''}" data-act="acc-mode" data-v="signup">Créer un compte</button></div>
+      <div class="card"><h2>${su ? 'Créer un compte' : rs ? 'Mot de passe oublié' : 'Se connecter'}</h2>
+      ${f('ac-email', 'Adresse e-mail', 'email', 'email', `data-enter="ac-go"`)}
+      ${rs ? '' : f('ac-pass', su ? 'Mot de passe (8 caractères minimum)' : 'Mot de passe', 'password', su ? 'new-password' : 'current-password', 'data-enter="ac-go"')}
+      ${su ? f('ac-pass2', 'Confirmer le mot de passe', 'password', 'new-password', 'data-enter="ac-go"')
+        + `<label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:.88rem"><input type="checkbox" id="ac-consent" style="width:auto;margin-top:4px" ${acc.d.consent ? 'checked' : ''}>
+        <span>J'accepte que mon e-mail et ma progression soient enregistrés pour la synchronisation, et consultables par l'administrateur du site.</span></label>` : ''}
+      <button id="ac-go" class="pri big" style="margin-top:12px" data-act="${su ? 'acc-signup' : rs ? 'acc-reset' : 'acc-login'}">${su ? 'Créer mon compte' : rs ? 'Envoyer le lien' : 'Me connecter'}</button>
+      ${!su && !rs ? '<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="reset">Mot de passe oublié ?</button></p>' : ''}
+      ${rs ? '<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="login">← Retour à la connexion</button></p>' : ''}</div>`;
+  }
+  $app.innerHTML = `<div class="top"><button class="link" data-act="acc-back">← Retour</button><span>Compte</span></div>
+    <h1 style="margin-top:8px">Mon compte</h1>
+    ${acc.msg && cloudOn() && sb ? `<div class="fb ${acc.ok ? 'ok' : 'ko'}">${esc(acc.msg)}</div>` : ''}${body}`;
+}
+const val = id => ($(id)?.value || '').trim();
+const okEmail = e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
+async function busy(fn){ if (acc.busy) return; acc.busy = true; acc.msg = ''; try { await fn(); acc.d.pass = acc.d.pass2 = ''; acc.d.consent = false; } catch (e){ acc.msg = friendly(e); acc.ok = false; } finally { acc.busy = false; if (screen === 'account') renderAccount(); } }
+const keepEmail = () => { acc.d = {email: val('ac-email') || acc.d.email, pass: $('ac-pass')?.value ?? acc.d.pass, pass2: $('ac-pass2')?.value ?? acc.d.pass2, consent: !!$('ac-consent')?.checked}; };
+const doLogin = () => busy(async () => {
+  keepEmail(); const email = val('ac-email'), password = $('ac-pass').value;
+  if (!okEmail(email) || !password) throw new Error('Indique ton e-mail et ton mot de passe.');
+  const {data, error} = await sb.auth.signInWithPassword({email, password}); if (error) throw error;
+  await loadMe(data.session);
+});
+const doSignup = () => busy(async () => {
+  keepEmail(); const email = val('ac-email'), pw = $('ac-pass').value;
+  if (!okEmail(email)) throw new Error('Adresse e-mail invalide.');
+  if (pw.length < 8) throw new Error('Le mot de passe doit faire 8 caractères au moins.');
+  if (pw !== $('ac-pass2').value) throw new Error('Les deux mots de passe ne correspondent pas.');
+  if (!$('ac-consent').checked) throw new Error('Coche la case pour accepter l\'enregistrement de tes données.');
+  const {data, error} = await sb.auth.signUp({email, password: pw, options: {emailRedirectTo: REDIRECT()}}); if (error) throw error;
+  if (data.user && data.user.identities && data.user.identities.length === 0) throw new Error('Un compte existe déjà avec cet e-mail : connecte-toi.');
+  if (data.session){ await loadMe(data.session); acc.msg = 'Compte créé.'; acc.ok = true; return; }
+  acc.mode = 'login'; acc.ok = true; acc.msg = `Compte créé. Un e-mail de confirmation a été envoyé à ${email} : clique le lien, puis connecte-toi.`;
+});
+const doReset = () => busy(async () => {
+  keepEmail(); const email = val('ac-email'); if (!okEmail(email)) throw new Error('Adresse e-mail invalide.');
+  const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo: REDIRECT()}); if (error) throw error;
+  acc.mode = 'login'; acc.ok = true; acc.msg = 'Si un compte existe pour cette adresse, un lien de réinitialisation vient d\'être envoyé.';
+});
+const doNewPass = () => busy(async () => {
+  const pw = $('ac-pass').value; if (pw.length < 8) throw new Error('Le mot de passe doit faire 8 caractères au moins.');
+  const {error} = await sb.auth.updateUser({password: pw}); if (error) throw error;
+  acc.mode = 'login'; acc.ok = true; acc.msg = 'Mot de passe mis à jour.';
+});
+const doSync = () => busy(async () => { await cloudSyncOnLogin(); await cloudPush(); if (!acc.syncErr){ acc.ok = true; acc.msg = 'Synchronisé.'; } });
+const doLogout = async () => {
+  if (!confirm('Te déconnecter ? La progression de cet appareil sera effacée (elle reste dans ton compte).')) return;
+  clearTimeout(pushTimer); await cloudPush();
+  if (acc.syncErr && !confirm('La dernière synchronisation a échoué : te déconnecter perdra les changements non envoyés. Continuer ?')) return;
+  await sb.auth.signOut(); me = null;
+  syncPause = true; stats = {}; sched = {}; days = {}; errors = []; custom.forEach(t => { delete MT[t.id]; }); custom = [];
+  ['hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.cloud'].forEach(k => { try { localStorage.removeItem(k); } catch {} });
+  syncPause = false; acc.msg = 'Déconnecté.'; acc.ok = true; acc.mode = 'login'; renderAccount();
+};
+const doDeleteMe = () => busy(async () => {
+  if (!confirm('Supprimer définitivement ton compte et ta progression enregistrée ? Cette action est irréversible.')) return;
+  const {error} = await sb.rpc('delete_me'); if (error) throw error;
+  await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.cloud'); } catch {}
+  acc.mode = 'login'; acc.ok = true; acc.msg = 'Compte supprimé. La progression de cet appareil est conservée.';
+});
+
+/* espace admin : l'interface n'est qu'un affichage, les droits sont vérifiés par la base (voir supabase/schema.sql) */
+const when = t => t ? fdate(Date.parse(t)) : '—';
+function summarize(d){
+  const st = d.stats || {}; let ok = 0, tot = 0; const per = {};
+  for (const [k, [o, e]] of Object.entries(st)){ ok += o; tot += o + e; const s = k.split(':')[0]; (per[s] ||= [0, 0]); per[s][0] += o; per[s][1] += e; }
+  const weak = Object.entries(per).filter(([, [o, e]]) => o + e >= 3).map(([s, [o, e]]) => [s, o / (o + e)]).sort((a, b) => a[1] - b[1]).slice(0, 5);
+  const wk = Object.entries(d.days || {}).filter(([k]) => Date.parse(k) >= Date.now() - 7 * 864e5).reduce((a, [, n]) => a + n, 0);
+  return {tot, ok, seen: Object.keys(st).length, weak, wk, last: (d.errors || []).slice(-5).reverse()};
+}
+async function openAdmin(){ if (!isAdmin()) return; adm.detail = null; adm.users = null; renderAdmin(); window.scrollTo(0, 0); await adminLoad(); }
+async function adminLoad(){
+  adm.msg = '';
+  try { const {data, error} = await sb.rpc('admin_users'); if (error) throw error; adm.users = data; } catch (e){ adm.msg = friendly(e); }
+  renderAdmin();
+}
+function renderAdmin(){
+  setNav(false); screen = 'admin';
+  const list = (adm.users || []).filter(u => !adm.q || u.email.toLowerCase().includes(adm.q.toLowerCase()));
+  const active = (adm.users || []).filter(u => u.last_seen && Date.parse(u.last_seen) > Date.now() - 7 * 864e5).length;
+  const row = u => {
+    const self = me && u.id === me.user.id, rate = Number(u.answers) ? Math.round(100 * u.ok / u.answers) + ' %' : '—';
+    const d = adm.detail && adm.detail.id === u.id ? adm.detail.data : null;
+    let det = '';
+    if (d === false) det = '<p class="ref">Pas encore de progression enregistrée.</p>';
+    else if (d){ const x = summarize(d); det = `<div class="sib"><p class="ref" style="margin:0">${Math.round(x.tot)} réponses · ${x.tot ? Math.round(100 * x.ok / x.tot) : 0} % · ${x.seen} versets vus · ${Math.round(x.wk)} réponses sur 7 jours</p>
+      ${x.weak.length ? `<p class="ref" style="margin:4px 0 0"><b>À retravailler :</b> ${x.weak.map(([s, r]) => `${esc(book(/^\d+$/.test(s) ? +s : s) ? sname(/^\d+$/.test(s) ? +s : s) : s)} (${Math.round(r * 100)} %)`).join(' · ')}</p>` : ''}
+      ${x.last.length ? `<p class="ref" style="margin:4px 0 0"><b>Dernières erreurs :</b></p>${x.last.map(e => { const r = pk(e.k); return book(r.s) ? `<p class="ref" style="margin:0">${fdate(e.t)} · ${rlabel(r)}</p>` : ''; }).join('')}` : ''}</div>`; }
+    return `<div class="sib"><p style="margin:0"><b>${esc(u.email)}</b> ${u.role === 'admin' ? '<span class="ref">· 🛡 admin</span>' : ''}${u.blocked ? '<span class="ref" style="color:var(--ko)"> · suspendu</span>' : ''}${self ? '<span class="ref"> · toi</span>' : ''}</p>
+      <p class="ref" style="margin:0">Inscrit le ${when(u.created_at)} · actif ${when(u.last_seen)} · ${Math.round(u.answers)} réponses · réussite ${rate} · ${u.errors} erreurs</p>
+      <div class="grades"><button data-act="adm-detail" data-v="${u.id}">${adm.detail && adm.detail.id === u.id ? 'Masquer' : 'Progression'}</button>
+        <button data-act="adm-role" data-v="${u.id}" ${self ? 'disabled' : ''}>${u.role === 'admin' ? 'Retirer admin' : 'Nommer admin'}</button>
+        <button data-act="adm-block" data-v="${u.id}" ${self ? 'disabled' : ''}>${u.blocked ? 'Débloquer' : 'Bloquer'}</button>
+        <button data-act="adm-del" data-v="${u.id}" style="color:var(--ko)" ${self ? 'disabled' : ''}>Supprimer</button></div>${det}</div>`;
+  };
+  $app.innerHTML = `<div class="top"><button class="link" data-act="acc-back">← Retour</button><span>Administration</span></div>
+    <h1 style="margin-top:8px">Espace admin</h1>
+    <p class="sub">${adm.users ? `${adm.users.length} compte${adm.users.length > 1 ? 's' : ''} · ${active} actif${active > 1 ? 's' : ''} sur 7 jours` : 'Chargement…'}</p>
+    ${adm.msg ? `<div class="fb ko">${esc(adm.msg)}</div>` : ''}
+    <div class="row" style="margin-bottom:10px"><input type="text" id="adm-q" placeholder="Rechercher un e-mail" value="${esc(adm.q)}" autocomplete="off"><button data-act="adm-refresh" style="flex:0 0 auto">🔄 Actualiser</button></div>
+    <div class="card">${adm.users ? (list.map(row).join('') || '<p class="sub" style="margin:0">Aucun compte.</p>') : ''}</div>`;
+  const q = $('adm-q'); if (q) q.oninput = () => { adm.q = q.value; const pos = q.selectionStart; renderAdmin(); const n = $('adm-q'); n.focus(); n.setSelectionRange(pos, pos); };
+}
+async function adminDetail(id){
+  if (adm.detail && adm.detail.id === id){ adm.detail = null; return renderAdmin(); }
+  try { const {data, error} = await sb.rpc('admin_user_data', {target: id}); if (error) throw error; adm.detail = {id, data: data || false}; adm.msg = ''; }
+  catch (e){ adm.msg = friendly(e); }
+  renderAdmin();
+}
+async function adminAct(fn, okMsg){
+  try { const {error} = await fn(); if (error) throw error; adm.msg = ''; } catch (e){ adm.msg = friendly(e); }
+  await adminLoad();
+}
+const userOf = id => (adm.users || []).find(u => u.id === id);
+function adminRole(id){ const u = userOf(id); if (!u) return;
+  const to = u.role === 'admin' ? 'user' : 'admin';
+  if (confirm(`${to === 'admin' ? 'Nommer administrateur' : 'Retirer le rôle admin à'} ${u.email} ?`)) adminAct(() => sb.rpc('admin_set_role', {target: id, new_role: to})); }
+function adminBlock(id){ const u = userOf(id); if (!u) return;
+  if (confirm(`${u.blocked ? 'Débloquer' : 'Bloquer'} ${u.email} ?`)) adminAct(() => sb.rpc('admin_set_blocked', {target: id, b: !u.blocked})); }
+function adminDelete(id){ const u = userOf(id); if (!u) return;
+  if (confirm(`Supprimer définitivement le compte ${u.email} et toute sa progression ? Irréversible.`)) adminAct(() => sb.rpc('admin_delete_user', {target: id})); }
+$app.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.enter){ e.preventDefault(); $(e.target.dataset.enter)?.click(); } });
+
 /* ---------- démarrage ---------- */
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 (async function init(){
   MT = Object.fromEntries((window.MOUTOUN?.texts || []).map(t => [t.id, t]));
   custom.forEach(t => { MT[t.id] = t; });
-  try { await loadQuran(); home(); }
+  try { await loadQuran(); home(); cloudInit(); }
   catch (err){
     $app.innerHTML = `<h1>Chargement impossible</h1>
       <p class="sub">Une connexion internet est nécessaire au premier lancement (${esc(err.message)}).</p>

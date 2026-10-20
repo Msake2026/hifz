@@ -8,3 +8,5 @@ Application web (un seul dossier, sans serveur) : exercices de mémorisation, hi
 - Ta progression reste sur ton appareil (localStorage) ; export/import dans Réglages.
 
 Installation sur téléphone : ouvrir la page en HTTPS puis « Installer l'application » (Android/Chrome) ou Partager → « Sur l'écran d'accueil » (iPhone/Safari).
+
+**Comptes et espace admin (optionnel)** : synchronisation de la progression et administration via Supabase. Mise en route : voir `supabase/README.md` ; les règles de sécurité sont dans `supabase/schema.sql` ; les deux valeurs publiques à renseigner sont dans `config.js`.
