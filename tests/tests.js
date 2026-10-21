@@ -27,7 +27,7 @@
   const reset = (extra = '') => { E("cfg = Object.assign({}, DEF, {tab: 'home', n: 5, corr: 'standard'}); stats = {}; sched = {}; days = {}; errors = []; plan = null; custom = []; ses = null; LANG = 'fr'; applyLang(); " + extra); jsErrors.length = 0; };
   const $q = s => D.querySelector(s), $$q = s => [...D.querySelectorAll(s)], appText = () => D.getElementById('app').textContent;   // texte de l'écran seulement (le code de la page n'en fait pas partie)
   const click = el => { ok(el, 'élément introuvable'); el.click(); };
-  const clickAct = (act, v) => click($q(`[data-act="${act}"]${v !== undefined ? `[data-v="${v}"]` : ''}`));
+  const clickAct = (act, v) => { const sel = `[data-act="${act}"]${v !== undefined ? `[data-v="${v}"]` : ''}`; const el = $q(sel); if (!el) throw new Error('élément introuvable : ' + sel); click(el); };
   const noErr = ctx => ok(!jsErrors.length, `erreur JS pendant « ${ctx} » : ${jsErrors.join(' / ')}`);
   const fb = () => $q('#fb .fb');
   const ALL = "{type: 'surah', from: 1, to: 114}", MAT = "{type: 'matn', id: 'all'}";
@@ -512,6 +512,45 @@
     }
     E("setLang('en')"); got.length = 0; E("exportCsv('days')"); ok(got[0].text.split('\r\n')[0].includes(',') && got[0].text.includes('Answers'), 'anglais : virgule et en-têtes traduits'); E("setLang('fr')");
     for (const L of ['en', 'ar']){ E(`setLang('${L}')`); for (const k of ['verses', 'days', 'errors', 'drills']) E(`exportCsv('${k}')`); E("go('settings')"); eq(E('[...missingKeys]'), [], L); } E("setLang('fr')"); delete W.download;
+  });
+  test('Rôle enseignant : carte élève (inviter, annuler, retirer, journal), espace enseignant, nomination par l’admin (serveur simulé)', async () => {
+    reset(); const calls = []; W.__calls = calls; const now = Date.now(), iso = d => new Date(now + d * 864e5).toISOString();
+    W.__state = {links: [{as_role: 'teacher', other_id: 't1', email: 'prof@x.fr', since: iso(-3)}], invites: [{code: 'OLDCODE2', expires_at: iso(3), used_by: null}], log: [{teacher_email: 'prof@x.fr', at: iso(-1)}], fail: null};
+    E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; me = {user: {id: 's1', email: 'eleve@x.fr'}, profile: {role: 'user', created_at: '${iso(-30)}'}};
+      sb = {from(t){ return {select(){ return {is(){ return {gt(){ window.__calls.push('from ' + t); return Promise.resolve({data: window.__state.invites, error: null}); }}; }}; }}; },
+        async rpc(n, a){ window.__calls.push(n + ' ' + JSON.stringify(a || {})); const S = window.__state; if (S.fail && S.fail[n]) return {data: null, error: {message: S.fail[n]}};
+          if (n === 'links_mine') return {data: S.links, error: null}; if (n === 'access_log_mine') return {data: S.log, error: null};
+          if (n === 'invite_create'){ const c = {code: 'ABCD2345', expires_at: new Date(Date.now() + 7 * 864e5).toISOString()}; S.invites = S.invites.concat([{...c, used_by: null}]); return {data: [c], error: null}; }
+          if (n === 'invite_cancel'){ S.invites = S.invites.filter(x => x.code !== a.p_code); return {data: null, error: null}; }
+          if (n === 'link_revoke'){ S.links = S.links.filter(x => x.other_id !== a.other); return {data: null, error: null}; }
+          return {data: null, error: null}; }, auth: {}};`);
+    E("openAccount()"); for (let i = 0; i < 40 && !appText().includes('Mon enseignant'); i++) await wait(50); await wait(200);
+    let t = appText(); ok(t.includes('Mon enseignant') && t.includes('OLDCODE2') && t.includes('prof@x.fr') && t.includes('Consultations récentes'), 'carte élève : invitation, enseignant, journal'); ok(!$q('[data-act="tch-open"]'), 'pas d’espace enseignant pour un élève');
+    ok(/sans les réponses que tu as tapées/.test(t), 'le consentement dit ce qui est vu'); noErr('carte élève');
+    clickAct('tch-invite'); for (let i = 0; i < 40 && !$q('#tch-code-new'); i++) await wait(50); eq($q('#tch-code-new').textContent, 'ABCD2345'); ok(calls.includes('invite_create {}'), 'invite_create'); ok(appText().includes('une fois'), 'code à usage unique');
+    clickAct('tch-cancel', 'OLDCODE2'); await wait(300); ok(calls.some(c => c === 'invite_cancel {"p_code":"OLDCODE2"}'), 'annulation'); ok(!appText().includes('OLDCODE2'));
+    clickAct('tch-revoke', 't1'); await wait(300); ok(calls.some(c => c === 'link_revoke {"other":"t1"}'), 'retrait de l’accès'); ok(!appText().includes('prof@x.fr · depuis') && !appText().includes('Mes enseignants'), 'enseignant retiré de la liste');
+    // l'enseignant
+    E(`me = {user: {id: 't1', email: 'prof@x.fr'}, profile: {role: 'teacher', created_at: '${iso(-30)}'}}`); W.__state.students = [{id: 's1', email: 'eleve@x.fr', since: iso(-3), last_seen: iso(-0.1), answers: 40, ok: 30, errors: 4, synced_at: iso(-0.1)}];
+    const days = {}; for (let i = 0; i < 5; i++){ const d = new Date(now - i * 864e5); days[`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`] = 10 + i; }
+    W.__state.detail = {email: 'eleve@x.fr', updated_at: iso(0), stats: {'2:5': [1, 3], '2:6': [5, 0], '114:1': [9, 0]}, days, errors: [{t: now - 1000, k: '2:5', m: 'cloze', sc: 0}, {t: now - 2000, k: '2:5', m: 'next', sc: 0}, {t: now - 3000, k: '2:6', m: 'mcq', sc: 0.5}]};
+    const base = W.eval("sb.rpc"); W.eval("(() => { const r = sb.rpc; sb.rpc = async (n, a) => { if (n === 'teacher_students') { window.__calls.push(n); return {data: window.__state.students, error: null}; } if (n === 'teacher_student_data') { window.__calls.push(n + ' ' + JSON.stringify(a)); return {data: window.__state.detail, error: null}; } if (n === 'invite_accept') { window.__calls.push(n + ' ' + JSON.stringify(a)); if (a.p_code.toUpperCase() === 'BADCODE1') return {data: null, error: {message: 'Code invalide ou expiré.'}}; window.__state.students.push({id: 's2', email: 'autre@x.fr', since: new Date().toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}); return {data: [{student_id: 's2', email: 'autre@x.fr'}], error: null}; } return r(n, a); }; })()");
+    E("openAccount()"); await wait(300); ok($q('[data-act="tch-open"]'), 'bouton Espace enseignant'); clickAct('tch-open'); for (let i = 0; i < 40 && !appText().includes('eleve@x.fr'); i++) await wait(50);
+    t = appText(); ok(t.includes('Espace enseignant') && t.includes('eleve@x.fr') && /40 réponses/.test(t) && /75 %/.test(t), 'liste des élèves : réponses et réussite'); noErr('espace enseignant');
+    clickAct('tch-detail', 's1'); for (let i = 0; i < 40 && !appText().includes('Régularité'); i++) await wait(50); t = appText();
+    ok(calls.some(c => c === 'teacher_student_data {"target":"s1"}'), 'résumé demandé'); ok(/5 jours actifs sur 7/.test(t) && /série en cours : 5/.test(t), 'régularité : ' + t.slice(t.indexOf('Régularité'), t.indexOf('Régularité') + 90));
+    eq($$q('.week div').length, 14, '14 jours affichés'); ok(t.includes('Par sourate') && t.includes('Erreurs fréquentes') && t.includes('2×'), 'progression par sourate et erreurs fréquentes'); ok(!/réponse tapée/.test(t));
+    $q('#tch-code').value = 'badcode1'; clickAct('tch-add'); await wait(300); ok(calls.some(c => c === 'invite_accept {"p_code":"badcode1"}'), 'code envoyé tel que saisi (le serveur met en majuscules)'); ok(appText().includes('Code invalide ou expiré.'), 'erreur du serveur affichée');
+    $q('#tch-code').value = 'abcd2345'; clickAct('tch-add'); await wait(400); ok(appText().includes('Élève ajouté : autre@x.fr') && appText().includes('autre@x.fr'), 'élève ajouté');
+    clickAct('tch-add'); await wait(200); ok(appText().includes('Saisis le code'), 'code vide refusé');
+    // l'administrateur nomme un enseignant
+    E(`me = {user: {id: 'ad', email: 'adm@x.fr'}, profile: {role: 'admin', created_at: '${iso(-30)}'}}; adm.users = [{id: 'ad', email: 'adm@x.fr', role: 'admin', blocked: false, created_at: '${iso(-30)}', last_seen: null, answers: 0, ok: 0, errors: 0}, {id: 'u9', email: 'futur.prof@x.fr', role: 'user', blocked: false, created_at: '${iso(-2)}', last_seen: null, answers: 0, ok: 0, errors: 0}, {id: 't1', email: 'prof@x.fr', role: 'teacher', blocked: false, created_at: '${iso(-2)}', last_seen: null, answers: 0, ok: 0, errors: 0}]; adm.detail = null; adm.q = ''; renderAdmin()`);
+    t = appText(); ok($q('[data-act="adm-teacher"][data-v="u9"]').textContent.includes('Nommer enseignant') && $q('[data-act="adm-teacher"][data-v="t1"]').textContent.includes('Retirer enseignant'), 'boutons de nomination'); ok(!$q('[data-act="adm-teacher"][data-v="ad"]'), 'pas de bouton pour un admin'); ok(t.includes('🎓') && t.includes('enseignant'), 'badge enseignant');
+    calls.length = 0; clickAct('adm-teacher', 'u9'); await wait(300); ok(calls.some(c => c === 'admin_set_role {"target":"u9","new_role":"teacher"}'), 'nomination envoyée'); E("adm.users = [{id: 't1', email: 'prof@x.fr', role: 'teacher', blocked: false, created_at: new Date().toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}]; renderAdmin()"); calls.length = 0; clickAct('adm-teacher', 't1'); await wait(300); ok(calls.some(c => c === 'admin_set_role {"target":"t1","new_role":"user"}'), 'retrait du rôle');
+    // traductions
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); me = {user: {id: 't1', email: 'p@x.fr'}, profile: {role: 'teacher'}}; tch.code = {code: 'ABCD2345', expires_at: '${iso(5)}'}; tch.links = [{as_role: 'teacher', other_id: 'x', email: 'a@x.fr', since: '${iso(-1)}'}]; tch.invites = [{code: 'ZZZZ2222', expires_at: '${iso(2)}'}]; tch.log = [{teacher_email: 'a@x.fr', at: '${iso(-1)}'}]; tch.loaded = true; renderAccount()`);
+      ok(appText().length > 200, L); E("tch.students = window.__state.students; tch.detail = {id: 's1', data: window.__state.detail}; renderTeacher()"); eq(E('[...missingKeys]'), [], L); E("renderAdmin()"); eq(E('[...missingKeys]'), [], L + ' admin'); }
+    E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false}; adm.users = null");
   });
   test('Espace admin : surveillance des e-mails (calme, attention, alerte, nom de domaine)', async () => {
     const mk = (n, agoH) => Array.from({length: n}, (_, i) => ({id: 'u' + agoH + i, email: `u${agoH}-${i}@x.fr`, role: 'user', blocked: false, created_at: new Date(Date.now() - agoH * 36e5).toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}));

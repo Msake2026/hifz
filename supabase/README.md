@@ -9,6 +9,13 @@
 
 L'administrateur initial se change dans `schema.sql` (fonction `bootstrap_admin_email`). D'autres admins se nomment depuis l'espace admin.
 
+## Rôle enseignant (facultatif)
+
+1. Dans le SQL Editor, exécute `teacher.sql` (après `schema.sql` ; relançable sans risque).
+2. Espace admin → un compte → **Nommer enseignant**.
+3. L'élève ouvre **Réglages → Compte → Mon enseignant → Inviter un enseignant** et donne le code (8 caractères, valable 7 jours, usage unique). L'enseignant le saisit dans **Espace enseignant**.
+4. L'enseignant ne voit qu'un résumé (régularité, progression par sourate, erreurs fréquentes), jamais les réponses tapées ni les réglages ; chaque consultation est notée dans un journal que l'élève lit. L'élève ou l'enseignant peut rompre le lien à tout moment. Les règles sont testées sur un vrai PostgreSQL (`tests/` + workflow `sql-tests`).
+
 ---
 
 # Rappels par notification (facultatif) — à faire une seule fois

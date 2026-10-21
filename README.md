@@ -14,7 +14,7 @@ Application web (un seul dossier, sans serveur) : exercices de mémorisation, hi
 
 Installation sur téléphone : ouvrir la page en HTTPS puis « Installer l'application » (Android/Chrome) ou Partager → « Sur l'écran d'accueil » (iPhone/Safari).
 
-**Comptes et espace admin (optionnel)** : synchronisation de la progression et administration via Supabase. Mise en route : voir `supabase/README.md` ; les règles de sécurité sont dans `supabase/schema.sql` ; les deux valeurs publiques à renseigner sont dans `config.js`.
+**Comptes et espace admin (optionnel)** : synchronisation de la progression et administration via Supabase. Mise en route : voir `supabase/README.md` ; les règles de sécurité sont dans `supabase/schema.sql` ; les deux valeurs publiques à renseigner sont dans `config.js`. **Enseignant** : un élève peut inviter un enseignant (consentement explicite, révocable, journal des consultations) ; voir `supabase/teacher.sql`.
 
 **Tests** : `node --test tests/node.test.mjs` (Coran, traductions, rappels, secrets) ; tests de l'application avec de vrais clics : `python3 -m http.server 8765` puis ouvrir `http://localhost:8765/tests/`. Ils tournent aussi à chaque `git push` (GitHub Actions). Régénérer le texte du Coran : `python3 -I tools/build_quran.py`.
 

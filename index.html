@@ -658,7 +658,7 @@ function setLang(l){ // change la langue de l'interface (le texte du Coran ne ch
   if (!['fr', 'en', 'ar'].includes(l) || l === LANG) return;
   LANG = l; cfg.lang = l; saveCfg(); applyLang();
   if (me && sb && remState().on) pushResync().catch(() => {});
-  if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else home();
+  if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else if (screen === 'teacher') renderTeacher(); else home();
 }
 function go(tab){ cfg.tab = tab; saveCfg(); home(); window.scrollTo(0, 0); }
 
@@ -2304,6 +2304,15 @@ const onClick = e => {
     case 'adm-refresh': adminLoad(); break;
     case 'adm-detail': adminDetail(v); break;
     case 'adm-role': adminRole(v); break;
+    case 'adm-teacher': adminTeacher(v); break;
+    case 'tch-open': openTeacher(); break;
+    case 'tch-add': tchAdd(); break;
+    case 'tch-detail': tchDetail(v); break;
+    case 'tch-del': tchDrop(v); break;
+    case 'tch-invite': tchInvite(); break;
+    case 'tch-cancel': tchCancel(v); break;
+    case 'tch-revoke': tchRevoke(v); break;
+    case 'tch-copy': tchCopy(); break;
     case 'adm-block': adminBlock(v); break;
     case 'adm-del': adminDelete(v); break;
     case 'rdopen': { const r = pk(v); openReader((isQ(r.s) ? 'q:' : 'm:') + r.s, r.a); break; }
@@ -2579,7 +2588,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v37';
+const APP_VERSION = '21 oct. 2026 · v38';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2649,7 +2658,7 @@ function renderLoading(){ setNav(false); $app.innerHTML = `<p class="sub" style=
 function refreshAccount(){
   if (screen === 'legal') return;
   if (screen === 'account' && me && acc.fromGate){ acc.fromGate = false; return go('home'); } // connexion réussie depuis l'écran d'accueil protégé
-  if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else if (screen === 'tab' || !me) home();
+  if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else if (screen === 'teacher') renderTeacher(); else if (screen === 'tab' || !me) home();
 }
 async function loadMe(sess){
   if (!sess || loadingMe) return; loadingMe = true;
@@ -2730,7 +2739,7 @@ function accountCard(){
   return `<div class="card"><h2>${tr('Compte')}</h2><p class="ref" style="margin:0 0 8px">${tr('Sauvegarde ta progression et retrouve-la sur tous tes appareils.')}</p>
     <div class="row"><button class="pri" data-act="acc-open" data-v="signup">${tr('Créer un compte')}</button><button data-act="acc-open" data-v="login">${tr('Se connecter')}</button></div></div>`;
 }
-function openAccount(mode){ if (mode) acc.mode = mode; if (!me && acc.mode === 'newpass') acc.mode = 'login'; renderAccount(); window.scrollTo(0, 0); }
+function openAccount(mode){ if (mode) acc.mode = mode; if (!me && acc.mode === 'newpass') acc.mode = 'login'; renderAccount(); window.scrollTo(0, 0); if (me) tchLoadStudent(); }
 function renderAccount(){
   setNav(false); screen = 'account';
   const dk = {'ac-email': 'email', 'ac-pass': 'pass', 'ac-pass2': 'pass2'};
@@ -2745,7 +2754,8 @@ function renderAccount(){
     body = `<div class="card"><h2>${esc(me.user.email)}</h2>
       <p class="ref" style="margin:0 0 8px">${isAdmin() ? tr('Rôle : administrateur') : tr('Rôle : utilisateur')} · ${tr('inscrit le {d}', {d: esc(new Date(me.profile.created_at).toLocaleDateString(LOCALE()))})}</p>
       <p class="ref" style="margin:0 0 10px">${acc.last ? tr('Dernière synchronisation :') + ' ' + fdate(Date.parse(acc.last)) : tr('Synchronisation automatique active')}${acc.syncErr ? ' · <span style="color:var(--ko)">' + esc(acc.syncErr) + '</span>' : ''}</p>
-      <div class="row"><button class="pri" data-act="acc-sync">🔄 ${tr('Synchroniser maintenant')}</button>${isAdmin() ? `<button data-act="adm-open">🛡 ${tr('Espace admin')}</button>` : ''}</div></div>
+      <div class="row"><button class="pri" data-act="acc-sync">🔄 ${tr('Synchroniser maintenant')}</button>${isAdmin() ? `<button data-act="adm-open">🛡 ${tr('Espace admin')}</button>` : ''}${isTeacher() ? `<button data-act="tch-open">🎓 ${tr('Espace enseignant')}</button>` : ''}</div></div>
+      ${tchStudentCard()}
       <div class="card"><h2>${tr('Mot de passe')}</h2>${f('ac-pass', tr('Nouveau mot de passe (8 caractères minimum)'), 'password', 'new-password', 'data-enter="ac-go"')}
       <button id="ac-go" class="pri" style="margin-top:8px" data-act="acc-newpass">${tr('Changer le mot de passe')}</button></div>
       <div class="card"><h2>${tr('Confidentialité')}</h2><p class="ref" style="margin:0">${tr("Sont enregistrés : ton e-mail, ta date d'inscription, ta dernière activité et ta progression (statistiques, erreurs, historique). L'administrateur du site peut les consulter. Tu peux tout supprimer à tout moment.")}</p>
@@ -3029,6 +3039,7 @@ function renderLegal(){
     ${sec('Quelles données ?', [tr("Compte : ton adresse e-mail, ton mot de passe (transmis au service d'authentification Supabase, qui le stocke de façon sécurisée ; ce site ne le conserve pas), la date d'inscription, ta dernière activité et ton rôle."),
       tr("Progression : tes statistiques, ton historique d'erreurs (y compris les réponses que tu saisis), ton plan de mémorisation, tes réglages et les textes que tu ajoutes toi-même."),
       tr("Rappels (facultatif) : si tu actives les notifications, l'adresse technique de ton appareil pour les notifications (fournie par Apple, Google ou Mozilla), l'heure choisie, ton fuseau horaire et ta langue sont enregistrés pour t'envoyer le rappel, qui transite par le service de notifications de ton système. Tu peux les désactiver à tout moment dans Réglages."),
+      tr("Enseignant (facultatif) : si tu invites un enseignant, il voit ton e-mail, ton total de réponses, ta progression par sourate, tes jours d'activité et tes erreurs (sans les réponses que tu as tapées, sans tes réglages ni les textes que tu ajoutes). Tu génères un code d'invitation valable 7 jours et à usage unique ; tu peux retirer l'accès à tout moment ; chaque consultation d'un détail est enregistrée et visible dans ton compte. Seul un compte auquel l'administrateur a donné le rôle enseignant peut utiliser un code."),
       tr("Données techniques : comme sur tout site, les hébergeurs et services utilisés peuvent enregistrer des informations de connexion, par exemple l'adresse IP.")])}
     ${sec('Pourquoi ?', [tr("Pour créer ton compte, te connecter et synchroniser ta progression entre tes appareils. L'administrateur peut consulter la liste des comptes et la progression pour gérer le service. Les données ne sont ni vendues ni utilisées pour de la publicité.")])}
     ${sec('Sur quelle base ?', [tr("Ton consentement, donné en cochant la case à l'inscription. Tu peux le retirer à tout moment en supprimant ton compte.")])}
@@ -3076,6 +3087,102 @@ function watchHtml(){
     ${w.level ? `<p class="fb ${w.level > 1 ? 'ko' : 'mid'}" style="margin:8px 0 0">${tr("Tu approches des limites d'envoi : prévois un nom de domaine avec Resend (supabase/README.md) avant d'inviter beaucoup de monde.")}</p>` : ''}
     ${w.domain ? `<p class="ref" style="margin:8px 0 0">${tr("Tu as {n} comptes : c'est le moment de prévoir un nom de domaine avec Resend pour que les e-mails restent fiables.", {n: w.total})}</p>` : ''}</div>`;
 }
+/* TC:begin — suivi par un enseignant : statistiques calculées sur le résumé reçu (fonctions pures, testées en Node) */
+function tcRegularity(days, now){ // 14 derniers jours (le plus ancien d'abord), jours actifs sur 7 et 30 jours, série en cours
+  const key = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const n = i => Number((days || {})[key(now - i * 864e5)]) || 0;
+  const bars = Array.from({length: 14}, (_, j) => ({d: key(now - (13 - j) * 864e5), n: n(13 - j)}));
+  const active = k => Array.from({length: k}, (_, i) => n(i)).filter(x => x > 0).length;
+  let streak = 0; for (let i = n(0) > 0 ? 0 : 1; i < 400 && n(i) > 0; i++) streak++;
+  return {bars, active7: active(7), active30: active(30), streak, total14: bars.reduce((t, x) => t + x.n, 0)};
+}
+function tcPerSurah(stats){ // par sourate ou matn : réussites, ratés, versets vus ; la plus faible d'abord
+  const per = {};
+  for (const [k, v] of Object.entries(stats || {})){ const s = k.split(':')[0], x = per[s] ||= {s, ok: 0, ko: 0, seen: 0}; x.ok += v[0]; x.ko += v[1]; x.seen++; }
+  return Object.values(per).map(x => ({...x, rate: x.ok + x.ko ? x.ok / (x.ok + x.ko) : 0})).sort((a, b) => a.rate - b.rate || b.ko - a.ko);
+}
+function tcFrequent(errors, n = 10){ // versets les plus souvent ratés
+  const c = {}; for (const e of errors || []){ const x = c[e.k] ||= {k: e.k, n: 0, last: 0}; x.n++; x.last = Math.max(x.last, e.t); }
+  return Object.values(c).sort((a, b) => b.n - a.n || b.last - a.last).slice(0, n);
+}
+/* TC:end */
+const isTeacher = () => !!(me && me.profile && me.profile.role === 'teacher');
+let tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false};
+const tchErr = e => { tch.msg = friendly(e); tch.ok = false; };
+async function tchLoadStudent(){ // ce que l'élève voit : ses invitations, ses enseignants, les consultations
+  if (!me || !sb) return;
+  try {
+    const [a, b, c] = await Promise.all([sb.rpc('links_mine'), sb.from('teacher_invites').select('code, expires_at, used_by').is('used_by', null).gt('expires_at', new Date().toISOString()), sb.rpc('access_log_mine')]);
+    for (const r of [a, b, c]) if (r.error) throw r.error;
+    tch.links = (a.data || []).filter(x => x.as_role === 'teacher'); tch.invites = b.data || []; tch.log = c.data || [];
+  } catch (e){ tchErr(e); }
+  tch.loaded = true; if (screen === 'account') renderAccount();
+}
+function tchStudentCard(){
+  if (!me) return '';
+  const L = tch.links, I = tch.invites, G = tch.log, fd = t => new Date(t).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short', year: 'numeric'});
+  return `<div class="card"><h2>${tr('Mon enseignant')}</h2>
+    <p class="ref" style="margin:0 0 8px">${tr("Tu peux inviter un enseignant à suivre ta progression. Il verra ton e-mail, ton total de réponses, tes statistiques par sourate, tes jours d'activité et tes erreurs (sans les réponses que tu as tapées). Il ne voit ni tes réglages, ni les textes que tu ajoutes. Tu génères un code, tu le lui donnes, et tu peux retirer l'accès à tout moment.")}</p>
+    <button data-act="tch-invite" ${tch.busy ? 'disabled' : ''}>✉ ${tr('Inviter un enseignant')}</button>
+    ${tch.code ? `<div class="fb ok" style="margin-top:8px"><b style="font-size:1.4rem;letter-spacing:.15em" id="tch-code-new">${esc(tch.code.code)}</b><br><span class="ref">${tr('Valable jusqu\'au {d}. Donne ce code à ton enseignant : il ne sert qu\'une fois.', {d: fd(tch.code.expires_at)})}</span>
+      <br><button class="link" data-act="tch-copy">${tr('Copier le code')}</button></div>` : ''}
+    ${tch.msg && screen === 'account' ? `<p class="fb ${tch.ok ? 'ok' : 'ko'}" style="margin:8px 0 0">${esc(tch.msg)}</p>` : ''}
+    ${I && I.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Invitations en attente')}</h3>${I.map(x => `<div class="weak"><span><b>${esc(x.code)}</b> · ${tr("jusqu'au {d}", {d: fd(x.expires_at)})}</span><button class="link" data-act="tch-cancel" data-v="${esc(x.code)}">${tr('Annuler')}</button></div>`).join('')}` : ''}
+    ${L && L.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Mes enseignants')}</h3>${L.map(x => `<div class="weak"><span>${esc(x.email)} · ${tr('depuis le {d}', {d: fd(x.since)})}</span><button class="link" style="color:var(--ko)" data-act="tch-revoke" data-v="${x.other_id}">${tr("Retirer l'accès")}</button></div>`).join('')}` : ''}
+    ${G && G.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Consultations récentes de mes données')}</h3>${G.slice(0, 8).map(x => `<p class="ref" style="margin:0">${fdate(Date.parse(x.at))} · ${esc(x.teacher_email)}</p>`).join('')}` : ''}</div>`;
+}
+async function tchAct(fn, okMsg){
+  tch.busy = true; tch.msg = ''; if (screen === 'account') renderAccount();
+  try { const r = await fn(); if (r && r.error) throw r.error; tch.ok = true; tch.msg = okMsg || ''; } catch (e){ tchErr(e); }
+  tch.busy = false; await tchLoadStudent();
+}
+const tchInvite = () => tchAct(async () => { const {data, error} = await sb.rpc('invite_create'); if (error) throw error; tch.code = Array.isArray(data) ? data[0] : data; }, '');
+const tchCancel = code => tchAct(() => sb.rpc('invite_cancel', {p_code: code}), tr('Invitation annulée.'));
+const tchRevoke = id => { if (confirm(tr("Retirer l'accès de cet enseignant à ta progression ?"))) tchAct(() => sb.rpc('link_revoke', {other: id}), tr('Accès retiré.')); };
+async function tchCopy(){ try { await navigator.clipboard.writeText(tch.code.code); tch.ok = true; tch.msg = tr('Code copié.'); } catch { tch.ok = false; tch.msg = tr('Copie impossible : recopie le code à la main.'); } renderAccount(); }
+/* espace enseignant */
+async function openTeacher(){ if (!isTeacher()) return; tch.detail = null; tch.students = null; tch.msg = ''; renderTeacher(); window.scrollTo(0, 0); await tchLoadStudents(); }
+async function tchLoadStudents(){
+  try { const {data, error} = await sb.rpc('teacher_students'); if (error) throw error; tch.students = data || []; } catch (e){ tchErr(e); tch.students = tch.students || []; }
+  renderTeacher();
+}
+async function tchAdd(){
+  const code = ($('tch-code') ? $('tch-code').value : '').trim();
+  if (!code){ tch.ok = false; tch.msg = tr("Saisis le code donné par ton élève."); return renderTeacher(); }
+  try { const {data, error} = await sb.rpc('invite_accept', {p_code: code}); if (error) throw error; const r = Array.isArray(data) ? data[0] : data; tch.ok = true; tch.msg = tr('Élève ajouté : {e}', {e: r.email}); }
+  catch (e){ tchErr(e); }
+  await tchLoadStudents();
+}
+async function tchDetail(id){
+  if (tch.detail && tch.detail.id === id){ tch.detail = null; return renderTeacher(); }
+  try { const {data, error} = await sb.rpc('teacher_student_data', {target: id}); if (error) throw error; tch.detail = {id, data}; tch.msg = ''; } catch (e){ tchErr(e); }
+  renderTeacher();
+}
+async function tchDrop(id){ if (!confirm(tr('Retirer cet élève de ta liste ? Tu ne verras plus sa progression.'))) return; try { const {error} = await sb.rpc('link_revoke', {other: id}); if (error) throw error; tch.detail = null; tch.ok = true; tch.msg = tr('Élève retiré.'); } catch (e){ tchErr(e); } await tchLoadStudents(); }
+function tchDetailHtml(d){
+  const R = tcRegularity(d.days, Date.now()), P = tcPerSurah(d.stats), F = tcFrequent(d.errors, 8), last = (d.errors || []).slice(0, 5), mx = Math.max(10, ...R.bars.map(x => x.n));
+  const nm = s => /^\d+$/.test(s) ? SN(+s) : (MT[s] ? MN(s) : s);
+  return `<div class="sib"><p class="ref" style="margin:0 0 4px"><b>${tr('Régularité')}</b> : ${trp(R.active7, '{n} jour actif sur 7|{n} jours actifs sur 7')} · ${trp(R.active30, '{n} jour actif sur 30|{n} jours actifs sur 30')} · ${tr('série en cours : {n}', {n: R.streak})}</p>
+    <div class="week">${R.bars.map(x => `<div title="${x.d} : ${trp(x.n, '{n} réponse|{n} réponses')}"><i style="height:${Math.round(70 * x.n / mx)}px"></i>${x.d.slice(8)}</div>`).join('')}</div>
+    ${P.length ? `<p class="ref" style="margin:8px 0 2px"><b>${tr('Par sourate (les plus fragiles d\'abord)')}</b></p>${P.slice(0, 8).map(x => `<div class="weak"><span>${esc(nm(x.s))} · ${trp(x.seen, '{n} verset vu|{n} versets vus')}</span><span>${Math.round(100 * x.rate)} %</span></div>`).join('')}` : `<p class="ref">${tr('Pas encore de progression enregistrée.')}</p>`}
+    ${F.length ? `<p class="ref" style="margin:8px 0 2px"><b>${tr('Erreurs fréquentes')}</b></p>${F.map(x => { const r = pk(x.k); return book(r.s) ? `<div class="weak"><span>${rlabel(r)}</span><span>${x.n}×</span></div>` : ''; }).join('')}` : ''}
+    ${last.length ? `<p class="ref" style="margin:8px 0 2px"><b>${tr('Dernières erreurs :')}</b></p>${last.map(e => { const r = pk(e.k); return book(r.s) ? `<p class="ref" style="margin:0">${fdate(e.t)} · ${rlabel(r)} · ${esc(MODE_NAME[e.m] || e.m)}</p>` : ''; }).join('')}` : ''}</div>`;
+}
+function renderTeacher(){
+  setNav(false); screen = 'teacher';
+  const S = tch.students, row = u => { const open = tch.detail && tch.detail.id === u.id, rate = Number(u.answers) ? Math.round(100 * u.ok / u.answers) + ' %' : '—';
+    return `<div class="sib"><p style="margin:0"><b>${esc(u.email)}</b></p>
+      <p class="ref" style="margin:0">${tr('depuis le {d}', {d: new Date(u.since).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short', year: 'numeric'})})} · ${tr('actif {b}', {b: when(u.last_seen)})} · ${trp(Math.round(u.answers), '{n} réponse|{n} réponses')} · ${tr('réussite {d}', {d: rate})}</p>
+      <div class="grades"><button data-act="tch-detail" data-v="${u.id}">${open ? tr('Masquer') : tr('Progression')}</button><button data-act="tch-del" data-v="${u.id}" style="color:var(--ko)">${tr('Retirer')}</button></div>
+      ${open ? (tch.detail.data ? tchDetailHtml(tch.detail.data) : '') : ''}</div>`; };
+  $app.innerHTML = `<div class="top"><button class="link" data-act="acc-back">${tr('← Retour')}</button><span>${tr('Enseignant')}</span></div>
+    <h1 style="margin-top:8px">${tr('Espace enseignant')}</h1>
+    <p class="sub">${S ? trp(S.length, '{n} élève|{n} élèves') : tr('Chargement…')}</p>
+    ${tch.msg ? `<div class="fb ${tch.ok ? 'ok' : 'ko'}">${esc(tch.msg)}</div>` : ''}
+    <div class="card"><h2>${tr('Ajouter un élève')}</h2><p class="ref" style="margin:0 0 6px">${tr("L'élève génère un code dans Réglages → Compte → Mon enseignant. Saisis-le ici : tu ne vois que les élèves qui t'ont invité, tant qu'ils le souhaitent.")}</p>
+      <label class="f" for="tch-code">${tr("Code d'invitation")}</label><div class="row"><input type="text" id="tch-code" autocomplete="off" autocapitalize="characters" maxlength="12" style="text-transform:uppercase" data-enter="tch-go"><button id="tch-go" class="pri" data-act="tch-add" style="flex:0 0 auto">${tr('Ajouter')}</button></div></div>
+    <div class="card">${S ? (S.map(row).join('') || `<p class="sub" style="margin:0">${tr("Aucun élève pour l'instant.")}</p>`) : ''}</div>`;
+}
 function renderAdmin(){
   setNav(false); screen = 'admin';
   const list = (adm.users || []).filter(u => !adm.q || u.email.toLowerCase().includes(adm.q.toLowerCase()));
@@ -3088,10 +3195,11 @@ function renderAdmin(){
     else if (d){ const x = summarize(d); det = `<div class="sib"><p class="ref" style="margin:0">${trp(Math.round(x.tot), '{n} réponse|{n} réponses')} · ${x.tot ? Math.round(100 * x.ok / x.tot) : 0} % · ${x.seen} ${tr('versets vus')} · ${tr('{n} réponses sur 7 jours', {n: Math.round(x.wk)})}</p>
       ${x.weak.length ? `<p class="ref" style="margin:4px 0 0"><b>${tr('À retravailler :')}</b> ${x.weak.map(([s, r]) => `${esc(book(/^\d+$/.test(s) ? +s : s) ? sname(/^\d+$/.test(s) ? +s : s) : s)} (${Math.round(r * 100)} %)`).join(' · ')}</p>` : ''}
       ${x.last.length ? `<p class="ref" style="margin:4px 0 0"><b>${tr('Dernières erreurs :')}</b></p>${x.last.map(e => { const r = pk(e.k); return book(r.s) ? `<p class="ref" style="margin:0">${fdate(e.t)} · ${rlabel(r)}</p>` : ''; }).join('')}` : ''}</div>`; }
-    return `<div class="sib"><p style="margin:0"><b>${esc(u.email)}</b> ${u.role === 'admin' ? `<span class="ref">· 🛡 ${tr('admin')}</span>` : ''}${u.blocked ? `<span class="ref" style="color:var(--ko)"> · ${tr('suspendu')}</span>` : ''}${self ? `<span class="ref"> · ${tr('toi')}</span>` : ''}</p>
+    return `<div class="sib"><p style="margin:0"><b>${esc(u.email)}</b> ${u.role === 'admin' ? `<span class="ref">· 🛡 ${tr('admin')}</span>` : u.role === 'teacher' ? `<span class="ref">· 🎓 ${tr('enseignant')}</span>` : ''}${u.blocked ? `<span class="ref" style="color:var(--ko)"> · ${tr('suspendu')}</span>` : ''}${self ? `<span class="ref"> · ${tr('toi')}</span>` : ''}</p>
       <p class="ref" style="margin:0">${tr('Inscrit le {a} · actif {b} · {c} · réussite {d} · {e}', {a: when(u.created_at), b: when(u.last_seen), c: trp(Math.round(u.answers), '{n} réponse|{n} réponses'), d: rate, e: trp(u.errors, '{n} erreur|{n} erreurs')})}</p>
       <div class="grades"><button data-act="adm-detail" data-v="${u.id}">${adm.detail && adm.detail.id === u.id ? tr('Masquer') : tr('Progression')}</button>
         <button data-act="adm-role" data-v="${u.id}" ${self ? 'disabled' : ''}>${u.role === 'admin' ? tr('Retirer admin') : tr('Nommer admin')}</button>
+        ${u.role === 'admin' ? '' : `<button data-act="adm-teacher" data-v="${u.id}">${u.role === 'teacher' ? tr('Retirer enseignant') : tr('Nommer enseignant')}</button>`}
         <button data-act="adm-block" data-v="${u.id}" ${self ? 'disabled' : ''}>${u.blocked ? tr('Débloquer') : tr('Bloquer')}</button>
         <button data-act="adm-del" data-v="${u.id}" style="color:var(--ko)" ${self ? 'disabled' : ''}>${tr('Supprimer')}</button></div>${det}</div>`;
   };
@@ -3115,6 +3223,9 @@ async function adminAct(fn, okMsg){
   await adminLoad();
 }
 const userOf = id => (adm.users || []).find(u => u.id === id);
+function adminTeacher(id){ const u = userOf(id); if (!u || u.role === 'admin') return;
+  const to = u.role === 'teacher' ? 'user' : 'teacher';
+  if (confirm(tr(to === 'teacher' ? 'Nommer enseignant {u} ? Il pourra voir la progression des élèves qui l\'invitent.' : 'Retirer le rôle enseignant à {u} ?', {u: u.email}))) adminAct(() => sb.rpc('admin_set_role', {target: id, new_role: to})); }
 function adminRole(id){ const u = userOf(id); if (!u) return;
   const to = u.role === 'admin' ? 'user' : 'admin';
   if (confirm(tr(to === 'admin' ? 'Nommer administrateur {u} ?' : 'Retirer le rôle admin à {u} ?', {u: u.email}))) adminAct(() => sb.rpc('admin_set_role', {target: id, new_role: to})); }

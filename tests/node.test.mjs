@@ -438,3 +438,31 @@ test('accessibilité : contrastes WCAG des couleurs du thème et du tajwīd (mod
   const hex = new Set(hc.map(([, c]) => c)); assert.ok(hex.size >= 12, 'les couleurs restent distinctes : ' + hex.size);
   assert.equal(a11yDarken('#000EBC', bg), '#000EBC');
 });
+
+test('suivi par un enseignant : régularité, progression par sourate, erreurs fréquentes (fonctions pures)', () => {
+  const html = read('index.html'), tc = html.slice(html.indexOf('/* TC:begin'), html.indexOf('/* TC:end */'));
+  const { tcRegularity, tcPerSurah, tcFrequent } = new Function(tc + '; return {tcRegularity, tcPerSurah, tcFrequent};')();
+  const now = new Date(2026, 9, 21, 12).getTime(), key = i => { const d = new Date(now - i * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  let R = tcRegularity({ [key(0)]: 5, [key(1)]: 3, [key(2)]: 8, [key(4)]: 1, [key(20)]: 2 }, now);
+  assert.equal(R.bars.length, 14); assert.equal(R.bars[13].d, key(0)); assert.equal(R.bars[13].n, 5); assert.equal(R.bars[0].d, key(13));
+  assert.equal(R.active7, 4); assert.equal(R.active30, 5); assert.equal(R.streak, 3, 'série : aujourd\'hui, hier, avant-hier'); assert.equal(R.total14, 17);
+  R = tcRegularity({ [key(1)]: 3, [key(2)]: 4 }, now); assert.equal(R.streak, 2, 'rien aujourd\'hui : la série part d\'hier'); assert.equal(tcRegularity({}, now).streak, 0); assert.equal(tcRegularity(null, now).active30, 0);
+  assert.equal(tcRegularity({ [key(3)]: 2 }, now).streak, 0, 'jour manqué : série à 0');
+  const P = tcPerSurah({ '2:5': [1, 3], '2:6': [2, 0], '3:9': [0, 2], '114:1': [10, 0], 'tuhfa:1': [1, 1] });
+  assert.deepEqual(P.map(x => x.s), ['3', '2', 'tuhfa', '114']); assert.deepEqual(P[1], { s: '2', ok: 3, ko: 3, seen: 2, rate: 0.5 }); assert.deepEqual(tcPerSurah(undefined), []);
+  const F = tcFrequent([{ k: '2:5', t: 10 }, { k: '2:5', t: 30 }, { k: '3:9', t: 20 }, { k: '3:9', t: 25 }, { k: '1:1', t: 99 }, { k: '2:5', t: 5 }], 2);
+  assert.deepEqual(F.map(x => [x.k, x.n]), [['2:5', 3], ['3:9', 2]]); assert.equal(F[0].last, 30); assert.deepEqual(tcFrequent([], 5), []);
+});
+
+test('rôle enseignant : le code du client n\'appelle que des fonctions SQL existantes dans teacher.sql, avec les bons arguments', () => {
+  const html = read('index.html'), sql = read('supabase/teacher.sql') + read('supabase/schema.sql');
+  const calls = [...html.matchAll(/sb\.rpc\('([a-z_]+)'(?:, \{([^}]*)\})?/g)].map(m => [m[1], (m[2] || '').split(',').map(x => x.split(':')[0].trim()).filter(Boolean)]);
+  const mine = ['invite_create', 'invite_cancel', 'invite_accept', 'link_revoke', 'links_mine', 'access_log_mine', 'teacher_students', 'teacher_student_data'];
+  for (const [n, args] of calls.filter(([n]) => mine.includes(n))) {
+    const m = new RegExp(`function public\\.${n}\\(([^)]*)\\)`).exec(sql); assert.ok(m, 'fonction SQL absente : ' + n);
+    const params = m[1].split(',').map(x => x.trim().split(/\s+/)[0]).filter(Boolean); assert.deepEqual([...args].sort(), [...params].sort(), `arguments de ${n}`);
+  }
+  assert.ok(mine.every(n => calls.some(([c]) => c === n)), 'chaque fonction est utilisée par l\'application');
+  assert.match(sql, /revoke all on function[\s\S]*teacher_student_data\(uuid\)[\s\S]*from public, anon/); assert.match(read('supabase/teacher.sql'), /grant select on public\.teacher_invites, public\.teacher_links, public\.teacher_access_log to authenticated/);
+  assert.doesNotMatch(read('supabase/teacher.sql'), /create policy[^;]*teacher[^;]*on public\.user_data/i, 'aucune règle ne donne accès direct à user_data');
+});
