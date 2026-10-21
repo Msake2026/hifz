@@ -900,7 +900,19 @@ window.I18N = {
 "Résumé de la semaine": "Weekly summary",
 "Recevoir chaque dimanche, par e-mail, un résumé de ma semaine (réponses, jours actifs). Je peux le désactiver à tout moment.": "Receive a summary of my week by e-mail every Sunday (answers, active days). I can turn it off at any time.",
 "Résumé hebdomadaire activé.": "Weekly summary turned on.",
-"Résumé hebdomadaire désactivé.": "Weekly summary turned off."
+"Résumé hebdomadaire désactivé.": "Weekly summary turned off.",
+"Espace élève": "Student area",
+"Ton enseignant, tes objectifs et tes messages.": "Your teacher, your goals and your messages.",
+"Moi": "Me",
+"envoyé": "sent",
+"Répondre à": "Reply to",
+"Ta réponse": "Your reply",
+"Ta réponse (280 caractères)": "Your reply (280 characters)",
+"Répondre": "Reply",
+"Conversation": "Conversation",
+"L'élève génère un code dans son onglet Élève → Inviter un enseignant. Saisis-le ici : tu ne vois que les élèves qui t'ont invité, tant qu'ils le souhaitent.": "The student generates a code in their Student tab → Invite a teacher. Enter it here: you only see the students who invited you, for as long as they wish.",
+"Élève": "Student",
+"lu": "read"
 },
 "ar": {
 "(partie {a}/{b})": "(الجزء {a}/{b})",
@@ -1802,6 +1814,18 @@ window.I18N = {
 "Résumé de la semaine": "ملخص الأسبوع",
 "Recevoir chaque dimanche, par e-mail, un résumé de ma semaine (réponses, jours actifs). Je peux le désactiver à tout moment.": "استلام ملخص أسبوعي بالبريد كل أحد (الإجابات، الأيام النشطة). يمكنني إيقافه في أي وقت.",
 "Résumé hebdomadaire activé.": "فُعّل الملخص الأسبوعي.",
-"Résumé hebdomadaire désactivé.": "أُوقف الملخص الأسبوعي."
+"Résumé hebdomadaire désactivé.": "أُوقف الملخص الأسبوعي.",
+"Espace élève": "فضاء الطالب",
+"Ton enseignant, tes objectifs et tes messages.": "معلّمك وأهدافك ورسائلك.",
+"Moi": "أنا",
+"envoyé": "أُرسلت",
+"Répondre à": "الرد على",
+"Ta réponse": "ردّك",
+"Ta réponse (280 caractères)": "ردّك (٢٨٠ حرفاً)",
+"Répondre": "رد",
+"Conversation": "المحادثة",
+"L'élève génère un code dans son onglet Élève → Inviter un enseignant. Saisis-le ici : tu ne vois que les élèves qui t'ont invité, tant qu'ils le souhaitent.": "ينشئ الطالب رمزاً في تبويب «الطالب» ← دعوة معلّم. أدخله هنا: لا ترى إلا الطلاب الذين دعوك، ما داموا يرغبون.",
+"Élève": "الطالب",
+"lu": "مقروءة"
 }
 };
