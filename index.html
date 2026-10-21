@@ -113,6 +113,12 @@ body.has-nav main{padding-bottom:96px}
 .rv.hid{filter:blur(9px);cursor:pointer;user-select:none}
 .rv.playing,.rv.focus{background:color-mix(in srgb,var(--accent) 18%,transparent)}
 .vend{color:var(--accent);font-size:.8em;white-space:nowrap}
+.rd.tj{background:#fbf6e8;color:#222;padding:8px 10px;border-radius:10px} .rd.tj .vend{color:#8a6d1f}   /* page claire : les couleurs officielles du tajwīd restent lisibles aussi en mode sombre */
+.tj-h,.tj-s,.tj-l{color:#AAAAAA}.tj-n{color:#537FFF}.tj-p{color:#4050FF}.tj-m{color:#000EBC}.tj-o{color:#2144C1}.tj-q{color:#DD0008}.tj-c{color:#D500B7}.tj-f{color:#9400A8}
+.tj-w{color:#58B800}.tj-i{color:#26BFFD}.tj-a{color:#169777}.tj-u{color:#169200}.tj-d,.tj-b{color:#A1A1A1}.tj-g{color:#FF7E1E}
+.rvb{margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--line)}.rvb .rd{margin:0}
+.rtr{margin:4px 0 0;font-size:.95rem;line-height:1.55;text-align:start}.rtf{margin:6px 0 0;font-size:1rem;line-height:1.9;direction:rtl;text-align:right;color:var(--muted,inherit);font-family:"Amiri Quran","Traditional Arabic",serif}
+.tjkey{display:inline-flex;align-items:center;gap:6px;margin:2px 10px 2px 0;font-size:.85rem}.tjkey i{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid #0002}
 .pl{display:flex;gap:10px;align-items:baseline;justify-content:flex-start;padding:2px 4px;border-bottom:1px solid var(--line)}
 .pl .psep{color:var(--accent);font-size:.7em;flex:none}.pl .pn,.pp .pn{font-family:Inter,sans-serif;font-size:.65rem;color:var(--muted);flex:none;min-width:1.6em;text-align:center}
 .pp{padding:4px;border-bottom:1px solid var(--line)}
@@ -338,7 +344,7 @@ async function loadQuran(){
 
 /* ---------- état persistant ---------- */
 const DEF = {mode: 'mix', scope: {type: 'surah', from: 78, to: 114}, n: 10, input: 'recite', level: 40,
-  corr: 'standard', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9,
+  corr: 'standard', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
   lang: ['fr', 'en', 'ar'].includes((navigator.language || '').slice(0, 2)) ? navigator.language.slice(0, 2) : 'fr'};
 const stored = store.get('hifz.cfg', {});
 let cfg = Object.assign({}, DEF, stored);
@@ -909,7 +915,7 @@ function tabSettings(){
     <button data-act="legal">${tr('Lire la confidentialité et les conditions')}</button></div>
 
   <div class="card"><h2>${tr('Sources')}</h2>
-    <p class="ref" style="margin:0">${tr("Coran : texte uthmani du projet Tanzil, embarqué dans le site et vérifié (lecture de Ḥafṣ). Audio : cdn.islamic.network (AlQuran Cloud). Moutoun : Wikisource arabe et hadith-api (voir l'écran Réviser pour chaque matn). Versets proches : calculés automatiquement.")}</p>
+    <p class="ref" style="margin:0">${tr("Coran : texte uthmani du projet Tanzil, embarqué dans le site et vérifié (lecture de Ḥafṣ). Audio : cdn.islamic.network (AlQuran Cloud). Lecteur : tajwīd en couleurs (Islamic Network), traductions (Tanzil : Hamidullah, Saheeh International) et tafsir al-Muyassar (Complexe du Roi Fahd). Moutoun : Wikisource arabe et hadith-api (voir l'écran Réviser pour chaque matn). Versets proches : calculés automatiquement.")}</p>
   </div>`;
 }
 const weakHtml = weak => weak.length ? `<h2 style="margin-top:14px">${tr('À retravailler')}</h2>` + weak.map(([s, r, n]) =>
@@ -1641,6 +1647,7 @@ const onClick = e => {
       break;
     }
     case 'rd-back': rdStop(); home(); break;
+    case 'rd-taj': case 'rd-tf': { const k = el.dataset.act === 'rd-taj' ? 'rdTaj' : 'rdTf'; cfg[k] = !cfg[k]; saveCfg(); rd.err = ''; const y = scrollY; rdStop(); rd.focus = 0; renderReader(); scrollTo(0, y); } break;
     case 'rd-hide': cfg.rdHide = !cfg.rdHide; saveCfg(); { const y = scrollY; rdStop(); rd.focus = 0; renderReader(); scrollTo(0, y); } break;
     case 'rd-size': cfg.rdSize = Math.min(3.2, Math.max(1.1, +(cfg.rdSize + 0.2 * +v).toFixed(2))); saveCfg(); { const y = scrollY; rdStop(); rd.focus = 0; renderReader(); scrollTo(0, y); } break;
     case 'rd-prev': case 'rd-next': {
@@ -1687,6 +1694,46 @@ $('nav').addEventListener('click', onClick);
 let rd = null, rdObs = null;
 const arNum = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
 const ALLQ = Array.from({length: 114}, (_, i) => i + 1);
+/* ---------- contenus facultatifs du lecteur : tajwīd, traductions, tafsir (data/*.js, générés par tools/build_extras.py) ---------- */
+const XFILES = {tajweed: 'data/tajweed.js', fr: 'data/tr-fr.js', en: 'data/tr-en.js', muyassar: 'data/tafsir-ar.js'};
+const XPROMISE = {};
+const xOk = x => x && Array.isArray(x.s) && x.s.length === 114 && x.s.every((a, i) => a.length === Q[i].a.length && a.every(Boolean)) && x.verses === 6236;
+function loadX(name){ // charge un fichier à la demande, le contrôle (nombre de versets, empreinte SHA-256) puis le garde
+  if (window.QX && window.QX[name]) return Promise.resolve(window.QX[name]);
+  return XPROMISE[name] ||= new Promise((ok, ko) => {
+    const el = document.createElement('script'); el.src = XFILES[name];
+    el.onload = async () => {
+      const x = window.QX && window.QX[name];
+      try {
+        if (!xOk(x)) throw new Error('données incomplètes');
+        if (window.crypto && crypto.subtle && await sha256hex(x.s.flatMap(a => a).join('\n')) !== x.sha256) throw new Error('empreinte incorrecte');
+        ok(x);
+      } catch (e){ delete window.QX[name]; delete XPROMISE[name]; ko(e); }
+    };
+    el.onerror = () => { delete XPROMISE[name]; ko(new Error('hors ligne')); };
+    document.head.appendChild(el);
+  });
+}
+const rdNeeds = () => [cfg.rdTaj && 'tajweed', cfg.rdTr, cfg.rdTf && 'muyassar'].filter(Boolean);
+const rdReady = () => rdNeeds().every(n => window.QX && window.QX[n]);
+const TJ = /\[([a-z])\[([^\]]*)\]/g;
+function tjHtml(t){ // « [n[ـٰ] » -> <span class="tj-n">…</span> ; le texte hors balise est échappé
+  let out = '', i = 0, m; TJ.lastIndex = 0;
+  while ((m = TJ.exec(t))){ out += esc(t.slice(i, m.index)) + `<span class="tj-${m[1]}">${esc(m[2])}</span>`; i = TJ.lastIndex; }
+  return out + esc(t.slice(i));
+}
+const TJLEG = [['h', '#AAAAAA', 'Hamzat al-waṣl'], ['l', '#AAAAAA', 'Lām solaire / lettre muette'], ['n', '#537FFF', 'Madd normal (2 temps)'], ['p', '#4050FF', 'Madd permis (2, 4 ou 6 temps)'],
+  ['m', '#000EBC', 'Madd nécessaire (6 temps)'], ['o', '#2144C1', 'Madd obligatoire (4-5 temps)'], ['q', '#DD0008', 'Qalqala'], ['c', '#D500B7', 'Ikhfāʾ shafawī'], ['f', '#9400A8', 'Ikhfāʾ'],
+  ['w', '#58B800', 'Idghām shafawī'], ['i', '#26BFFD', 'Iqlāb'], ['a', '#169777', 'Idghām avec ghunna'], ['u', '#169200', 'Idghām sans ghunna'], ['d', '#A1A1A1', 'Idghām mutajānisayn / mutaqāribayn'], ['g', '#FF7E1E', 'Ghunna (2 temps)']];
+const TRSRC = {fr: 'Hamidullah', en: 'Saheeh International'};
+function rdSources(){
+  const L = [], a = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
+  if (cfg.rdTaj) L.push(`<p class="ref" style="margin:8px 0 0">${tr("Couleurs du tajwīd : annotation automatique d'Islamic Network (api.alquran.cloud), non relue par un enseignant. Vérifie avec ton professeur ; elle suit une écriture légèrement différente du texte des exercices.")} ${a('https://1x.ax/islamic-network/alquran/tools/~files/master/docs/tajweed.md', tr('Légende officielle'))}.
+    <details><summary>${tr('Légende des couleurs')}</summary><p style="margin:6px 0 0">${TJLEG.map(([c, col, n]) => `<span class="tjkey"><i style="background:${col}"></i>${esc(tr(n))}</span>`).join('')}</p></details></p>`);
+  if (cfg.rdTr) L.push(`<p class="ref" style="margin:8px 0 0">${tr('Traduction : {n} (texte de Tanzil, usage non commercial). Elle rend le sens approché, ce n\'est pas le Coran lui-même.', {n: TRSRC[cfg.rdTr]})} ${a('https://tanzil.net/trans/', 'tanzil.net/trans')}.</p>`);
+  if (cfg.rdTf) L.push(`<p class="ref" style="margin:8px 0 0">${tr("Tafsir : at-Tafsir al-Muyassar, Complexe du Roi Fahd (texte arabe, via api.alquran.cloud).")} ${a('https://alquran.cloud/', 'alquran.cloud')}.</p>`);
+  return L.join('');
+}
 function readerSecs(spec){ // 'q:all' | 'q:12' | 'q:sel' | 'm:all' | 'm:<id>'
   const k = spec.slice(0, 1), v = spec.slice(2);
   if (k === 'q') return v === 'all' ? ALLQ : v === 'sel' ? rd.sel : [+v];
@@ -1700,12 +1747,15 @@ function openReader(spec, focus = 0, sel = null){
   rd.upto = Math.min(rd.secs.length, rd.i0 + (rd.secs.length > 1 ? 3 : 1));
   renderReader(); window.scrollTo(0, 0);
 }
+const rvSpan = (id, a) => `<span class="rv${cfg.rdHide ? ' hid' : ''}" data-act="rv" data-s="${id}" data-i="${a}">${cfg.rdTaj ? tjHtml(window.QX.tajweed.s[id - 1][a - 1]) : esc(verse({s: id, a}))} <span class="vend">﴿${arNum(a)}﴾</span></span>`;
 function secHtml(id){
   const q = isQ(id), B = book(id), n = B.a.length, siz = cfg.rdSize;
   if (q){
     const bas = id !== 1 && id !== 9 ? `<div class="ar" style="text-align:center;font-size:1.5rem">${esc(verse({s: 1, a: 1}))}</div>` : '';
     return `<section class="rsec" id="rs-${id}"><h3 class="rtitle"><span class="ar">${esc(B.ar)}</span><small>${id}. ${esc(SN(id))} · ${trp(n, '{n} verset|{n} versets')} · ${tr('pages {a}–{b}', {a: B.a[0].p, b: B.a[n - 1].p})}</small></h3>${bas}
-      <div class="rd" style="font-size:${siz}rem">${B.a.map((_, i) => `<span class="rv${cfg.rdHide ? ' hid' : ''}" data-act="rv" data-s="${id}" data-i="${i + 1}">${esc(verse({s: id, a: i + 1}))} <span class="vend">﴿${arNum(i + 1)}﴾</span></span>`).join(' ')}</div></section>`;
+      ${cfg.rdTr || cfg.rdTf ? B.a.map((_, i) => `<div class="rvb"><div class="rd${cfg.rdTaj ? ' tj' : ''}" style="font-size:${siz}rem">${rvSpan(id, i + 1)}</div>
+        ${cfg.rdTr ? `<p class="rtr" lang="${cfg.rdTr}" dir="ltr">${esc(window.QX[cfg.rdTr].s[id - 1][i])}</p>` : ''}${cfg.rdTf ? `<p class="rtf" lang="ar">${esc(window.QX.muyassar.s[id - 1][i])}</p>` : ''}</div>`).join('')
+      : `<div class="rd${cfg.rdTaj ? ' tj' : ''}" style="font-size:${siz}rem">${B.a.map((_, i) => rvSpan(id, i + 1)).join(' ')}</div>`}</section>`;
   }
   const unit = {vers: '{n} vers|{n} vers', hadith: '{n} hadith|{n} hadiths', passage: '{n} passage|{n} passages'}[B.unit] || '{n}';
   return `<section class="rsec" id="rs-${id}"><h3 class="rtitle"><span class="ar">${esc(B.ar)}</span><small>${esc(MN(id))} · ${trp(n, unit)}${B.author ? ' · ' + esc(tr(B.author)) : ''}</small></h3>${srcNote({id})}
@@ -1718,6 +1768,15 @@ function secHtml(id){
 function renderReader(){
   setNav(false);
   const spec = rd.spec, k = spec.slice(0, 1), q = k === 'q', multi = rd.secs.length > 1;
+  if (q && !rdReady()){ // tajwīd / traduction / tafsir demandés : on charge (et contrôle) les fichiers avant d'afficher
+    $app.innerHTML = `<div class="top"><button class="link" data-act="rd-back">${tr('← Retour')}</button><span>${tr('Coran')}</span></div><p class="sub" style="margin-top:30vh;text-align:center">${tr('Chargement…')}</p>`;
+    const mine = rd;
+    Promise.all(rdNeeds().map(loadX)).then(() => { if (rd === mine) renderReader(); }, e => {
+      cfg.rdTaj = false; cfg.rdTr = ''; cfg.rdTf = false; saveCfg(); mine.err = tr('Impossible de charger ce contenu ({e}). Vérifie ta connexion puis réessaie.', {e: e.message});
+      if (rd === mine) renderReader();
+    });
+    return;
+  }
   const optSel = v => v === spec ? 'selected' : '';
   const sel = `<label class="f" for="rdsel">${tr('Texte à lire')}</label><select id="rdsel">
     <optgroup label="${tr('Coran')}"><option value="q:all" ${optSel('q:all')}>📖 ${tr('Tout le Coran (114 sourates)')}</option>${rd.sel ? `<option value="q:sel" ${optSel('q:sel')}>${tr('Ma sélection ({n} sourates)', {n: rd.sel.length})}</option>` : ''}
@@ -1742,12 +1801,19 @@ function renderReader(){
       <button data-act="rd-hide">${cfg.rdHide ? '👁 ' + tr('Tout afficher') : '🙈 ' + tr('Masquer le texte')}</button>
       ${q ? `<button id="rdplay" data-act="rd-play">▶ ${tr('Écouter')}</button>` : ''}
     </div>
+    ${q ? `<div class="grades">
+      <button data-act="rd-taj" aria-pressed="${!!cfg.rdTaj}">🎨 ${cfg.rdTaj ? tr('Couleurs du tajwīd : oui') : tr('Couleurs du tajwīd : non')}</button>
+      <button data-act="rd-tf" aria-pressed="${!!cfg.rdTf}">📚 ${cfg.rdTf ? tr('Tafsir al-Muyassar : oui') : tr('Tafsir al-Muyassar : non')}</button></div>
+      <label class="f" for="rdtr">${tr('Traduction')}</label><select id="rdtr"><option value="">${tr('Aucune')}</option>
+        <option value="fr" ${cfg.rdTr === 'fr' ? 'selected' : ''}>Français · Hamidullah</option><option value="en" ${cfg.rdTr === 'en' ? 'selected' : ''}>English · Saheeh International</option></select>
+      ${rd.err ? `<p class="ref" style="margin:8px 0 0;color:var(--ko)">${esc(rd.err)}</p>` : ''}${rdSources()}` : ''}
     <p class="ref" style="margin:8px 0 0">${cfg.rdHide ? tr('Touche un passage pour le dévoiler.') : q ? tr("Touche un verset pour l'écouter à partir de là.") : ''}</p>
     <p class="ref" id="audio-msg" style="margin:0"></p>
   </div>
   ${rd.i0 > 0 ? `<button class="big" style="margin-bottom:12px" data-act="rd-more-up">⬆ ${tr('Sections précédentes')}</button>` : ''}
   <div class="card" id="rbody">${rd.secs.slice(rd.i0, rd.upto).map(secHtml).join('')}</div>
   <div id="rmore" class="rsentinel" ${rd.upto >= rd.secs.length ? 'hidden' : ''}>…</div>`;
+  if ($('rdtr')) $('rdtr').onchange = e => { cfg.rdTr = e.target.value; saveCfg(); rd.err = ''; const y = scrollY; rdStop(); rd.focus = 0; renderReader(); scrollTo(0, y); };
   $('rdsel').onchange = e => { const v = e.target.value; rdStop(); openReader(v, 0, v === 'q:sel' ? rd.sel : null); };
   if ($('rdjump')) $('rdjump').onchange = e => { rdStop(); const id = rd.secs.find(x => String(x) === e.target.value); rd.i0 = rd.secs.indexOf(id); rd.upto = Math.min(rd.secs.length, rd.i0 + 3); rd.focus = 0; renderReader(); window.scrollTo(0, 0); };
   if (rdObs){ rdObs.disconnect(); rdObs = null; }
@@ -1840,7 +1906,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v17';
+const APP_VERSION = '21 oct. 2026 · v18';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

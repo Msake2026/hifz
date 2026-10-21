@@ -3,6 +3,7 @@
 Application web (un seul dossier, sans serveur) : exercices de mémorisation, historique des erreurs, révision espacée, lecteur du texte complet, audio verset par verset.
 
 - **Coran (Ḥafṣ)** : texte uthmani du projet Tanzil, embarqué dans `quran.js` (généré et contrôlé par `tools/build_quran.py` depuis api.alquran.cloud ; vérifié par empreinte SHA-256 à chaque chargement) ; audio via cdn.islamic.network.
+- **Lecteur (facultatif)** : `data/*.js` générés par `tools/build_extras.py` et chargés à la demande : tajwīd en couleurs (édition `quran-tajweed` d'Islamic Network, légende officielle ; annotation automatique non relue), traductions de Tanzil (Hamidullah en français, Saheeh International en anglais ; usage non commercial, lien vers tanzil.net/trans), tafsir al-Muyassar (Complexe du Roi Fahd). Chaque fichier est contrôlé (6236 versets, empreinte SHA-256) avant affichage.
 - **Moutoun** : `moutoun.js` généré par `tools/build_moutoun.py` (Wikisource arabe, hadith-api). Texte à comparer avec ton édition.
 - **Versets proches** : `mutashabihat.js`, calculé automatiquement par `tools/build_mutashabihat.py`.
 - Ta progression reste sur ton appareil (localStorage) ; export/import dans Réglages.

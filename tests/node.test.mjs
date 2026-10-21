@@ -92,3 +92,22 @@ test('service worker : la version du cache change quand la liste de fichiers cha
   assert.ok(files.includes('quran.js') && files.includes('index.html'));
   assert.match(sw, /addEventListener\('push'/); assert.match(sw, /addEventListener\('notificationclick'/);
 });
+
+test('data/*.js : 6236 versets alignés sur quran.js, empreintes SHA-256 correctes, sources renseignées', () => {
+  const Q = loadGlobal('quran.js', 'QURAN'); const counts = Q.surahs.map(s => s.a.length);
+  for (const f of ['tajweed.js', 'tr-fr.js', 'tr-en.js', 'tafsir-ar.js']) {
+    const w = {}; new Function('window', read('data/' + f))(w);
+    const x = Object.values(w.QX)[0];
+    assert.deepEqual(x.s.map(a => a.length), counts, f);
+    assert.ok(x.s.every(a => a.every(v => v && v.trim())), f + ' : verset vide');
+    assert.equal(crypto.createHash('sha256').update(x.s.flat().join('\n'), 'utf8').digest('hex'), x.sha256, f);
+    assert.ok(x.name && x.author && x.url && x.source, f + ' : source manquante');
+  }
+});
+
+test('tajwīd : balises équilibrées, codes de la légende officielle seulement', () => {
+  const w = {}; new Function('window', read('data/tajweed.js'))(w); const t = w.QX.tajweed.s.flat().join('');
+  const codes = new Set([...t.matchAll(/\[([a-z])\[/g)].map(m => m[1]));
+  const allowed = new Set('hslnpmqcfwiaudbgo'); for (const c of codes) assert.ok(allowed.has(c), c);
+  assert.equal((t.match(/\[[a-z]\[/g) || []).length, (t.match(/\]/g) || []).length);
+});
