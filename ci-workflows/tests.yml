@@ -1,0 +1,20 @@
+name: Tests
+on:
+  push:
+  pull_request:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tests sans navigateur (Coran, traductions, rappels, secrets)
+        run: node --test tests/node.test.mjs
+      - name: Tests dans un navigateur (clics sur les vrais exercices)
+        run: |
+          python3 -m http.server 8765 >/dev/null 2>&1 &
+          mkdir -p /tmp/pw && cd /tmp/pw && npm init -y >/dev/null && npm i playwright@1.49.1 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+          cp "$GITHUB_WORKSPACE/tests/run-browser.mjs" /tmp/pw/ && cd /tmp/pw && node run-browser.mjs

@@ -1,0 +1,49 @@
+name: Sauvegarde de la base
+# Sauvegarde quotidienne chiffrée de la base Supabase (tables du site + correspondance id/e-mail des comptes).
+# Secrets à créer dans GitHub → Settings → Secrets and variables → Actions :
+#   SUPABASE_DB_URL     adresse « Session pooler » de la base (Supabase → Connect), avec le mot de passe de la base
+#   BACKUP_PASSPHRASE   phrase secrète longue qui chiffre la sauvegarde (le dépôt est public : sans chiffrement, tout le monde pourrait la lire)
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier les secrets
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+          PP: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          [ -n "$DB" ] || { echo "::error::Secret SUPABASE_DB_URL absent"; exit 1; }
+          [ ${#PP} -ge 20 ] || { echo "::error::Secret BACKUP_PASSPHRASE absent ou trop court (20 caractères minimum)"; exit 1; }
+      - name: Installer le client PostgreSQL 17
+        run: |
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
+          sudo apt-get install -y postgresql-client-17 >/dev/null
+      - name: Exporter puis chiffrer
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          umask 077
+          D=hifz-backup-$(date -u +%Y%m%d-%H%M)
+          mkdir "$D"
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" --schema=public --no-owner --no-privileges --format=plain --file="$D/public.sql"
+          /usr/lib/postgresql/17/bin/psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "\copy (select id, email, created_at, email_confirmed_at from auth.users order by created_at) to '$D/auth_users_ids.csv' csv header"
+          # contrôle : la sauvegarde contient bien les tables attendues
+          for t in profiles user_data push_subs; do grep -q "CREATE TABLE public.$t " "$D/public.sql" || { echo "::error::table $t absente de la sauvegarde"; exit 1; }; done
+          [ "$(wc -c < "$D/public.sql")" -gt 2000 ] || { echo "::error::sauvegarde anormalement petite"; exit 1; }
+          echo "profils : $(grep -c . "$D/auth_users_ids.csv") lignes (en-tête comprise)"
+          tar czf "$D.tar.gz" "$D"
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --symmetric --cipher-algo AES256 -o "$D.tar.gz.gpg" "$D.tar.gz"
+          rm -rf "$D" "$D.tar.gz"
+          echo "BACKUP_FILE=$D.tar.gz.gpg" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sauvegarde-chiffree
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 30
+          if-no-files-found: error
