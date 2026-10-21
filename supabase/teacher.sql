@@ -211,3 +211,153 @@ end $$;
 
 revoke all on function public.teacher_request(), public.teacher_request_cancel(), public.admin_teacher_requests(), public.admin_teacher_decline(uuid) from public, anon;
 grant execute on function public.teacher_request(), public.teacher_request_cancel(), public.admin_teacher_requests(), public.admin_teacher_decline(uuid) to authenticated;
+
+-- 10. Messages, objectifs et groupe de classe (l'enseignant décide : pas d'acceptation par l'élève ; le lien d'accès, lui, reste créé par l'élève avec son code)
+create table if not exists public.teacher_messages (
+  id         bigint generated always as identity primary key,
+  teacher_id uuid not null references auth.users(id) on delete cascade,
+  student_id uuid not null references auth.users(id) on delete cascade,
+  body       text not null check (char_length(body) between 1 and 280),
+  created_at timestamptz not null default now()
+);
+create table if not exists public.teacher_goals (
+  id         bigint generated always as identity primary key,
+  teacher_id uuid not null references auth.users(id) on delete cascade,
+  student_id uuid not null references auth.users(id) on delete cascade,
+  surah      int  not null check (surah between 1 and 114),
+  due        date not null,
+  note       text check (note is null or char_length(note) <= 140),
+  created_at timestamptz not null default now()
+);
+create table if not exists public.teacher_classes (
+  code       text primary key,
+  teacher_id uuid not null references auth.users(id) on delete cascade,
+  expires_at timestamptz not null,
+  max_uses   int not null default 40,
+  uses       int not null default 0,
+  created_at timestamptz not null default now()
+);
+alter table public.teacher_messages enable row level security;
+alter table public.teacher_goals    enable row level security;
+alter table public.teacher_classes  enable row level security;
+drop policy if exists "message : lecture" on public.teacher_messages;
+create policy "message : lecture" on public.teacher_messages for select to authenticated using (student_id = auth.uid() or teacher_id = auth.uid());
+drop policy if exists "objectif : lecture" on public.teacher_goals;
+create policy "objectif : lecture" on public.teacher_goals for select to authenticated using (student_id = auth.uid() or teacher_id = auth.uid());
+drop policy if exists "classe : lecture" on public.teacher_classes;
+create policy "classe : lecture" on public.teacher_classes for select to authenticated using (teacher_id = auth.uid());
+revoke all on public.teacher_messages, public.teacher_goals, public.teacher_classes from anon, authenticated;
+grant select on public.teacher_messages, public.teacher_goals, public.teacher_classes to authenticated;
+
+-- l'enseignant (avec le rôle) a un lien avec cet élève non bloqué
+create or replace function public.teacher_has(target uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.is_teacher() and exists (select 1 from public.teacher_links l join public.profiles p on p.id = l.student_id
+    where l.teacher_id = auth.uid() and l.student_id = target and not p.blocked)
+$$;
+
+create or replace function public.teacher_message_send(target uuid, p_body text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.teacher_has(target) then raise exception 'accès refusé' using errcode = '42501'; end if;
+  if char_length(trim(coalesce(p_body, ''))) = 0 or char_length(p_body) > 280 then raise exception 'Message vide ou trop long (280 caractères).' using errcode = 'P0001'; end if;
+  if (select count(*) from public.teacher_messages m where m.teacher_id = auth.uid() and m.student_id = target and m.created_at > now() - interval '1 day') >= 10 then
+    raise exception 'Trop de messages aujourd''hui : réessaie demain.' using errcode = 'P0001';
+  end if;
+  insert into public.teacher_messages (teacher_id, student_id, body) values (auth.uid(), target, trim(p_body));
+end $$;
+
+create or replace function public.messages_mine() returns table (id bigint, teacher_email text, body text, created_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select m.id, p.email, m.body, m.created_at from public.teacher_messages m
+  join public.profiles p on p.id = m.teacher_id
+  where m.student_id = auth.uid() and exists (select 1 from public.teacher_links l where l.teacher_id = m.teacher_id and l.student_id = m.student_id)
+  order by m.created_at desc limit 20
+$$;
+
+create or replace function public.message_delete(p_id bigint) returns void
+language sql security definer set search_path = public as $$
+  delete from public.teacher_messages where id = p_id and (student_id = auth.uid() or teacher_id = auth.uid())
+$$;
+
+create or replace function public.teacher_goal_set(target uuid, p_surah int, p_due date, p_note text default null) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.teacher_has(target) then raise exception 'accès refusé' using errcode = '42501'; end if;
+  if p_surah is null or p_surah < 1 or p_surah > 114 then raise exception 'Sourate inconnue.' using errcode = 'P0001'; end if;
+  if p_due is null or p_due < current_date or p_due > current_date + 365 then raise exception 'Date invalide (dans l''année à venir).' using errcode = 'P0001'; end if;
+  if (select count(*) from public.teacher_goals g where g.teacher_id = auth.uid() and g.student_id = target and g.due >= current_date) >= 5 then
+    raise exception 'Cet élève a déjà 5 objectifs en cours : supprime-en un.' using errcode = 'P0001';
+  end if;
+  insert into public.teacher_goals (teacher_id, student_id, surah, due, note) values (auth.uid(), target, p_surah, p_due, nullif(trim(coalesce(p_note, '')), ''));
+end $$;
+
+create or replace function public.goal_delete(p_id bigint) returns void
+language sql security definer set search_path = public as $$
+  delete from public.teacher_goals where id = p_id and teacher_id = auth.uid()
+$$;
+
+-- objectifs : l'élève voit les siens, l'enseignant ceux qu'il a fixés (target = l'élève) ; les objectifs échus depuis plus de 30 jours disparaissent
+create or replace function public.goals_for(target uuid default null) returns table (id bigint, teacher_email text, surah int, due date, note text)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if target is null or target = auth.uid() then
+    return query select g.id, p.email, g.surah, g.due, g.note from public.teacher_goals g join public.profiles p on p.id = g.teacher_id
+      where g.student_id = auth.uid() and g.due >= current_date - 30
+        and exists (select 1 from public.teacher_links l where l.teacher_id = g.teacher_id and l.student_id = g.student_id)
+      order by g.due, g.id;
+  else
+    if not public.teacher_has(target) then raise exception 'accès refusé' using errcode = '42501'; end if;
+    return query select g.id, p.email, g.surah, g.due, g.note from public.teacher_goals g join public.profiles p on p.id = g.teacher_id
+      where g.teacher_id = auth.uid() and g.student_id = target and g.due >= current_date - 30 order by g.due, g.id;
+  end if;
+end $$;
+
+-- groupe de classe : un code réutilisable (jusqu'à 40 élèves, 30 jours) ; chaque élève le saisit lui-même, ce qui crée son lien (il peut le retirer quand il veut)
+create or replace function public.class_create() returns table (code text, expires_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+declare alpha constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; v text; c text := ''; i int;
+begin
+  if not public.is_teacher() then raise exception 'accès refusé' using errcode = '42501'; end if;
+  if (select count(*) from public.teacher_classes t where t.teacher_id = auth.uid() and t.expires_at > now()) >= 3 then
+    raise exception 'Trop de codes de classe ouverts : ferme-en un.' using errcode = 'P0001';
+  end if;
+  v := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
+  for i in 0..7 loop c := c || substr(alpha, 1 + (('x' || substr(v, 1 + i * 4, 4))::bit(16)::int % 32), 1); end loop;
+  insert into public.teacher_classes (code, teacher_id, expires_at) values (c, auth.uid(), now() + interval '30 days');
+  return query select c, now() + interval '30 days';
+end $$;
+
+create or replace function public.class_close(p_code text) returns void
+language sql security definer set search_path = public as $$
+  delete from public.teacher_classes where code = upper(trim(p_code)) and teacher_id = auth.uid()
+$$;
+
+create or replace function public.class_mine() returns table (code text, expires_at timestamptz, uses int, max_uses int)
+language sql stable security definer set search_path = public as $$
+  select c.code, c.expires_at, c.uses, c.max_uses from public.teacher_classes c
+  where c.teacher_id = auth.uid() and c.expires_at > now() and public.is_teacher() order by c.created_at
+$$;
+
+create or replace function public.class_join(p_code text) returns table (teacher_id uuid, email text)
+language plpgsql security definer set search_path = public as $$
+declare cl public.teacher_classes; v_email text; n int;
+begin
+  if auth.uid() is null or not public.is_active() then raise exception 'accès refusé' using errcode = '42501'; end if;
+  select * into cl from public.teacher_classes c where c.code = upper(trim(p_code)) for update;
+  if not found or cl.expires_at < now() or cl.uses >= cl.max_uses then raise exception 'Code invalide ou expiré.' using errcode = 'P0001'; end if;
+  if cl.teacher_id = auth.uid() then raise exception 'Tu ne peux pas être ton propre enseignant.' using errcode = 'P0001'; end if;
+  select p.email into v_email from public.profiles p where p.id = cl.teacher_id and p.role = 'teacher' and not p.blocked;
+  if not found then raise exception 'Code invalide ou expiré.' using errcode = 'P0001'; end if;
+  insert into public.teacher_links (teacher_id, student_id) values (cl.teacher_id, auth.uid()) on conflict do nothing;
+  get diagnostics n = row_count;
+  if n > 0 then update public.teacher_classes c set uses = c.uses + 1 where c.code = cl.code; end if;
+  return query select cl.teacher_id, v_email;
+end $$;
+
+revoke all on function public.teacher_has(uuid), public.teacher_message_send(uuid, text), public.messages_mine(), public.message_delete(bigint),
+  public.teacher_goal_set(uuid, int, date, text), public.goal_delete(bigint), public.goals_for(uuid),
+  public.class_create(), public.class_close(text), public.class_mine(), public.class_join(text) from public, anon;
+grant execute on function public.teacher_has(uuid), public.teacher_message_send(uuid, text), public.messages_mine(), public.message_delete(bigint),
+  public.teacher_goal_set(uuid, int, date, text), public.goal_delete(bigint), public.goals_for(uuid),
+  public.class_create(), public.class_close(text), public.class_mine(), public.class_join(text) to authenticated;

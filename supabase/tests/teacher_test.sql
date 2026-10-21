@@ -127,6 +127,41 @@ begin
   perform t.as_super(); update public.profiles set blocked = true where id = c1; perform t.as_user(c1); perform t.fails('select public.teacher_request()', '42501');
   perform t.as_super(); update public.profiles set blocked = false where id = c1;
 
+  -- 7 ter. messages, objectifs (l'enseignant décide, sans acceptation) et groupe de classe
+  perform t.as_user(b); select i.code into code2 from public.invite_create() i; perform t.as_user(f1); perform public.invite_accept(code2);
+  perform public.teacher_message_send(b, '  Courage, relis la sourate 78 !  ');
+  perform t.fails('select public.teacher_message_send(''' || a || ''', ''hors lien'')', '42501'); perform t.fails('select public.teacher_message_send(''' || b || ''', '''')', 'P0001'); perform t.fails('select public.teacher_message_send(''' || b || ''', ''' || repeat('x', 281) || ''')', 'P0001');
+  perform t.as_user(c1); perform t.fails('select public.teacher_message_send(''' || b || ''', ''intrus'')', '42501');
+  assert (select count(*) from public.messages_mine()) = 0 and (select count(*) from public.teacher_messages) = 0, 'les messages des autres sont invisibles';
+  perform t.as_user(b); assert (select count(*) from public.messages_mine()) = 1 and (select body from public.messages_mine()) = 'Courage, relis la sourate 78 !', 'l''élève lit le message';
+  perform t.fails('insert into public.teacher_messages (teacher_id, student_id, body) values (''' || f1 || ''', ''' || b || ''', ''x'')');
+  perform t.as_user(f1); for i in 1..9 loop perform public.teacher_message_send(b, 'm' || i); end loop; perform t.fails('select public.teacher_message_send(''' || b || ''', ''trop'')', 'P0001');
+  perform t.as_user(b); perform public.message_delete((select id from public.messages_mine() limit 1)); assert (select count(*) from public.messages_mine()) = 9, 'l''élève supprime un message';
+  perform t.as_user(f1); perform public.teacher_goal_set(b, 78, current_date + 7, 'avant dimanche');
+  perform t.fails('select public.teacher_goal_set(''' || a || ''', 78, current_date + 7)', '42501'); perform t.fails('select public.teacher_goal_set(''' || b || ''', 115, current_date + 7)', 'P0001'); perform t.fails('select public.teacher_goal_set(''' || b || ''', 78, current_date - 1)', 'P0001');
+  for i in 1..4 loop perform public.teacher_goal_set(b, i, current_date + i); end loop; perform t.fails('select public.teacher_goal_set(''' || b || ''', 9, current_date + 9)', 'P0001');
+  assert (select count(*) from public.goals_for(b)) = 5, 'l''enseignant voit ses objectifs'; perform t.fails('select * from public.goals_for(''' || a || ''')', '42501');
+  perform t.as_user(b); assert (select count(*) from public.goals_for()) = 5 and (select surah from public.goals_for() order by due, id limit 1) = 1, 'l''élève voit ses objectifs sans rien accepter'; 
+  perform public.goal_delete((select id from public.goals_for() limit 1)); assert (select count(*) from public.goals_for()) = 5, 'l''élève ne supprime pas un objectif';
+  perform t.as_user(f1); perform public.goal_delete((select id from public.goals_for(b) limit 1)); assert (select count(*) from public.goals_for(b)) = 4, 'l''enseignant supprime un objectif';
+  perform t.as_super(); update public.teacher_goals set due = current_date - 31 where id = (select min(id) from public.teacher_goals);
+  perform t.as_user(f1); assert (select count(*) from public.goals_for(b)) = 3, 'un objectif échu depuis plus de 30 jours disparaît';
+  perform t.as_user(b); perform public.link_revoke(f1); assert (select count(*) from public.messages_mine()) = 0 and (select count(*) from public.goals_for()) = 0, 'lien coupé : messages et objectifs ne s''affichent plus';
+  perform t.as_user(f1); perform t.fails('select public.teacher_message_send(''' || b || ''', ''après'')', '42501');
+  -- groupe de classe
+  perform t.as_user(f1); select c.code into code2 from public.class_create() c; assert length(code2) = 8 and (select count(*) from public.class_mine()) = 1;
+  perform t.as_user(c1); perform t.fails('select public.class_create()', '42501'); assert (select count(*) from public.class_mine()) = 0 and (select count(*) from public.teacher_classes) = 0, 'le code de classe n''est lisible que de l''enseignant';
+  perform t.as_user(b); perform public.class_join(lower(code2)); perform t.as_user(a); perform public.class_join(code2); perform t.as_user(b); perform public.class_join(code2);
+  perform t.as_user(f1); assert (select uses from public.class_mine()) = 2, 'deux élèves, pas de double comptage'; assert (select count(*) from public.teacher_students()) = 2, 'le code de classe crée les liens';
+  perform t.as_user(f1); perform t.fails('select public.class_join(''' || code2 || ''')', 'P0001');       -- son propre code
+  perform t.as_user(c1); perform t.fails('select public.class_join(''ZZZZZZZZ'')', 'P0001');
+  perform t.as_super(); update public.teacher_classes set max_uses = 2 where code = code2; perform t.as_user(c1); perform t.fails('select public.class_join(''' || code2 || ''')', 'P0001');
+  perform t.as_super(); update public.teacher_classes set max_uses = 40, expires_at = now() - interval '1 minute' where code = code2; perform t.as_user(c1); perform t.fails('select public.class_join(''' || code2 || ''')', 'P0001');
+  perform t.as_super(); update public.teacher_classes set expires_at = now() + interval '1 day' where code = code2; update public.profiles set role = 'user' where id = f1; perform t.as_user(c1); perform t.fails('select public.class_join(''' || code2 || ''')', 'P0001');
+  perform t.as_super(); update public.profiles set role = 'teacher' where id = f1; perform t.as_user(f1); perform public.class_close(code2); assert (select count(*) from public.class_mine()) = 0, 'code fermé';
+  perform t.as_user(f1); for i in 1..3 loop perform public.class_create(); end loop; perform t.fails('select public.class_create()', 'P0001');
+  perform t.as_super(); delete from public.teacher_links where teacher_id = f1;
+
   -- 8. suppression d'un compte élève : le lien et le journal partent avec lui
   perform t.as_super(); update public.profiles set blocked = false where id = f1; delete from auth.users where id = a;
   assert (select count(*) from public.teacher_access_log where student_id = a) = 0 and (select count(*) from public.teacher_links where student_id = a) = 0, 'cascade à la suppression';
