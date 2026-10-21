@@ -367,3 +367,13 @@ test('audio hors ligne : adresses, estimation, plafond et plages d\'octets du se
   assert.deepEqual(rangeOf('bytes=0-99', 1000), [0, 99]); assert.deepEqual(rangeOf('bytes=900-', 1000), [900, 999]); assert.deepEqual(rangeOf('bytes=-100', 1000), [900, 999]); assert.deepEqual(rangeOf('bytes=0-5000', 1000), [0, 999]);
   assert.equal(rangeOf('bytes=1000-', 1000), null); assert.equal(rangeOf('bytes=5-2', 1000), null); assert.equal(rangeOf('abc', 1000), null); assert.equal(rangeOf('bytes=-', 1000), null); assert.equal(rangeOf(null, 10), null);
 });
+
+test('audio du plan du jour : sourates concernées, déjà téléchargées, détection du Wi-Fi', () => {
+  const html = read('index.html'), au = html.slice(html.indexOf('/* AU:begin'), html.indexOf('/* AU:end */'));
+  const { auWifi, auPlanSurahs, auMissing } = new Function(au + '; return {auWifi, auPlanSurahs, auMissing};')();
+  assert.deepEqual(auPlanSurahs({ next: { s: 114, a: 1, b: 3 }, rec: [{ s: 113, a: 1, b: 3 }, { s: 113, a: 4, b: 5 }], man: [{ s: 112, a: 1, b: 2 }, { s: 114, a: 4, b: 6 }] }), [112, 113, 114]);
+  assert.deepEqual(auPlanSurahs({ next: null, rec: [], man: [] }), []); assert.deepEqual(auPlanSurahs({ next: { s: 2, a: 1, b: 5 } }), [2]);
+  assert.deepEqual(auMissing([1, 2, 3], { 2: { b: 5, q: 64 } }), [1, 3]); assert.deepEqual(auMissing([1], { 1: 100 }), []);
+  assert.equal(auWifi({ type: 'wifi' }), true); assert.equal(auWifi({ type: 'ethernet' }), true); assert.equal(auWifi({ type: 'cellular' }), false);
+  assert.equal(auWifi({ type: 'wifi', saveData: true }), false, 'mode économie de données'); assert.equal(auWifi({ effectiveType: '4g' }), false, 'type inconnu : jamais automatique'); assert.equal(auWifi(undefined), false);
+});

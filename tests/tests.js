@@ -406,10 +406,31 @@
       E("go('progress')"); eq(E('[...missingKeys]'), [], L);
     }
   });
+  test('Audio du plan du jour : bouton, téléchargement automatique seulement en Wi-Fi confirmé (réseau requis)', async () => {
+    const net = await fetch('https://everyayah.com/data/Alafasy_64kbps/112001.mp3', {method: 'HEAD', mode: 'cors'}).then(r => r.ok).catch(() => false);
+    if (!net) return;
+    const old = E("dayKey(addDays(new Date(), -10))"), yest = E("dayKey(addDays(new Date(), -1))"); await W.caches.delete('hifz-audio-v1');
+    reset(`cfg.reciter = 'ar.alafasy'; cfg.audQ = 64; cfg.audCap = 50; audioOff = {}; audioUI = {plan: null, busy: false, ctl: null}; store.set('hifz.audioAuto', '');
+      plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 4, mptr: 0, done: {}, log: [{d: '${yest}', s: 113, a: 1, b: 3}, {d: '${old}', s: 112, a: 1, b: 2}]};`);
+    eq(E("auPlanSurahs(planToday())"), [112, 113, 114], 'sourates du plan du jour');
+    E("go('settings')"); ok($q('[data-act="aud-plan"]') && $q('#aud-auto'), 'bouton et option du plan'); noErr('carte plan');
+    // sans Wi-Fi confirmé : rien ne se télécharge tout seul
+    Object.defineProperty(W.navigator, 'connection', {get: () => ({type: 'cellular'}), configurable: true}); E("cfg.audAuto = true"); E("maybeAutoAudio()"); await wait(1500); eq(E("Object.keys(audioSet('ar.alafasy')).length"), 0, 'données mobiles : pas de téléchargement automatique');
+    // bouton manuel (la confirmation est acceptée par le banc d'essai)
+    clickAct('aud-plan'); for (let i = 0; i < 400 && (E('audioUI.busy') || Object.keys(E("audioSet('ar.alafasy')")).length < 3); i++) await wait(100); noErr('plan du jour');
+    eq(Object.keys(E("audioSet('ar.alafasy')")).map(Number).sort(), [112, 113, 114], 'les 3 sourates du plan sont téléchargées'); ok(E("audioUrl({s: 113, a: 1})").includes('everyayah'));
+    clickAct('aud-plan'); await wait(300); ok(/déjà sur cet appareil/.test(appText()), 'rien de plus à télécharger');
+    // automatique en Wi-Fi : retire une sourate puis relance
+    await E("audioDel(113)"); await wait(400); eq(E("auMissing(auPlanSurahs(planToday()), audioSet('ar.alafasy'))"), [113]);
+    Object.defineProperty(W.navigator, 'connection', {get: () => ({type: 'wifi'}), configurable: true}); E("store.set('hifz.audioAuto', '')"); E("maybeAutoAudio()");
+    for (let i = 0; i < 300 && (E('audioUI.busy') || !E("audioSet('ar.alafasy')[113]")); i++) await wait(100); ok(E("audioSet('ar.alafasy')[113]"), 'Wi-Fi confirmé : téléchargement automatique de la sourate manquante');
+    // nettoyage
+    Object.defineProperty(W.navigator, 'connection', {get: () => undefined, configurable: true}); await W.caches.delete('hifz-audio-v1'); E("audioOff = {}; store.set('hifz.audio', {}); cfg.audAuto = false");
+  });
   test('Audio hors ligne : aucune clé de traduction manquante (en, ar)', async () => {
     for (const L of ['en', 'ar']){
-      reset(`setLang('${L}'); cfg.reciter = 'ar.alafasy'; audioOff = {'ar.alafasy': {1: 400000, 112: 120000}}; audioUI = {plan: {take: [1], skip: [2], used: 1e6, skipBytes: 2e6, items: []}, busy: false, ctl: null}`);
-      E("go('settings')"); ok($q('[data-act="aud-del"]'), L); eq(E('[...missingKeys]'), [], L); E("audioOff = {}; audioUI = {plan: null, busy: false, ctl: null}; store.set('hifz.audio', {})");
+      reset(`setLang('${L}'); cfg.reciter = 'ar.alafasy'; audioOff = {'ar.alafasy': {1: 400000, 112: 120000}}; audioUI = {plan: {take: [1], skip: [2], used: 1e6, skipBytes: 2e6, items: []}, busy: false, ctl: null}; plan = {from: 114, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 4, mptr: 0, done: {}, log: []}`);
+      E("go('settings')"); ok($q('[data-act="aud-del"]') && $q('[data-act="aud-plan"]'), L); eq(E('[...missingKeys]'), [], L); E("audioOff = {}; audioUI = {plan: null, busy: false, ctl: null}; store.set('hifz.audio', {})");
     }
   });
   test('Tajwīd : aucune clé de traduction manquante (en, ar)', async () => {

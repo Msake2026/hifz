@@ -759,7 +759,12 @@ window.I18N = {
 "Qualité": "Quality",
 "64 kbps (léger)": "64 kbps (light)",
 "128 kbps (qualité, 3 fois plus lourd)": "128 kbps (quality, 3 times heavier)",
-"Ce récitateur n'existe qu'en 64 kbps pour le téléchargement.": "This reciter is only available in 64 kbps for download."
+"Ce récitateur n'existe qu'en 64 kbps pour le téléchargement.": "This reciter is only available in 64 kbps for download.",
+"Télécharger l'audio du plan du jour": "Download today's plan audio",
+"Télécharger automatiquement le plan du jour quand je suis en Wi-Fi": "Automatically download today's plan when I'm on Wi-Fi",
+"Ce navigateur ne permet pas de savoir si tu es en Wi-Fi (c'est le cas de l'iPhone) : utilise le bouton ci-dessus quand tu es en Wi-Fi.": "This browser cannot tell whether you are on Wi-Fi (this is the case on iPhone): use the button above when you are on Wi-Fi.",
+"L'audio du plan du jour est déjà sur cet appareil.": "Today's plan audio is already on this device.",
+"Télécharger {n} sourate(s) du plan du jour (environ {m}) ?": "Download {n} surah(s) from today's plan (about {m})?"
 },
 "ar": {
 "(partie {a}/{b})": "(الجزء {a}/{b})",
@@ -1520,6 +1525,11 @@ window.I18N = {
 "Qualité": "الجودة",
 "64 kbps (léger)": "64 كيلوبت (خفيف)",
 "128 kbps (qualité, 3 fois plus lourd)": "128 كيلوبت (جودة، أثقل بثلاث مرات)",
-"Ce récitateur n'existe qu'en 64 kbps pour le téléchargement.": "هذا القارئ متاح للتنزيل بجودة 64 كيلوبت فقط."
+"Ce récitateur n'existe qu'en 64 kbps pour le téléchargement.": "هذا القارئ متاح للتنزيل بجودة 64 كيلوبت فقط.",
+"Télécharger l'audio du plan du jour": "تنزيل صوت خطة اليوم",
+"Télécharger automatiquement le plan du jour quand je suis en Wi-Fi": "نزّل خطة اليوم تلقائياً عند اتصالي بالواي فاي",
+"Ce navigateur ne permet pas de savoir si tu es en Wi-Fi (c'est le cas de l'iPhone) : utilise le bouton ci-dessus quand tu es en Wi-Fi.": "لا يتيح هذا المتصفح معرفة ما إذا كنت على الواي فاي (وهذا شأن الآيفون): استعمل الزر أعلاه حين تكون على الواي فاي.",
+"L'audio du plan du jour est déjà sur cet appareil.": "صوت خطة اليوم موجود على هذا الجهاز.",
+"Télécharger {n} sourate(s) du plan du jour (environ {m}) ?": "تنزيل {n} سورة من خطة اليوم (نحو {m})؟"
 }
 };
