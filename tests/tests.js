@@ -261,6 +261,9 @@
     E("cfg.mode = 'madd'; start()"); await audit('question madd'); E("home()"); E("cfg.mode = 'makharij'; start()"); await audit('question makhārij'); E("home()");
     E("cfg.rdTaj = true; openReader('q:1')"); for (let i = 0; i < 40 && !$q('.tj-n'); i++) await wait(100); await audit('lecteur (tajwīd en couleurs)'); E("cfg.rdTaj = false; home()");
     E("renderLegal()"); await audit('confidentialité'); E("CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; sb = {}; me = null; renderAccount()"); await audit('connexion'); E("CLOUD.url = ''; CLOUD.anonKey = ''; sb = null");
+    E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; sb = {}; me = {user: {id: 's1', email: 'eleve@x.fr'}, profile: {role: 'teacher'}}; tch.loaded = true; tch.code = {code: 'ABCD2345', expires_at: new Date(Date.now() + 6 * 864e5).toISOString()}; tch.invites = [{code: 'ZZZZ2222', expires_at: new Date(Date.now() + 2 * 864e5).toISOString()}]; tch.links = [{as_role: 'teacher', other_id: 'x', email: 'prof@x.fr', since: new Date().toISOString()}]; tch.log = [{teacher_email: 'prof@x.fr', at: new Date().toISOString()}]; renderAccount()`); await audit('compte (élève)');
+    E(`tch.students = [{id: 's1', email: 'eleve@x.fr', since: new Date().toISOString(), last_seen: new Date().toISOString(), answers: 40, ok: 30, errors: 4}]; tch.detail = {id: 's1', data: {email: 'eleve@x.fr', stats: {'2:5': [1, 3], '114:1': [5, 0]}, days: {}, errors: [{t: Date.now(), k: '2:5', m: 'cloze', sc: 0}]}}; tch.msg = ''; renderTeacher()`); await audit('espace enseignant');
+    E("me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false}");
     eq(bad, [], 'violations axe-core');
     st.remove(); E("cfg.hc = undefined; delete cfg.hc; cfg.tjp = false; applyA11y()");
   });
