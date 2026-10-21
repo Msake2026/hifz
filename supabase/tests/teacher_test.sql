@@ -169,6 +169,25 @@ begin
   perform public.weekly_set(false); assert (select weekly from public.mail_prefs) = false;
   perform t.as_super(); update public.profiles set blocked = true where id = c1; perform t.as_user(c1); perform t.fails('select public.weekly_set(true)', '42501'); perform t.as_super(); update public.profiles set blocked = false where id = c1;
 
+  -- 7 quinquies. réponses de l'élève, accusés de lecture, messages non lus ; l'administrateur n'est ni élève ni enseignant
+  perform t.as_super(); update public.profiles set role = 'teacher', blocked = false where id = f1; delete from public.teacher_messages; delete from public.teacher_links where teacher_id = f1;
+  perform t.as_user(b); select i.code into code2 from public.invite_create() i; perform t.as_user(f1); perform public.invite_accept(code2);
+  perform t.as_user(b); perform t.fails('select public.student_message_send(''' || f1 || ''', ''je parle en premier'')', 'P0001');       -- il faut que l'enseignant ait écrit d'abord
+  perform t.as_user(f1); perform public.teacher_message_send(b, 'Bonjour');
+  perform t.as_user(b); assert (select count(*) from public.messages_mine() where not from_student and read_at is null) = 1, 'message non lu';
+  perform public.student_message_send(f1, '  Merci !  '); perform t.fails('select public.student_message_send(''' || f1 || ''', '''')', 'P0001'); perform t.fails('select public.student_message_send(''' || a || ''', ''x'')', '42501');
+  perform public.messages_mark_read(); assert (select count(*) from public.messages_mine() where not from_student and read_at is not null) = 1, 'accusé de lecture par l''élève';
+  perform t.as_user(f1); assert (select n from public.teacher_unread() where student_id = b) = 1, 'réponse non lue chez l''enseignant';
+  assert (select count(*) from public.teacher_thread(b)) = 2 and (select count(*) from public.teacher_unread()) = 0, 'ouvrir la conversation marque les réponses lues';
+  assert (select read_at is not null from public.teacher_thread(b) where not from_student), 'l''enseignant voit « lu »';
+  perform t.fails('select * from public.teacher_thread(''' || a || ''')', '42501'); perform t.as_user(c1); perform t.fails('select * from public.teacher_thread(''' || b || ''')', '42501'); assert (select count(*) from public.teacher_unread()) = 0;
+  perform t.as_user(b); for i in 1..9 loop perform public.student_message_send(f1, 'r' || i); end loop; perform t.fails('select public.student_message_send(''' || f1 || ''', ''trop'')', 'P0001');
+  perform t.as_user(c1); perform t.fails('select public.student_message_send(''' || f1 || ''', ''hors lien'')', '42501');
+  perform t.as_user(b); perform public.link_revoke(f1); perform t.fails('select public.student_message_send(''' || f1 || ''', ''après'')', '42501');
+  perform t.as_user(ad); perform t.fails('select public.invite_create()', 'P0001'); perform t.fails('select public.class_join(''ZZZZZZZZ'')', 'P0001'); perform t.fails('select public.teacher_request()'); perform t.fails('select public.admin_set_role(''' || ad || ''', ''teacher'')');
+  perform t.fails('select public.student_message_send(''' || f1 || ''', ''x'')', '42501');
+  perform t.as_super(); delete from public.teacher_messages; delete from public.teacher_links where teacher_id = f1;
+
   -- 8. suppression d'un compte élève : le lien et le journal partent avec lui
   perform t.as_super(); update public.profiles set blocked = false where id = f1; delete from auth.users where id = a;
   assert (select count(*) from public.teacher_access_log where student_id = a) = 0 and (select count(*) from public.teacher_links where student_id = a) = 0, 'cascade à la suppression';

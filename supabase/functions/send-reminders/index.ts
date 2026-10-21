@@ -117,6 +117,31 @@ async function sendWeekly(db: ReturnType<typeof createClient>, now: Date) {
   return n;
 }
 
+const MSGN = {
+  fr: (e: string) => ({ title: 'Hifz · nouveau message', body: `Message de ${e}` }),
+  en: (e: string) => ({ title: 'Hifz · new message', body: `Message from ${e}` }),
+  ar: (e: string) => ({ title: 'حفظ · رسالة جديدة', body: `رسالة من ${e}` }),
+};
+
+// messages enseignant ↔ élève pas encore signalés : notification au destinataire (sans le texte du message)
+async function notifyMessages(db: ReturnType<typeof createClient>) {
+  const { data: msgs, error } = await db.from('teacher_messages').select('id, teacher_id, student_id, from_student').is('notified_at', null).limit(50);
+  if (error || !msgs?.length) return 0;
+  let n = 0;
+  for (const m of msgs as { id: number; teacher_id: string; student_id: string; from_student: boolean }[]) {
+    const to = m.from_student ? m.teacher_id : m.student_id, from = m.from_student ? m.student_id : m.teacher_id;
+    const { data: prof } = await db.from('profiles').select('email').eq('id', from).maybeSingle();
+    const { data: subs } = await db.from('push_subs').select('id, endpoint, p256dh, auth, lang').eq('user_id', to);
+    for (const sub of subs ?? []) {
+      const t = (MSGN[sub.lang as keyof typeof MSGN] ?? MSGN.fr)(prof?.email ?? '');
+      try { await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify({ ...t, url: './' }), { TTL: 24 * 3600, urgency: 'normal' }); n++; }
+      catch (e) { const c = (e as { statusCode?: number }).statusCode; if (c === 404 || c === 410) await db.from('push_subs').delete().eq('id', sub.id); else console.error('push message', c, (e as Error).message); }
+    }
+    await db.from('teacher_messages').update({ notified_at: new Date().toISOString() }).eq('id', m.id);
+  }
+  return n;
+}
+
 Deno.serve(async (req) => {
   if (req.headers.get('Authorization') !== `Bearer ${Deno.env.get('CRON_SECRET')}`) return new Response('forbidden', { status: 403 });
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
@@ -124,6 +149,7 @@ Deno.serve(async (req) => {
   const now = new Date();
   const { data: subs, error } = await db.from('push_subs').select('*');
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  let messages = 0; try { messages = await notifyMessages(db); } catch (e) { console.error('messages', (e as Error).message); }
   let weekly = 0; try { weekly = await sendWeekly(db, new Date()); } catch (e) { console.error('hebdo', (e as Error).message); }
   let notified = 0; try { notified = await notifyRequests(db); } catch (e) { console.error('demandes', (e as Error).message); }
   let sent = 0, skipped = 0, removed = 0;
@@ -148,5 +174,5 @@ Deno.serve(async (req) => {
       else console.error('push', s.id, code, (e as Error).message);
     }
   }
-  return new Response(JSON.stringify({ sent, skipped, removed, notified, weekly }), { headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify({ sent, skipped, removed, notified, weekly, messages }), { headers: { 'Content-Type': 'application/json' } });
 });

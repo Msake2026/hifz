@@ -33,6 +33,7 @@ begin
   if not public.is_admin() then raise exception 'accès refusé' using errcode = '42501'; end if;
   if new_role not in ('user', 'admin', 'teacher') then raise exception 'rôle inconnu'; end if;
   if target = auth.uid() and new_role <> 'admin' then raise exception 'Tu ne peux pas retirer ton propre rôle admin.'; end if;
+  if new_role = 'teacher' and exists (select 1 from public.profiles where id = target and role = 'admin') then raise exception 'Un administrateur ne peut pas être enseignant.'; end if;
   update public.profiles set role = new_role where id = target;
   delete from public.teacher_requests where user_id = target;       -- la demande est traitée
 end $$;
@@ -78,6 +79,7 @@ language plpgsql security definer set search_path = public as $$
 declare alpha constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; v text; c text := ''; i int;
 begin
   if auth.uid() is null or not public.is_active() then raise exception 'accès refusé' using errcode = '42501'; end if;
+  if public.is_admin() then raise exception 'Un administrateur ne peut pas être élève ni enseignant.' using errcode = 'P0001'; end if;
   if (select count(*) from public.teacher_invites t where t.student_id = auth.uid() and t.used_by is null and t.expires_at > now()) >= 5 then
     raise exception 'Trop d''invitations en cours : annule-en une avant d''en créer une autre.' using errcode = 'P0001';
   end if;
@@ -183,7 +185,8 @@ create or replace function public.teacher_request() returns void
 language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null or not public.is_active() then raise exception 'accès refusé' using errcode = '42501'; end if;
-  if exists (select 1 from public.profiles where id = auth.uid() and role in ('teacher', 'admin')) then raise exception 'Tu as déjà ce rôle.'; end if;
+  if public.is_admin() then raise exception 'Un administrateur ne peut pas être enseignant.'; end if;
+  if exists (select 1 from public.profiles where id = auth.uid() and role = 'teacher') then raise exception 'Tu as déjà ce rôle.'; end if;
   insert into public.teacher_requests (user_id) values (auth.uid()) on conflict do nothing;
 end $$;
 
@@ -220,6 +223,9 @@ create table if not exists public.teacher_messages (
   body       text not null check (char_length(body) between 1 and 280),
   created_at timestamptz not null default now()
 );
+alter table public.teacher_messages add column if not exists from_student boolean not null default false;   -- réponse de l'élève à son enseignant
+alter table public.teacher_messages add column if not exists read_at timestamptz;                            -- accusé de lecture par le destinataire
+alter table public.teacher_messages add column if not exists notified_at timestamptz;                        -- notification envoyée (fonction send-reminders)
 create table if not exists public.teacher_goals (
   id         bigint generated always as identity primary key,
   teacher_id uuid not null references auth.users(id) on delete cascade,
@@ -261,18 +267,19 @@ language plpgsql security definer set search_path = public as $$
 begin
   if not public.teacher_has(target) then raise exception 'accès refusé' using errcode = '42501'; end if;
   if char_length(trim(coalesce(p_body, ''))) = 0 or char_length(p_body) > 280 then raise exception 'Message vide ou trop long (280 caractères).' using errcode = 'P0001'; end if;
-  if (select count(*) from public.teacher_messages m where m.teacher_id = auth.uid() and m.student_id = target and m.created_at > now() - interval '1 day') >= 10 then
+  if (select count(*) from public.teacher_messages m where m.teacher_id = auth.uid() and m.student_id = target and not m.from_student and m.created_at > now() - interval '1 day') >= 10 then
     raise exception 'Trop de messages aujourd''hui : réessaie demain.' using errcode = 'P0001';
   end if;
   insert into public.teacher_messages (teacher_id, student_id, body) values (auth.uid(), target, trim(p_body));
 end $$;
 
-create or replace function public.messages_mine() returns table (id bigint, teacher_email text, body text, created_at timestamptz)
+drop function if exists public.messages_mine();
+create function public.messages_mine() returns table (id bigint, teacher_id uuid, teacher_email text, body text, created_at timestamptz, from_student boolean, read_at timestamptz)
 language sql stable security definer set search_path = public as $$
-  select m.id, p.email, m.body, m.created_at from public.teacher_messages m
+  select m.id, m.teacher_id, p.email, m.body, m.created_at, m.from_student, m.read_at from public.teacher_messages m
   join public.profiles p on p.id = m.teacher_id
   where m.student_id = auth.uid() and exists (select 1 from public.teacher_links l where l.teacher_id = m.teacher_id and l.student_id = m.student_id)
-  order by m.created_at desc limit 20
+  order by m.created_at desc limit 40
 $$;
 
 create or replace function public.message_delete(p_id bigint) returns void
@@ -344,6 +351,7 @@ language plpgsql security definer set search_path = public as $$
 declare cl public.teacher_classes; v_email text; n int;
 begin
   if auth.uid() is null or not public.is_active() then raise exception 'accès refusé' using errcode = '42501'; end if;
+  if public.is_admin() then raise exception 'Un administrateur ne peut pas être élève ni enseignant.' using errcode = 'P0001'; end if;
   select * into cl from public.teacher_classes c where c.code = upper(trim(p_code)) for update;
   if not found or cl.expires_at < now() or cl.uses >= cl.max_uses then raise exception 'Code invalide ou expiré.' using errcode = 'P0001'; end if;
   if cl.teacher_id = auth.uid() then raise exception 'Tu ne peux pas être ton propre enseignant.' using errcode = 'P0001'; end if;
@@ -384,3 +392,47 @@ begin
 end $$;
 revoke all on function public.weekly_set(boolean, text) from public, anon;
 grant execute on function public.weekly_set(boolean, text) to authenticated;
+
+-- 12. Conversation : l'élève peut répondre à son enseignant ; accusés de lecture ; messages non lus (l'administrateur n'est ni élève ni enseignant)
+create or replace function public.student_message_send(p_teacher uuid, p_body text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null or not public.is_active() or public.is_admin() then raise exception 'accès refusé' using errcode = '42501'; end if;
+  if not exists (select 1 from public.teacher_links l join public.profiles p on p.id = l.teacher_id
+                  where l.teacher_id = p_teacher and l.student_id = auth.uid() and p.role = 'teacher' and not p.blocked) then
+    raise exception 'accès refusé' using errcode = '42501';
+  end if;
+  if not exists (select 1 from public.teacher_messages m where m.teacher_id = p_teacher and m.student_id = auth.uid() and not m.from_student) then
+    raise exception 'Tu peux répondre une fois que ton enseignant t''a écrit.' using errcode = 'P0001';
+  end if;
+  if char_length(trim(coalesce(p_body, ''))) = 0 or char_length(p_body) > 280 then raise exception 'Message vide ou trop long (280 caractères).' using errcode = 'P0001'; end if;
+  if (select count(*) from public.teacher_messages m where m.teacher_id = p_teacher and m.student_id = auth.uid() and m.from_student and m.created_at > now() - interval '1 day') >= 10 then
+    raise exception 'Trop de messages aujourd''hui : réessaie demain.' using errcode = 'P0001';
+  end if;
+  insert into public.teacher_messages (teacher_id, student_id, body, from_student) values (p_teacher, auth.uid(), trim(p_body), true);
+end $$;
+
+create or replace function public.messages_mark_read() returns void
+language sql security definer set search_path = public as $$
+  update public.teacher_messages set read_at = now() where student_id = auth.uid() and not from_student and read_at is null
+$$;
+
+create or replace function public.teacher_thread(target uuid) returns table (id bigint, body text, created_at timestamptz, from_student boolean, read_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.teacher_has(target) then raise exception 'accès refusé' using errcode = '42501'; end if;
+  update public.teacher_messages m set read_at = now() where m.teacher_id = auth.uid() and m.student_id = target and m.from_student and m.read_at is null;
+  return query select m.id, m.body, m.created_at, m.from_student, m.read_at from public.teacher_messages m
+    where m.teacher_id = auth.uid() and m.student_id = target order by m.created_at desc limit 30;
+end $$;
+
+create or replace function public.teacher_unread() returns table (student_id uuid, n bigint)
+language sql stable security definer set search_path = public as $$
+  select m.student_id, count(*) from public.teacher_messages m
+  where m.teacher_id = auth.uid() and m.from_student and m.read_at is null and public.is_teacher()
+    and exists (select 1 from public.teacher_links l where l.teacher_id = m.teacher_id and l.student_id = m.student_id)
+  group by m.student_id
+$$;
+
+revoke all on function public.messages_mine(), public.student_message_send(uuid, text), public.messages_mark_read(), public.teacher_thread(uuid), public.teacher_unread() from public, anon;
+grant execute on function public.messages_mine(), public.student_message_send(uuid, text), public.messages_mark_read(), public.teacher_thread(uuid), public.teacher_unread() to authenticated;
