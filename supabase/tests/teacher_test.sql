@@ -178,7 +178,8 @@ begin
   perform public.student_message_send(f1, '  Merci !  '); perform t.fails('select public.student_message_send(''' || f1 || ''', '''')', 'P0001'); perform t.fails('select public.student_message_send(''' || a || ''', ''x'')', '42501');
   perform public.messages_mark_read(); assert (select count(*) from public.messages_mine() where not from_student and read_at is not null) = 1, 'accusé de lecture par l''élève';
   perform t.as_user(f1); assert (select u.n from public.teacher_unread() u where u.student_id = b) = 1, 'réponse non lue chez l''enseignant';
-  assert (select count(*) from public.teacher_thread(b)) = 2 and (select count(*) from public.teacher_unread()) = 0, 'ouvrir la conversation marque les réponses lues';
+  assert (select count(*) from public.teacher_thread(b)) = 2, 'la conversation compte les deux messages';
+  assert (select count(*) from public.teacher_unread()) = 0, 'ouvrir la conversation marque les réponses lues';
   assert (select read_at is not null from public.teacher_thread(b) where not from_student), 'l''enseignant voit « lu »';
   perform t.fails('select * from public.teacher_thread(''' || a || ''')', '42501'); perform t.as_user(c1); perform t.fails('select * from public.teacher_thread(''' || b || ''')', '42501'); assert (select count(*) from public.teacher_unread()) = 0;
   perform t.as_user(b); for i in 1..9 loop perform public.student_message_send(f1, 'r' || i); end loop; perform t.fails('select public.student_message_send(''' || f1 || ''', ''trop'')', 'P0001');
