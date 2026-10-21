@@ -113,6 +113,7 @@ body.has-nav main{padding-bottom:96px}
 .rv.hid{filter:blur(9px);cursor:pointer;user-select:none}
 .rv.playing,.rv.focus{background:color-mix(in srgb,var(--accent) 18%,transparent)}
 .vend{color:var(--accent);font-size:.8em;white-space:nowrap}
+.tjq{background:#ffe38a;color:#222;border-radius:4px;padding:0 3px}
 .rd.tj{background:#fbf6e8;color:#222;padding:8px 10px;border-radius:10px} .rd.tj .vend{color:#8a6d1f}   /* page claire : les couleurs officielles du tajwīd restent lisibles aussi en mode sombre */
 .tj-h,.tj-s,.tj-l{color:#AAAAAA}.tj-n{color:#537FFF}.tj-p{color:#4050FF}.tj-m{color:#000EBC}.tj-o{color:#2144C1}.tj-q{color:#DD0008}.tj-c{color:#D500B7}.tj-f{color:#9400A8}
 .tj-w{color:#58B800}.tj-i{color:#26BFFD}.tj-a{color:#169777}.tj-u{color:#169200}.tj-d,.tj-b{color:#A1A1A1}.tj-g{color:#FF7E1E}
@@ -356,6 +357,7 @@ let errors = store.get('hifz.errors', []); // journal : {t, k, m, sc, ans?, bad?
 let plan = store.get('hifz.plan', null);   // plan de mémorisation (voir plus bas)
 const savePlan = () => store.set('hifz.plan', plan);
 let sched = store.get('hifz.sched', {}); // "s:a" -> {iv: jours, due: timestamp}
+let tjs = store.get('hifz.tj', {});       // règle de tajwīd -> [réussies, ratées] (entraînement, séparé de la mémorisation)
 let days = store.get('hifz.days', {});   // "AAAA-MM-JJ" -> nb de réponses
 const saveCfg = () => store.set('hifz.cfg', cfg);
 const today = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -487,6 +489,7 @@ const MODES = [
   ['order',  'Ordre des sourates', 'Quelle sourate vient après ?', 'q'],
   ['end',    'Fin de sourate',     'Récite les derniers versets', 'q'],
   ['link',   'Fin + début suivant','Enchaîne la fin d\'une sourate et le début de la suivante', 'q'],
+  ['tajweed','Tajwīd (entraînement)','Reconnais la règle de la partie surlignée', 'q'],
   ['cont',   'Récitation continue','Un passage entier d\'une traite'],
   ['half',   'Demi-vers',          'Complète la 2e moitié', 'm'],
   ['phrase', 'Phrase suivante',    'Prose : complète la phrase suivante', 'm']
@@ -800,9 +803,10 @@ function tabPlan(){
 /* options utiles pour chaque exercice (n = nombre de questions : toujours) ; q = Coran seulement */
 const MODE_OPTS = {
   mix: {level: 1, end: 'q', beg: 'q', input: 1}, next: {input: 1}, cloze: {level: 1, input: 1}, which: {}, mcq: {}, mutash: {}, start: {input: 1},
-  order: {}, end: {end: 'q', input: 1}, link: {end: 'q', beg: 'q', input: 1}, cont: {cont: 1, input: 1}, half: {input: 1}, phrase: {input: 1}
+  order: {}, tajweed: {}, end: {end: 'q', input: 1}, link: {end: 'q', beg: 'q', input: 1}, cont: {cont: 1, input: 1}, half: {input: 1}, phrase: {input: 1}
 };
 const modeHelp = {
+  tajweed: 'Une partie du verset est surlignée : choisis sa règle de tajwīd (entraînement : annotation automatique non relue par un enseignant).',
   mix: 'Un mélange de tous les exercices.', next: 'On te donne un verset, tu donnes la suite.', cloze: 'Des mots du verset sont cachés : retrouve-les.',
   which: 'Tu identifies la sourate (ou le matn) d\'un verset en touchant la bonne réponse.', mcq: 'Tu touches le bon verset suivant parmi quatre.',
   mutash: 'Tu touches la vraie suite d\'un verset qui ressemble à d\'autres.', start: 'Tu récites le premier verset d\'une sourate.',
@@ -911,7 +915,9 @@ function tabProgress(){
     : `<p class="sub" style="margin:0">${tr('Pas encore de statistiques : fais ta première série.')}</p>`}</div>
   <div class="card"><h2>${tr('Cette semaine')}</h2>${weekHtml()}</div>
   <div class="card"><h2>${tr('Carte de progression')}</h2>${mapHtml()}</div>
-  ${weak.length ? `<div class="card">${weakHtml(weak)}</div>` : ''}`;
+  ${weak.length ? `<div class="card">${weakHtml(weak)}</div>` : ''}
+  ${Object.keys(tjs).length ? `<div class="card"><h2>${tr('Mes règles de tajwīd')}</h2>${Object.entries(tjs).filter(([c]) => TJNAME[c]).map(([c, [o, k]]) => [c, o, k, o / Math.max(1, o + k)]).sort((a, b) => a[3] - b[3])
+    .map(([c, o, k, r]) => `<div class="weak"><span>${esc(tr(TJNAME[c]))}</span><span>${Math.round(100 * r)} % · ${o + k}</span></div>`).join('')}${TJNOTE()}</div>` : ''}`;
 }
 
 /* -- Réglages -- */
@@ -977,6 +983,11 @@ const weakHtml = weak => weak.length ? `<h2 style="margin-top:14px">${tr('À ret
 /* ---------- séance ---------- */
 let ses = null, cur = null, ls = null;
 function start(fixed){
+  if (cfg.mode === 'tajweed' && !fixed && !(window.QX && window.QX.tajweed)){ // les annotations se chargent (et se contrôlent) à la première utilisation
+    $app.innerHTML = `<p class="sub" style="margin-top:40vh;text-align:center">${tr('Chargement…')}</p>`;
+    loadX('tajweed').then(() => start(fixed), e => { alert(tr('Impossible de charger ce contenu ({e}). Vérifie ta connexion puis réessaie.', {e: e.message})); home(); });
+    return;
+  }
   const pool = fixed || buildPool(cfg.scope);
   if (!pool.length) return alert(tr('Aucun verset dans cette portée.'));
   ses = {pool, fixed: !!fixed, i: 0, score: 0, missed: [], used: new Set(), total: fixed ? fixed.length : cfg.n};
@@ -1011,6 +1022,7 @@ function nextQ(){
   }
   const hasQ = ses.pool.some(r => isQ(r.s)), hasM = ses.pool.some(r => !isQ(r.s));
   let m = cfg.mode;
+  if (m === 'tajweed' && (ses.fixed || !hasQ)) m = 'mix';   // révisions guidées (plan, versets dus…) : pas d'exercice de tajwīd
   if (m === 'mix'){
     const L = ['next', 'cloze', 'which', 'mcq'];
     if (hasQ) L.push('mutash', 'start', 'order', 'end', 'link');
@@ -1020,6 +1032,7 @@ function nextQ(){
   let cands = ses.pool.filter(r => !ses.used.has(key(r)));
   if (!cands.length){ ses.used.clear(); cands = ses.pool; }
   const only = (f, fb) => { const c = cands.filter(f); if (c.length) cands = c; else m = fb; };
+  if (m === 'tajweed') only(r => isQ(r.s), 'cloze');
   if (m === 'half') only(r => !isQ(r.s), 'cloze');
   if (m === 'phrase') only(r => !isQ(r.s) && book(r.s).kind === 'prose' && clausesOf(r).length >= 2, 'half');
   if (m === 'half') only(r => !isQ(r.s), 'cloze');
@@ -1036,7 +1049,7 @@ function nextQ(){
   if (!r) r = pickWeighted(cands);
   ses.used.add(key(r));
   cur = {m, r, done: false};
-  ({next: qNext, cloze: qCloze, which: qWhich, mcq: qMcq, half: qHalf, phrase: qPhrase, mutash: qMutash, start: qStart, order: qOrder, cont: qCont, end: qEnd, link: qLink})[m]();
+  ({next: qNext, cloze: qCloze, which: qWhich, mcq: qMcq, half: qHalf, phrase: qPhrase, mutash: qMutash, start: qStart, order: qOrder, cont: qCont, end: qEnd, link: qLink, tajweed: qTajweed})[m]();
 }
 function logError(r, score, info = {}){
   const e = {t: Date.now(), k: key(r), m: cur.m, sc: score};
@@ -1048,7 +1061,8 @@ function logError(r, score, info = {}){
 }
 function finish(score, extra = ''){
   if (cur.done) return; cur.done = true;
-  if (cur.perRef) cur.perRef.forEach(([x, sc], v) => { if (x.bas) return; record(x, sc); if (sc < 1){ ses.missed.push(x); logError(x, sc, {bad: cur.badV && cur.badV[v]}); } });
+  if (cur.m === 'tajweed'){ days[today()] = (days[today()] || 0) + 1; store.set('hifz.days', days); }   // l'entraînement au tajwīd compte pour l'objectif du jour mais ne touche ni la révision espacée ni l'historique d'erreurs
+  else if (cur.perRef) cur.perRef.forEach(([x, sc], v) => { if (x.bas) return; record(x, sc); if (sc < 1){ ses.missed.push(x); logError(x, sc, {bad: cur.badV && cur.badV[v]}); } });
   else { record(cur.r, score); if (score < 1){ ses.missed.push(cur.r); logError(cur.r, score, cur.info); } }
   ses.score += score;
   const cls = score === 1 ? 'ok' : score >= 0.5 ? 'mid' : 'ko';
@@ -1245,6 +1259,39 @@ const sibHtml = () => cur.sibs && cur.sibs.length ? `<div class="sib"><span clas
   `<div class="ref" style="margin-top:6px">${tr('Sourate {n} – {name}, verset {a} ({p} % de ressemblance)', {n: x.s, name: esc(SN(x.s)), a: x.a, p: x.p})}</div><div class="ar">${esc(verse(x))}</div>`).join('')}</div>` : '';
 
 /* 6. Ordre des sourates */
+/* TJ:begin — exercice de tajwīd : fonctions pures, testées dans tests/node.test.mjs */
+const TJFAM = {h: 'h', l: 'l', s: 'l', n: 'n', p: 'p', m: 'm', o: 'o', q: 'q', c: 'c', f: 'f', w: 'w', i: 'i', a: 'a', u: 'u', d: 'd', b: 'd', g: 'g'}; // code de la source -> famille de règle (comme sa légende)
+const TJGROUP = {n: 'madd', p: 'madd', m: 'madd', o: 'madd', f: 'nun', a: 'nun', u: 'nun', i: 'nun', d: 'nun', c: 'mim', w: 'mim', h: 'x', l: 'x', q: 'x', g: 'x'};
+function tjSegs(str){ // « abc[n[ـٰ]def » -> [{t: 'abc', c: ''}, {t: 'ـٰ', c: 'n'}, {t: 'def', c: ''}]
+  const re = /\[([a-z])\[([^\]]*)\]/g, out = []; let i = 0, m;
+  while ((m = re.exec(str))){ if (m.index > i) out.push({t: str.slice(i, m.index), c: ''}); out.push({t: m[2], c: TJFAM[m[1]] || ''}); i = re.lastIndex; }
+  if (i < str.length) out.push({t: str.slice(i), c: ''});
+  return out;
+}
+const TJ_LETTER = /[\u0621-\u064A\u0671-\u06D3]/, TJ_LAST = /([\u0621-\u064A\u0671-\u06D3][\u064B-\u065F\u0670\u06D6-\u06ED\u0640]*)$/;
+function tjFocus(segs, pick){ // texte avant / surligné / après ; si la partie n'est qu'un signe, on y joint la lettre qui le porte
+  const before = segs.slice(0, pick).map(x => x.t).join(''), t = segs[pick].t, after = segs.slice(pick + 1).map(x => x.t).join('');
+  if (TJ_LETTER.test(t)) return {before, mark: t, after};
+  const m = TJ_LAST.exec(before); return m ? {before: before.slice(0, m.index), mark: m[1] + t, after} : {before, mark: t, after};
+}
+function tjOptions(fam, names, shuf){ // 4 propositions : la bonne, 2 de la même famille de règles si possible, puis d'autres
+  const ids = Object.keys(names).filter(c => c !== fam), same = shuf(ids.filter(c => TJGROUP[c] === TJGROUP[fam])), other = shuf(ids.filter(c => TJGROUP[c] !== TJGROUP[fam]));
+  return shuf([fam, ...same.slice(0, 2), ...other, ...same.slice(2)].slice(0, 4));
+}
+/* TJ:end */
+function tjStat(code, ok){ const x = tjs[code] || [0, 0]; tjs[code] = [x[0] + (ok ? 1 : 0), x[1] + (ok ? 0 : 1)]; store.set('hifz.tj', tjs); (ses.tj ||= {})[code] = [((ses.tj[code] || [0, 0])[0]) + (ok ? 1 : 0), ((ses.tj[code] || [0, 0])[1]) + (ok ? 0 : 1)]; }
+const TJNOTE = () => `<p class="ref" style="margin:8px 0 0">${tr("Entraînement : les règles viennent d'une annotation automatique (Islamic Network), non relue par un enseignant. En cas de doute, fie-toi à ton professeur.")}</p>`;
+function qTajweed(){
+  const {r} = cur, raw = window.QX.tajweed.s[r.s - 1][r.a - 1], segs = tjSegs(raw);
+  const fams = [...new Set(segs.filter(x => x.c).map(x => x.c))];
+  if (!fams.length){ cur.m = 'cloze'; return qCloze(); }
+  const fam = fams[rnd(fams.length)], idx = segs.map((x, i) => x.c === fam ? i : -1).filter(i => i >= 0), F = tjFocus(segs, idx[rnd(idx.length)]);
+  cur.correct = fam; cur.raw = raw; cur.audio = [r]; cur.opts = tjOptions(fam, TJNAME, shuffle);
+  shell(`<p class="ref">${tr('Quelle est la règle de tajwīd de la partie surlignée ?')}</p>
+    <div class="rd tj" id="tjv" style="font-size:${cfg.rdSize}rem">${esc(F.before)}<mark class="tjq">${esc(F.mark)}</mark>${esc(F.after)}</div>${qref(r)}
+    ${cur.opts.map(c => `<button class="opt" data-act="opt" data-v="${c}">${esc(tr(TJNAME[c]))}</button>`).join('')}
+    <div id="fb"></div>${TJNOTE()}`);
+}
 function qOrder(){
   const {r} = cur; cur.r = {s: r.s, a: 1}; cur.correct = r.s + 1; cur.label = `${r.s}. ${SN(r.s)} → ${r.s + 1}. ${SN(r.s + 1)}`;
   const others = shuffle(Q.map(s => s.n).filter(n => n !== r.s + 1 && n !== r.s)).slice(0, 3);
@@ -1260,6 +1307,14 @@ function onOpt(el){
   if (cur.done) return;
   const btns = [...document.querySelectorAll('.opt')];
   let ok, extra = '';
+  if (cur.m === 'tajweed'){
+    ok = el.dataset.v === cur.correct;
+    btns.forEach(b => { const c = b.dataset.v === cur.correct ? 'c' : b === el ? 'w' : ''; if (c) b.classList.add(c); });
+    $('tjv').innerHTML = tjHtml(cur.raw);                                   // la phrase se colore une fois la réponse donnée
+    extra = `<br>${tr('Règle selon la source :')} <b>${esc(tr(TJNAME[cur.correct]))}</b>`;
+    cur.info = {ans: TJNAME[el.dataset.v]}; tjStat(cur.correct, ok);
+    finish(ok ? 1 : 0, extra); return;
+  }
   if (cur.m === 'which' || cur.m === 'order'){
     const pv = x => isQ(cur.correct) ? +x : x;
     ok = pv(el.dataset.v) === cur.correct;
@@ -1604,7 +1659,7 @@ const onClick = e => {
     case 'mode': cfg.mode = v; saveCfg(); home(); break;
     case 'corpus': {
       const m = cfg.scope.type === 'matn';
-      if (v === 'matn' && !m){ cfg.lastQ = cfg.scope; cfg.scope = {type: 'matn', id: cfg.lastM || 'all'}; if (['mutash', 'start', 'order', 'end', 'link'].includes(cfg.mode)) cfg.mode = 'mix'; }
+      if (v === 'matn' && !m){ cfg.lastQ = cfg.scope; cfg.scope = {type: 'matn', id: cfg.lastM || 'all'}; if (['mutash', 'start', 'order', 'end', 'link', 'tajweed'].includes(cfg.mode)) cfg.mode = 'mix'; }
       if (v === 'quran' && m){ cfg.lastM = cfg.scope.id; cfg.scope = cfg.lastQ || DEF.scope; if (['half', 'phrase'].includes(cfg.mode)) cfg.mode = 'mix'; }
       saveCfg(); home(); break;
     }
@@ -1739,7 +1794,7 @@ const onClick = e => {
     case 'opt': onOpt(el); break;
     case 'retry': start(ses.missed.slice()); break;
     case 'again': start(); break;
-    case 'reset': if (confirm(tr("Effacer toutes tes statistiques et ton historique d'erreurs ?"))){ stats = {}; sched = {}; days = {}; errors = []; store.set('hifz.errors', errors); store.set('hifz.stats', stats); store.set('hifz.sched', sched); store.set('hifz.days', days); home(); } break;
+    case 'reset': if (confirm(tr("Effacer toutes tes statistiques et ton historique d'erreurs ?"))){ stats = {}; sched = {}; days = {}; errors = []; tjs = {}; store.set('hifz.tj', tjs); store.set('hifz.errors', errors); store.set('hifz.stats', stats); store.set('hifz.sched', sched); store.set('hifz.days', days); home(); } break;
   }
 };
 $app.addEventListener('click', onClick);
@@ -1780,6 +1835,7 @@ function tjHtml(t){ // « [n[ـٰ] » -> <span class="tj-n">…</span> ; le text
 const TJLEG = [['h', '#AAAAAA', 'Hamzat al-waṣl'], ['l', '#AAAAAA', 'Lām solaire / lettre muette'], ['n', '#537FFF', 'Madd normal (2 temps)'], ['p', '#4050FF', 'Madd permis (2, 4 ou 6 temps)'],
   ['m', '#000EBC', 'Madd nécessaire (6 temps)'], ['o', '#2144C1', 'Madd obligatoire (4-5 temps)'], ['q', '#DD0008', 'Qalqala'], ['c', '#D500B7', 'Ikhfāʾ shafawī'], ['f', '#9400A8', 'Ikhfāʾ'],
   ['w', '#58B800', 'Idghām shafawī'], ['i', '#26BFFD', 'Iqlāb'], ['a', '#169777', 'Idghām avec ghunna'], ['u', '#169200', 'Idghām sans ghunna'], ['d', '#A1A1A1', 'Idghām mutajānisayn / mutaqāribayn'], ['g', '#FF7E1E', 'Ghunna (2 temps)']];
+const TJNAME = Object.fromEntries(TJLEG.map(([c, , n]) => [c, n]));   // famille de règle -> nom (légende officielle)
 const TRSRC = {fr: 'Hamidullah', en: 'Saheeh International'};
 function rdSources(){
   const L = [], a = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
@@ -1951,6 +2007,7 @@ function results(){
   <h1>${tr('Résultat')}</h1>
   <div class="card"><div class="big-score">${pct} %</div>
     <p class="sub" style="text-align:center">${ses.score % 1 ? ses.score.toFixed(1) : ses.score} / ${ses.total} · ${msg}</p></div>
+  ${ses.tj ? `<div class="card"><h2>${tr('Règles de cette série')}</h2>${Object.entries(ses.tj).sort((a, b) => b[1][1] - a[1][1]).map(([c, [o, k]]) => `<div class="weak"><span>${esc(tr(TJNAME[c]))}</span><span>${o} ✓ · ${k} ✗</span></div>`).join('')}${TJNOTE()}</div>` : ''}
   ${missed.length ? `<div class="card"><h2>${tr('À revoir ({n})', {n: missed.length})}</h2>
     ${missed.map(r => `<p class="ref" style="margin:10px 0 0">${rlabel(r)}</p><div class="ar" style="font-size:1.5rem">${esc(verse(r))}</div>`).join('')}</div>` : ''}
   ${missed.length ? `<button class="pri big" data-act="retry">${tr('Refaire mes erreurs')}</button>` : ''}
@@ -1961,7 +2018,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v22';
+const APP_VERSION = '21 oct. 2026 · v23';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -1977,7 +2034,7 @@ const cloudOn = () => !!(CLOUD.url && CLOUD.anonKey);
 let sb = null, me = null, screen = 'tab', loadingMe = false;
 let acc = {mode: 'login', msg: '', ok: false, busy: false, resend: '', resendAt: 0, last: '', syncErr: '', d: {email: '', pass: '', pass2: '', consent: false}}; // d : brouillon du formulaire (gardé en mémoire seulement)
 let adm = {users: null, q: '', detail: null, msg: ''};
-const SYNC_KEYS = ['hifz.cfg', 'hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan'];
+const SYNC_KEYS = ['hifz.cfg', 'hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan', 'hifz.tj'];
 let syncPause = false, pushTimer = null;
 const cmeta = () => store.get('hifz.cloud', {});
 const isAdmin = () => !!(me && me.profile && me.profile.role === 'admin');
@@ -2051,8 +2108,8 @@ async function loadMe(sess){
 }
 
 /* synchronisation : un document JSON par utilisateur */
-function snap(){ const c = {...cfg}; delete c.tab; return {v: 1, cfg: c, stats, sched, days, errors, custom, plan}; }
-const hasLocal = () => Object.keys(stats).length > 0 || errors.length > 0 || custom.length > 0 || !!plan;
+function snap(){ const c = {...cfg}; delete c.tab; return {v: 1, cfg: c, stats, sched, days, errors, custom, plan, tj: tjs}; }
+const hasLocal = () => Object.keys(stats).length > 0 || errors.length > 0 || custom.length > 0 || !!plan || Object.keys(tjs).length > 0;
 function applyRemote(d){
   syncPause = true;
   try {
@@ -2060,7 +2117,7 @@ function applyRemote(d){
     custom.forEach(t => { delete MT[t.id]; }); custom = d.custom || []; custom.forEach(t => { MT[t.id] = t; });
     if (d.cfg){ const keep = cfg.tab; Object.assign(cfg, d.cfg); cfg.tab = keep; }
     store.set('hifz.stats', stats); store.set('hifz.sched', sched); store.set('hifz.days', days);
-    plan = d.plan || null; store.set('hifz.plan', plan);
+    plan = d.plan || null; store.set('hifz.plan', plan); tjs = d.tj || {}; store.set('hifz.tj', tjs);
     store.set('hifz.errors', errors); store.set('hifz.custom', custom); saveCfg();
   } finally { syncPause = false; }
 }
@@ -2075,7 +2132,8 @@ function mergeData(a, b){ // a = cet appareil, b = compte : on ne perd rien
   const cu = new Map(); [...(b.custom || []), ...(a.custom || [])].forEach(t => cu.set(t.id, t));
   let pl = b.plan || a.plan || null; // plan : on garde celui du compte et on y ajoute les portions apprises ailleurs
   if (b.plan && a.plan){ const seenC = new Set((b.plan.log || []).map(c => [c.d, c.s, c.a, c.b].join())); pl = {...b.plan, log: [...(b.plan.log || []), ...(a.plan.log || []).filter(c => !seenC.has([c.d, c.s, c.a, c.b].join()))]}; }
-  return {...b, cfg: a.cfg || b.cfg, stats: st, sched: sc, days: dy, errors: er, custom: [...cu.values()], plan: pl};
+  const tj = {...(b.tj || {})}; for (const [k, [o, e]] of Object.entries(a.tj || {})){ const x = tj[k] || [0, 0]; tj[k] = [Math.max(o, x[0]), Math.max(e, x[1])]; }
+  return {...b, cfg: a.cfg || b.cfg, stats: st, sched: sc, days: dy, errors: er, custom: [...cu.values()], plan: pl, tj};
 }
 async function cloudPush(){
   if (!me || !sb) return;
@@ -2212,8 +2270,8 @@ const doLogout = async () => {
   if (remState().on) await pushDrop();
   if (acc.syncErr && !confirm(tr('La dernière synchronisation a échoué : te déconnecter perdra les changements non envoyés. Continuer ?'))) return;
   await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.me'); } catch {}
-  syncPause = true; stats = {}; sched = {}; days = {}; errors = []; plan = null; custom.forEach(t => { delete MT[t.id]; }); custom = [];
-  ['hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan', 'hifz.cloud'].forEach(k => { try { localStorage.removeItem(k); } catch {} });
+  syncPause = true; stats = {}; sched = {}; days = {}; errors = []; plan = null; tjs = {}; custom.forEach(t => { delete MT[t.id]; }); custom = [];
+  ['hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan', 'hifz.tj', 'hifz.cloud'].forEach(k => { try { localStorage.removeItem(k); } catch {} });
   syncPause = false; acc.msg = tr('Déconnecté.'); acc.ok = true; acc.auto = true; acc.mode = 'login'; renderAccount();
 };
 const doDeleteMe = () => busy(async () => {

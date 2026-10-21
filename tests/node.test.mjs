@@ -158,3 +158,36 @@ test('révision espacée : intervalle adaptatif et liste « à renforcer en prio
   assert.ok(rec && rec.pri > 1.5); assert.equal(mid.length, 1, 'une erreur d\'il y a 12 jours reste à surveiller'); assert.equal(old.length, 0, 'une erreur d\'il y a 20 jours seule ne suffit plus');
   assert.deepEqual(weakList([], {}, {}, T), []);
 });
+
+test('exercice de tajwīd : segments, contexte de la lettre, propositions', () => {
+  const html = read('index.html'); const code = html.slice(html.indexOf('/* TJ:begin'), html.indexOf('/* TJ:end */'));
+  const { TJFAM, TJGROUP, tjSegs, tjFocus, tjOptions } = new Function(code + '; return {TJFAM, TJGROUP, tjSegs, tjFocus, tjOptions};')();
+  // segments : le texte est conservé, les codes de la source sont regroupés comme dans sa légende
+  const raw = 'بِسْمِ [h[ٱ]للَّهِ [h[ٱ][l[ل]رَّحْمَ[n[ـٰ]نِ [s[و]مَ[d[ن ي]'; const segs = tjSegs(raw);
+  assert.equal(segs.map(x => x.t).join(''), raw.replace(/\[[a-z]\[/g, '').replace(/\]/g, ''));
+  assert.deepEqual(segs.filter(x => x.c).map(x => x.c), ['h', 'h', 'l', 'n', 'l', 'd']);      // s -> l (lettre muette / lām solaire), b -> d
+  assert.equal(TJFAM.s, 'l'); assert.equal(TJFAM.b, 'd'); assert.equal(Object.keys(TJGROUP).length, 15);
+  assert.deepEqual(tjSegs('abc'), [{ t: 'abc', c: '' }]);
+  // une partie réduite à un signe reçoit sa lettre porteuse ; une partie avec lettre reste telle quelle
+  const sg = tjSegs('رَّحْمَ[n[ـٰ]نِ'); const i = sg.findIndex(x => x.c === 'n'), F = tjFocus(sg, i);
+  assert.equal(F.before + F.mark + F.after, 'رَّحْمَـٰنِ'); assert.ok(/^[\u0621-\u064A]/.test(F.mark) && F.mark.endsWith('ـٰ'), 'lettre + signe : ' + F.mark);
+  const sl = tjSegs('x[l[ل]y'), L = tjFocus(sl, 1); assert.deepEqual(L, { before: 'x', mark: 'ل', after: 'y' });
+  // propositions : 4 distinctes, la bonne dedans, de préférence de la même famille de règles
+  const names = Object.fromEntries('hlnpmoqcfwiaudg'.split('').map(c => [c, c]));
+  const shuf = a => a.slice().sort(() => Math.random() - 0.5);
+  for (const fam of 'hlnpmoqcfwiaudg') {
+    const o = tjOptions(fam, names, shuf); assert.equal(o.length, 4); assert.equal(new Set(o).size, 4); assert.ok(o.includes(fam));
+    const same = o.filter(c => c !== fam && TJGROUP[c] === TJGROUP[fam]).length;
+    assert.ok(same >= Math.min(2, Object.keys(names).filter(c => c !== fam && TJGROUP[c] === TJGROUP[fam]).length), 'proches de la bonne réponse : ' + fam);
+  }
+});
+
+test('data/tajweed.js : les 15 familles de règles existent et chaque verset est bien segmenté', () => {
+  const html = read('index.html'); const code = html.slice(html.indexOf('/* TJ:begin'), html.indexOf('/* TJ:end */'));
+  const { tjSegs } = new Function(code + '; return {tjSegs};')();
+  const w = {}; new Function('window', read('data/tajweed.js'))(w); const all = w.QX.tajweed.s.flat();
+  const fam = new Set(); let spans = 0;
+  for (const v of all) { const sg = tjSegs(v); for (const x of sg) if (x.c) { fam.add(x.c); spans++; } }
+  assert.deepEqual([...fam].sort(), [...'acdfghilmnopqu'.split(''), 'w'].sort());
+  assert.ok(spans > 50000, 'beaucoup de parties annotées : ' + spans);
+});

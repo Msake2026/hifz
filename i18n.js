@@ -608,7 +608,15 @@ window.I18N = {
 "Renforcer maintenant ({n})": "Reinforce now ({n})",
 "Voir la liste": "See the list",
 "dont {n} à renforcer": "{n} to reinforce",
-"Choisis chaque jour parmi tes versets les plus fragiles : erreurs récentes (les plus récentes comptent le plus), retard de révision et taux de réussite. Un verset reste dans la liste jusqu'à ce qu'il tienne plus d'une semaine sans erreur.": "Pick each day from your most fragile verses: recent mistakes (the most recent count most), overdue reviews and success rate. A verse stays on the list until it holds for more than a week without a mistake."
+"Choisis chaque jour parmi tes versets les plus fragiles : erreurs récentes (les plus récentes comptent le plus), retard de révision et taux de réussite. Un verset reste dans la liste jusqu'à ce qu'il tienne plus d'une semaine sans erreur.": "Pick each day from your most fragile verses: recent mistakes (the most recent count most), overdue reviews and success rate. A verse stays on the list until it holds for more than a week without a mistake.",
+"Tajwīd (entraînement)": "Tajweed (practice)",
+"Reconnais la règle de la partie surlignée": "Recognise the rule of the highlighted part",
+"Une partie du verset est surlignée : choisis sa règle de tajwīd (entraînement : annotation automatique non relue par un enseignant).": "Part of the verse is highlighted: choose its tajweed rule (practice: automatic annotation not reviewed by a teacher).",
+"Quelle est la règle de tajwīd de la partie surlignée ?": "What is the tajweed rule of the highlighted part?",
+"Entraînement : les règles viennent d'une annotation automatique (Islamic Network), non relue par un enseignant. En cas de doute, fie-toi à ton professeur.": "Practice: the rules come from an automatic annotation (Islamic Network), not reviewed by a teacher. If in doubt, trust your teacher.",
+"Règle selon la source :": "Rule according to the source:",
+"Règles de cette série": "Rules in this series",
+"Mes règles de tajwīd": "My tajweed rules"
 },
 "ar": {
 "(partie {a}/{b})": "(الجزء {a}/{b})",
@@ -1218,6 +1226,14 @@ window.I18N = {
 "Renforcer maintenant ({n})": "قوِّ الآن ({n})",
 "Voir la liste": "عرض القائمة",
 "dont {n} à renforcer": "منها {n} للتقوية",
-"Choisis chaque jour parmi tes versets les plus fragiles : erreurs récentes (les plus récentes comptent le plus), retard de révision et taux de réussite. Un verset reste dans la liste jusqu'à ce qu'il tienne plus d'une semaine sans erreur.": "اختر كل يوم من آياتك الأضعف: الأخطاء الأخيرة (الأحدث أكثر وزناً) والتأخر في المراجعة ونسبة النجاح. تبقى الآية في القائمة حتى تثبت أكثر من أسبوع دون خطأ."
+"Choisis chaque jour parmi tes versets les plus fragiles : erreurs récentes (les plus récentes comptent le plus), retard de révision et taux de réussite. Un verset reste dans la liste jusqu'à ce qu'il tienne plus d'une semaine sans erreur.": "اختر كل يوم من آياتك الأضعف: الأخطاء الأخيرة (الأحدث أكثر وزناً) والتأخر في المراجعة ونسبة النجاح. تبقى الآية في القائمة حتى تثبت أكثر من أسبوع دون خطأ.",
+"Tajwīd (entraînement)": "التجويد (تدريب)",
+"Reconnais la règle de la partie surlignée": "تعرّف على حكم الجزء المظلَّل",
+"Une partie du verset est surlignée : choisis sa règle de tajwīd (entraînement : annotation automatique non relue par un enseignant).": "جزء من الآية مظلَّل: اختر حكمه في التجويد (تدريب: توسيم آلي لم يراجعه معلّم).",
+"Quelle est la règle de tajwīd de la partie surlignée ?": "ما حكم التجويد للجزء المظلَّل؟",
+"Entraînement : les règles viennent d'une annotation automatique (Islamic Network), non relue par un enseignant. En cas de doute, fie-toi à ton professeur.": "تدريب: الأحكام من توسيم آلي (الشبكة الإسلامية) لم يراجعه معلّم. عند الشك ارجع إلى معلّمك.",
+"Règle selon la source :": "الحكم حسب المصدر:",
+"Règles de cette série": "أحكام هذه السلسلة",
+"Mes règles de tajwīd": "أحكامي في التجويد"
 }
 };

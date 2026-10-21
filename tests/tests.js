@@ -218,6 +218,38 @@
     // sans erreur : rotation seule
     E("errors = []; plan.mptr = 0; plan.done = {}"); eq(E("planToday().xtra"), 0);
   });
+  test('Tajwīd (entraînement) : question, 4 règles, correction colorée, statistiques par règle, sans toucher à la mémorisation', async () => {
+    reset("cfg.mode = 'tajweed'; cfg.scope = {type: 'surah', from: 1, to: 3}; cfg.n = 6; tjs = {};");
+    const wrongTotals = {ok: 0, ko: 0};
+    E("start()"); for (let i = 0; i < 40 && !$q('.opt'); i++) await wait(100); noErr('chargement du tajwīd');
+    for (let n = 0; n < 6; n++){
+      ok($q('mark.tjq'), 'partie surlignée'); const btns = $$q('.opt'); eq(btns.length, 4); eq(new Set(btns.map(b => b.dataset.v)).size, 4, 'propositions distinctes');
+      ok(D.body.textContent.includes('annotation automatique'), 'avertissement : source non relue');
+      const good = btns.filter(b => b.dataset.v === E('cur.correct')); eq(good.length, 1);
+      ok(!$q('#tjv [class^="tj-"]'), 'la phrase n’est pas colorée avant la réponse');
+      const wantOk = n % 2 === 0, target = wantOk ? good[0] : btns.find(b => b !== good[0]);
+      click(target); noErr('réponse tajwīd');
+      ok(fb().classList.contains(wantOk ? 'ok' : 'ko'), `tirage ${n}`); ok($q('#tjv [class^="tj-"]'), 'la phrase se colore après la réponse'); ok(/Règle selon la source/.test(fb().textContent));
+      wrongTotals[wantOk ? 'ok' : 'ko']++;
+      if (n < 5) clickAct('nextq'); else clickAct('nextq');
+      if (n < 5) for (let i = 0; i < 20 && !$q('mark.tjq'); i++) await wait(50);
+    }
+    ok(D.body.textContent.includes('Règles de cette série'), 'résultat : règles de la série'); ok(!$q('[data-act="retry"]'), 'pas de « refaire mes erreurs » (ce n’est pas de la mémorisation)');
+    eq(E("Object.values(tjs).reduce((t, [o]) => t + o, 0)"), 3); eq(E("Object.values(tjs).reduce((t, [, k]) => t + k, 0)"), 3);
+    eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'la mémorisation n’est pas modifiée'); eq(E("days[today()]"), 6, 'compte pour l’objectif du jour');
+    E("go('progress')"); ok(D.body.textContent.includes('Mes règles de tajwīd'), 'règles dans Progrès');
+    // matn : l'exercice n'est pas proposé et le mode revient à « Mélange »
+    E("cfg.mode = 'tajweed'; go('train')"); ok($q('[data-act="mode"][data-v="tajweed"]'), 'proposé pour le Coran'); clickAct('corpus', 'matn'); eq(E('cfg.mode'), 'mix'); ok(!$q('[data-act="mode"][data-v="tajweed"]'), 'absent pour les moutoun');
+    // révisions guidées : jamais d'exercice de tajwīd
+    E("cfg.scope = {type: 'surah', from: 1, to: 3}; cfg.mode = 'tajweed'; start([{s: 1, a: 1}, {s: 1, a: 2}])"); ok(!$q('mark.tjq'), 'série guidée : pas de tajwīd'); noErr('série guidée');
+  });
+  test('Tajwīd : aucune clé de traduction manquante (en, ar)', async () => {
+    for (const L of ['en', 'ar']){
+      reset(`setLang('${L}'); cfg.mode = 'tajweed'; cfg.scope = {type: 'surah', from: 1, to: 1}; cfg.n = 1; tjs = {n: [1, 2], q: [3, 0]};`); E("go('train')"); E("start()");
+      for (let i = 0; i < 40 && !$q('.opt'); i++) await wait(100); ok($q('mark.tjq'), L); click($q('.opt')); clickAct('nextq'); E("go('progress')");
+      eq(E('[...missingKeys]'), [], L);
+    }
+  });
   test('Chaque onglet s’affiche dans les 3 langues sans erreur ni « undefined »', async () => {
     for (const L of ['fr', 'en', 'ar']){
       reset(); E(`setLang('${L}')`);
