@@ -1,0 +1,40 @@
+name: Tests SQL
+# Exécute les VRAIS fichiers SQL (schema.sql, push.sql, teacher.sql) sur un PostgreSQL ordinaire, avec un faible simulacre de Supabase (supabase/tests/stub_auth.sql),
+# puis les tests du rôle enseignant (droits, consentement, journal). Chaque fichier est lancé deux fois : ils doivent pouvoir être relancés sans risque.
+on:
+  push:
+    paths: ['supabase/**', '.github/workflows/sql-tests.yml']
+  pull_request:
+    paths: ['supabase/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sql:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: test
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Schéma, rappels, enseignant (deux fois chacun)
+        run: |
+          set -e
+          psql -v ON_ERROR_STOP=1 -q -f supabase/tests/stub_auth.sql
+          for i in 1 2; do
+            psql -v ON_ERROR_STOP=1 -q -f supabase/schema.sql
+            psql -v ON_ERROR_STOP=1 -q -f supabase/push.sql
+            psql -v ON_ERROR_STOP=1 -q -f supabase/teacher.sql
+          done
+      - name: Tests du rôle enseignant
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/teacher_test.sql
