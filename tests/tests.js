@@ -377,12 +377,19 @@
     ok(/Estimation/.test($q('#aud-msg').textContent)); ok(!$q('[data-act="aud-dl"]').disabled);
     clickAct('aud-dl'); for (let i = 0; i < 300 && (E('audioUI.busy') || !E("audioSet('ar.alafasy')[1]")); i++) await wait(100); noErr('téléchargement');
     const cache = await W.caches.open('hifz-audio-v1'), keys = await cache.keys(); eq(keys.length, 7, '7 versets de la Fatiha dans le cache');
-    const got = E("audioSet('ar.alafasy')[1]"); ok(got > 100000, 'octets enregistrés : ' + got); const ratio = P.used / got; ok(ratio > 0.8 && ratio < 2.2, 'estimation raisonnable : ' + ratio.toFixed(2));
+    const got = E("audioSet('ar.alafasy')[1].b"); eq(E("audioSet('ar.alafasy')[1].q"), 64); ok(got > 100000, 'octets enregistrés : ' + got); const ratio = P.used / got; ok(ratio > 0.8 && ratio < 2.2, 'estimation raisonnable : ' + ratio.toFixed(2));
     eq(E("audioUrl({s: 1, a: 1})"), url1); ok(E("audioUrl({s: 2, a: 1})").includes('islamic.network'), 'sourates non téléchargées : lecture en ligne');
     ok(appText().includes('Sur cet appareil') && appText().includes('Al-Faatiha'), 'liste des sourates téléchargées');
     if (W.navigator.serviceWorker.controller){                    // le service worker sert les plages d'octets depuis le cache
       const r = await W.fetch(url1, {headers: {Range: 'bytes=0-99'}}); eq(r.status, 206); eq(r.headers.get('x-hifz-offline'), '1', 'servi par l’appareil, pas par le réseau'); eq((await r.arrayBuffer()).byteLength, 100); ok(/^bytes 0-99\/\d+$/.test(r.headers.get('content-range')));
     }
+    // qualité 128 kbps : retéléchargement de la même sourate, l'ancienne qualité est retirée du cache
+    ok($q('#aud-q') && [...$q('#aud-q').options].map(o => o.value).join() === '64,128', 'choix de qualité'); E("cfg.audQ = 128; audioUI.plan = null"); E("go('settings')"); clickAct('aud-est'); for (let i = 0; i < 100 && !E('audioUI.plan'); i++) await wait(100);
+    const P128 = E('audioUI.plan'); ok(P128.used > P.used * 1.8, '128 kbps : estimation environ 3 fois plus lourde : ' + (P128.used / P.used).toFixed(1));
+    clickAct('aud-dl'); for (let i = 0; i < 300 && (E('audioUI.busy') || E("audioSet('ar.alafasy')[1].q") !== 128); i++) await wait(100); noErr('128 kbps');
+    eq(E("audioSet('ar.alafasy')[1].q"), 128); ok(E("audioUrl({s: 1, a: 1})").includes('Alafasy_128kbps'), 'lecture en 128'); eq((await cache.keys()).length, 7, 'les 7 fichiers 64 kbps ont été retirés');
+    ok(appText().includes('128 kbps'), 'qualité affichée dans la liste'); const got128 = E("audioSet('ar.alafasy')[1].b"); ok(got128 > got * 2, '128 kbps nettement plus lourd');
+    E("cfg.audQ = 64"); E("cfg.reciter = 'ar.abdurrahmaan' + 'sudais'"); E("go('settings')"); eq([...$q('#aud-q').options].map(o => o.value), ['64'], 'As-Sudais : 64 kbps seulement'); E("cfg.reciter = 'ar.alafasy'");
     E("cfg.audCap = 0.2; audioUI.plan = null"); E("go('settings')"); $q('#aud-cap') && 0; clickAct('aud-est'); for (let i = 0; i < 100 && !E('audioUI.plan'); i++) await wait(100);
     ok(E('audioUI.plan.take.length') === 0 && /Plafond atteint/.test(appText()), 'plafond trop petit : rien à télécharger'); ok($q('[data-act="aud-dl"]').disabled);
     E("cfg.audCap = 50"); E("go('settings')"); clickAct('aud-del', '1'); for (let i = 0; i < 50 && E("audioSet('ar.alafasy')[1]"); i++) await wait(100); await wait(200);

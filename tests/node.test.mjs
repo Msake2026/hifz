@@ -347,10 +347,15 @@ test('madd : type déduit du texte coïncide avec la marque de la source (n, p, 
 
 test('audio hors ligne : adresses, estimation, plafond et plages d\'octets du service worker', () => {
   const html = read('index.html'), au = html.slice(html.indexOf('/* AU:begin'), html.indexOf('/* AU:end */'));
-  const { AU_EA, auUrl, auPad, auChars, auEstimate, auPlan, auMo } = new Function(au + '; return {AU_EA, auUrl, auPad, auChars, auEstimate, auPlan, auMo};')();
+  const { AU_EA, AU_EA128, auQ, auEntry, auUrl, auPad, auChars, auEstimate, auPlan, auMo } = new Function(au + '; return {AU_EA, AU_EA128, auQ, auEntry, auUrl, auPad, auChars, auEstimate, auPlan, auMo};')();
   const ids = [...html.matchAll(/\['(ar\.[a-z]+)', '[^']+', \d+\]/g)].map(m => m[1]); assert.equal(ids.length, 8);
   for (const id of ids) assert.ok(AU_EA[id] && /_64kbps$/.test(AU_EA[id]), 'dossier everyayah pour ' + id);
   assert.equal(auUrl('ar.alafasy', 1, 1), 'https://everyayah.com/data/Alafasy_64kbps/001001.mp3'); assert.equal(auUrl('ar.husary', 114, 6), 'https://everyayah.com/data/Husary_64kbps/114006.mp3'); assert.equal(auPad(7), '007');
+  // 128 kbps : disponible pour 7 récitateurs sur 8 (pas As-Sudais) ; sinon retour automatique au 64
+  assert.equal(Object.keys(AU_EA128).length, 7); assert.ok(!AU_EA128['ar.abdurrahmaansudais']); assert.ok(ids.filter(i => i !== 'ar.abdurrahmaansudais').every(i => /128/.test(AU_EA128[i])));
+  assert.equal(auUrl('ar.alafasy', 1, 1, 128), 'https://everyayah.com/data/Alafasy_128kbps/001001.mp3'); assert.equal(auUrl('ar.husarymujawwad', 2, 3, 128), 'https://everyayah.com/data/Husary_128kbps_Mujawwad/002003.mp3');
+  assert.equal(auUrl('ar.abdurrahmaansudais', 1, 1, 128), 'https://everyayah.com/data/Abdurrahmaan_As-Sudais_64kbps/001001.mp3'); assert.equal(auQ('ar.abdurrahmaansudais', 128), 64); assert.equal(auQ('ar.alafasy', 128), 128); assert.equal(auQ('ar.alafasy', 64), 64);
+  assert.deepEqual(auEntry(1234), { b: 1234, q: 64 }); assert.deepEqual(auEntry({ b: 5, q: 128 }), { b: 5, q: 128 });
   assert.equal(auChars('بِسْمِ ٱللَّهِ'), 7);
   const est = auEstimate([{ bytes: 1000, chars: 100 }, { bytes: 3000, chars: 200 }], 1000); assert.equal(est, Math.round(4000 / 300 * 1000 * 1.15)); assert.equal(auEstimate([], 500), 0);
   const P = auPlan([{ s: 1, bytes: 40 }, { s: 2, bytes: 70 }, { s: 3, bytes: 50 }, { s: 4, bytes: 10 }], 100);

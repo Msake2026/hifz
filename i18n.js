@@ -734,7 +734,7 @@ window.I18N = {
 "Durées et marques : légende du tajwīd d'Islamic Network (annotation automatique, non relue par un enseignant). Causes : texte d'Ibn al-Jazarī sur Wikisource. Le type de madd est déduit du texte du verset et n'est posé que s'il concorde avec la marque de la source.": "Durations and marks: Islamic Network's tajweed legend (automatic annotation, not reviewed by a teacher). Causes: Ibn al-Jazarī's text on Wikisource. The madd type is deduced from the verse text and only asked when it agrees with the source's mark.",
 "Audio hors ligne": "Offline audio",
 "Ce navigateur ou ce récitateur ne permet pas le téléchargement hors ligne.": "This browser or reciter does not support offline download.",
-"Télécharge des sourates pour les écouter sans connexion (métro, avion). L'audio est lourd : choisis peu de sourates et un plafond de taille. Récitateur : {r} (celui choisi ci-dessus), qualité 64 kbps.": "Download surahs to listen without a connection (metro, plane). Audio is heavy: choose few surahs and a size limit. Reciter: {r} (the one chosen above), 64 kbps quality.",
+"Télécharge des sourates pour les écouter sans connexion (métro, avion). L'audio est lourd : choisis peu de sourates et un plafond de taille. Récitateur : {r} (celui choisi ci-dessus).": "Download surahs to listen without a connection (metro, plane). Audio is heavy: choose few surahs and a size limit. Reciter: {r} (the one chosen above).",
 "De la sourate": "From surah",
 "À la sourate": "To surah",
 "Taille maximale": "Maximum size",
@@ -755,7 +755,11 @@ window.I18N = {
 "Plafond de taille atteint : la sourate en cours n'a pas été gardée.": "Size limit reached: the surah in progress was not kept.",
 "Téléchargement annulé.": "Download cancelled.",
 "Échec du téléchargement ({e}). Les sourates terminées sont gardées.": "Download failed ({e}). Finished surahs are kept.",
-"Supprimer tout l'audio téléchargé de ce récitateur ?": "Delete all downloaded audio for this reciter?"
+"Supprimer tout l'audio téléchargé de ce récitateur ?": "Delete all downloaded audio for this reciter?",
+"Qualité": "Quality",
+"64 kbps (léger)": "64 kbps (light)",
+"128 kbps (qualité, 3 fois plus lourd)": "128 kbps (quality, 3 times heavier)",
+"Ce récitateur n'existe qu'en 64 kbps pour le téléchargement.": "This reciter is only available in 64 kbps for download."
 },
 "ar": {
 "(partie {a}/{b})": "(الجزء {a}/{b})",
@@ -1491,7 +1495,7 @@ window.I18N = {
 "Durées et marques : légende du tajwīd d'Islamic Network (annotation automatique, non relue par un enseignant). Causes : texte d'Ibn al-Jazarī sur Wikisource. Le type de madd est déduit du texte du verset et n'est posé que s'il concorde avec la marque de la source.": "المقادير والعلامات: دليل التجويد من الشبكة الإسلامية (توسيم آلي لم يراجعه معلّم). الأسباب: نص ابن الجزري في ويكي مصدر. يُستنتج نوع المد من نص الآية ولا يُسأل عنه إلا إذا وافق علامة المصدر.",
 "Audio hors ligne": "الصوت دون اتصال",
 "Ce navigateur ou ce récitateur ne permet pas le téléchargement hors ligne.": "لا يدعم هذا المتصفح أو هذا القارئ التنزيل دون اتصال.",
-"Télécharge des sourates pour les écouter sans connexion (métro, avion). L'audio est lourd : choisis peu de sourates et un plafond de taille. Récitateur : {r} (celui choisi ci-dessus), qualité 64 kbps.": "نزّل سوراً للاستماع دون اتصال (المترو، الطائرة). الصوت كبير الحجم: اختر سوراً قليلة وحدّاً للحجم. القارئ: {r} (المختار أعلاه)، جودة 64 كيلوبت.",
+"Télécharge des sourates pour les écouter sans connexion (métro, avion). L'audio est lourd : choisis peu de sourates et un plafond de taille. Récitateur : {r} (celui choisi ci-dessus).": "نزّل سوراً للاستماع دون اتصال (المترو، الطائرة). الصوت كبير الحجم: اختر سوراً قليلة وحدّاً للحجم. القارئ: {r} (المختار أعلاه).",
 "De la sourate": "من سورة",
 "À la sourate": "إلى سورة",
 "Taille maximale": "الحجم الأقصى",
@@ -1512,6 +1516,10 @@ window.I18N = {
 "Plafond de taille atteint : la sourate en cours n'a pas été gardée.": "بلغ حدّ الحجم: لم تُحفظ السورة الجارية.",
 "Téléchargement annulé.": "أُلغي التنزيل.",
 "Échec du téléchargement ({e}). Les sourates terminées sont gardées.": "فشل التنزيل ({e}). السور المكتملة محفوظة.",
-"Supprimer tout l'audio téléchargé de ce récitateur ?": "حذف كل الصوت المنزَّل لهذا القارئ؟"
+"Supprimer tout l'audio téléchargé de ce récitateur ?": "حذف كل الصوت المنزَّل لهذا القارئ؟",
+"Qualité": "الجودة",
+"64 kbps (léger)": "64 كيلوبت (خفيف)",
+"128 kbps (qualité, 3 fois plus lourd)": "128 كيلوبت (جودة، أثقل بثلاث مرات)",
+"Ce récitateur n'existe qu'en 64 kbps pour le téléchargement.": "هذا القارئ متاح للتنزيل بجودة 64 كيلوبت فقط."
 }
 };

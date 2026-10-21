@@ -346,7 +346,7 @@ async function loadQuran(){
 
 /* ---------- état persistant ---------- */
 const DEF = {mode: 'mix', scope: {type: 'surah', from: 78, to: 114}, n: 10, input: 'recite', level: 40,
-  corr: 'standard', tjKind: 'rule', mkKind: 'zone', sfKind: 'pair', ahKind: 'nun', mdKind: 'type', audFrom: 78, audTo: 114, audCap: 100, lastMemo: 'mix', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
+  corr: 'standard', tjKind: 'rule', mkKind: 'zone', sfKind: 'pair', ahKind: 'nun', mdKind: 'type', audFrom: 78, audTo: 114, audCap: 100, audQ: 64, lastMemo: 'mix', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
   lang: ['fr', 'en', 'ar'].includes((navigator.language || '').slice(0, 2)) ? navigator.language.slice(0, 2) : 'fr'};
 const stored = store.get('hifz.cfg', {});
 let cfg = Object.assign({}, DEF, stored);
@@ -463,8 +463,12 @@ const RECITERS = [['ar.alafasy', 'Mishary Alafasy', 128], ['ar.husary', 'Al-Husa
 /* AU:begin — audio hors ligne : fonctions pures (testées dans tests/node.test.mjs). Fichiers d'everyayah.com (accessibles en CORS, 64 kbps), liste officielle : https://everyayah.com/data/recitations.js */
 const AU_EA = {'ar.alafasy': 'Alafasy_64kbps', 'ar.husary': 'Husary_64kbps', 'ar.husarymujawwad': 'Husary_Mujawwad_64kbps', 'ar.mahermuaiqly': 'Maher_AlMuaiqly_64kbps',
   'ar.hudhaify': 'Hudhaify_64kbps', 'ar.muhammadayyoub': 'Muhammad_Ayyoub_64kbps', 'ar.abdurrahmaansudais': 'Abdurrahmaan_As-Sudais_64kbps', 'ar.saoodshuraym': 'Saood_ash-Shuraym_64kbps'};
+const AU_EA128 = {'ar.alafasy': 'Alafasy_128kbps', 'ar.husary': 'Husary_128kbps', 'ar.husarymujawwad': 'Husary_128kbps_Mujawwad', 'ar.mahermuaiqly': 'MaherAlMuaiqly128kbps',
+  'ar.hudhaify': 'Hudhaify_128kbps', 'ar.muhammadayyoub': 'Muhammad_Ayyoub_128kbps', 'ar.saoodshuraym': 'Saood_ash-Shuraym_128kbps'};   // pas de 128 kbps pour As-Sudais (64 ou 192 seulement)
 const auPad = n => String(n).padStart(3, '0');
-const auUrl = (rec, s, a) => `https://everyayah.com/data/${AU_EA[rec]}/${auPad(s)}${auPad(a)}.mp3`;
+const auQ = (rec, q) => q === 128 && AU_EA128[rec] ? 128 : 64;          // qualité réellement disponible pour ce récitateur
+const auUrl = (rec, s, a, q = 64) => `https://everyayah.com/data/${auQ(rec, q) === 128 ? AU_EA128[rec] : AU_EA[rec]}/${auPad(s)}${auPad(a)}.mp3`;
+const auEntry = v => typeof v === 'number' ? {b: v, q: 64} : v;           // {b : octets, q : 64 ou 128}
 const auChars = t => t.replace(/[^\u0621-\u064A\u0671-\u06D3]/g, '').length;
 function auEstimate(samples, chars){ // [{bytes, chars}] -> octets estimés pour `chars` lettres, avec 15 % de marge
   const b = samples.reduce((t, x) => t + x.bytes, 0), c = samples.reduce((t, x) => t + x.chars, 0);
@@ -480,7 +484,8 @@ const auMo = b => b >= 1e9 ? (b / 1e9).toFixed(1) + ' Go' : Math.max(1, Math.rou
 let audioOff = store.get('hifz.audio', {});          // récitateur -> {numéro de sourate: octets} : sourates complètes enregistrées sur cet appareil
 const audioSet = rec => audioOff[rec] || {};
 const audioUrl = r => {
-  if (AU_EA[cfg.reciter] && audioSet(cfg.reciter)[r.s]) return auUrl(cfg.reciter, r.s, r.a);   // téléchargée : lue depuis l'appareil (service worker)
+  const got = audioSet(cfg.reciter)[r.s];
+  if (AU_EA[cfg.reciter] && got) return auUrl(cfg.reciter, r.s, r.a, auEntry(got).q);   // téléchargée : lue depuis l'appareil (service worker)
   const rc = RECITERS.find(x => x[0] === cfg.reciter) || RECITERS[0];
   return `https://cdn.islamic.network/quran/audio/${rc[2]}/${rc[0]}/${OFF[r.s - 1] + r.a}.mp3`;
 };
@@ -598,7 +603,7 @@ function home(){ // affiche l'écran du menu courant (accès réservé aux compt
   $app.innerHTML = ({home: tabHome, plan: tabPlan, train: tabTrain, progress: tabProgress, errors: tabErrors, settings: tabSettings})[cfg.tab]();
   setNav(true); if (cfg.tab === 'settings') setTimeout(audioSpace, 0);
   $app.querySelectorAll('select').forEach(el => { if (el.id.startsWith('cm-')) return;
-    el.onchange = () => { syncCfg(); if (['stype', 'sgoal', 'scat', 'srec', 'aud-from', 'aud-to', 'aud-cap'].includes(el.id) || el.id.startsWith('pf-')) home(); }; });
+    el.onchange = () => { syncCfg(); if (['stype', 'sgoal', 'scat', 'srec', 'aud-from', 'aud-to', 'aud-cap', 'aud-q'].includes(el.id) || el.id.startsWith('pf-')) home(); }; });
   if ($('impfile')) $('impfile').onchange = e => importFile(e.target.files[0]);
   ['cm-f-cam', 'cm-f-img', 'cm-f-doc'].forEach(id => { if ($(id)) $(id).onchange = e => { queueAdd([...e.target.files]); e.target.value = ''; }; });
 }
@@ -620,7 +625,7 @@ function syncCfg(){
   if ($('stjk')) cfg.tjKind = v('stjk');
   if ($('smkk')) cfg.mkKind = v('smkk');
   if ($('sahk')) cfg.ahKind = v('sahk');
-  if ($('aud-from')){ cfg.audFrom = +v('aud-from'); cfg.audTo = +v('aud-to'); cfg.audCap = +v('aud-cap'); audioUI.plan = null; }
+  if ($('aud-from')){ cfg.audFrom = +v('aud-from'); cfg.audTo = +v('aud-to'); cfg.audCap = +v('aud-cap'); cfg.audQ = +v('aud-q'); audioUI.plan = null; }
   if ($('smdk')) cfg.mdKind = v('smdk');
   if ($('ssfk')) cfg.sfKind = v('ssfk');
   if ($('scont')) cfg.contLen = +v('scont');
@@ -2475,7 +2480,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v30';
+const APP_VERSION = '21 oct. 2026 · v31';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2745,13 +2750,15 @@ let audioUI = {plan: null, busy: false, ctl: null};
 const audioSurahs = () => { const a = Math.min(cfg.audFrom, cfg.audTo), b = Math.max(cfg.audFrom, cfg.audTo); return Array.from({length: b - a + 1}, (_, i) => a + i); };
 const audioOk = () => 'caches' in window && 'serviceWorker' in navigator && !!AU_EA[cfg.reciter];
 function audioCard(){
-  const rec = cfg.reciter, got = audioSet(rec), list = Object.keys(got).map(Number).sort((a, b) => a - b), total = list.reduce((t, s) => t + got[s], 0), P = audioUI.plan;
+  const rec = cfg.reciter, got = audioSet(rec), list = Object.keys(got).map(Number).sort((a, b) => a - b), total = list.reduce((t, s) => t + auEntry(got[s]).b, 0), P = audioUI.plan, hasHQ = !!AU_EA128[rec], q = auQ(rec, cfg.audQ);
   const name = (RECITERS.find(x => x[0] === rec) || RECITERS[0])[1];
   if (!audioOk()) return `<div class="card"><h2>${tr('Audio hors ligne')}</h2><p class="ref" style="margin:0">${tr("Ce navigateur ou ce récitateur ne permet pas le téléchargement hors ligne.")}</p></div>`;
   return `<div class="card"><h2>${tr('Audio hors ligne')}</h2>
-    <p class="ref" style="margin:0 0 8px">${tr("Télécharge des sourates pour les écouter sans connexion (métro, avion). L'audio est lourd : choisis peu de sourates et un plafond de taille. Récitateur : {r} (celui choisi ci-dessus), qualité 64 kbps.", {r: esc(name)})}</p>
+    <p class="ref" style="margin:0 0 8px">${tr("Télécharge des sourates pour les écouter sans connexion (métro, avion). L'audio est lourd : choisis peu de sourates et un plafond de taille. Récitateur : {r} (celui choisi ci-dessus).", {r: esc(name)})}</p>
     <div class="row"><div><label class="f" for="aud-from">${tr('De la sourate')}</label><select id="aud-from">${surahOpts(cfg.audFrom)}</select></div>
       <div><label class="f" for="aud-to">${tr('À la sourate')}</label><select id="aud-to">${surahOpts(cfg.audTo)}</select></div></div>
+    <div class="row"><div><label class="f" for="aud-q">${tr('Qualité')}</label><select id="aud-q"><option value="64" ${q === 64 ? 'selected' : ''}>${tr('64 kbps (léger)')}</option>${hasHQ ? `<option value="128" ${q === 128 ? 'selected' : ''}>${tr('128 kbps (qualité, 3 fois plus lourd)')}</option>` : ''}</select>
+      ${hasHQ ? '' : `<p class="ref" style="margin:4px 0 0">${tr('Ce récitateur n\'existe qu\'en 64 kbps pour le téléchargement.')}</p>`}</div></div>
     <div class="row" style="align-items:end"><div><label class="f" for="aud-cap">${tr('Taille maximale')}</label><select id="aud-cap">${[50, 100, 200, 500].map(n => `<option value="${n}" ${n === cfg.audCap ? 'selected' : ''}>${n} Mo</option>`).join('')}</select></div>
       <button data-act="aud-scope">${tr('Utiliser ma portée')}</button></div>
     <div class="row" style="margin-top:10px"><button data-act="aud-est" ${audioUI.busy ? 'disabled' : ''}>${tr('Calculer la taille')}</button>
@@ -2759,7 +2766,7 @@ function audioCard(){
     <div class="goal" style="margin-top:8px"><i id="aud-bar" style="width:0%"></i></div>
     <p class="ref" id="aud-msg" style="margin:6px 0 0" aria-live="polite">${P ? audioPlanText(P) : ''}</p>
     ${audioUI.busy ? `<button class="link" data-act="aud-cancel">${tr('Annuler')}</button>` : ''}
-    ${list.length ? `<h3 style="margin:14px 0 4px;font-size:1rem">${tr('Sur cet appareil')} · ${auMo(total)}</h3>${list.map(s => `<div class="weak"><span>${s}. ${esc(SN(s))}</span><span>${auMo(got[s])} <button class="link" data-act="aud-del" data-v="${s}" aria-label="${tr('Supprimer')}">🗑</button></span></div>`).join('')}
+    ${list.length ? `<h3 style="margin:14px 0 4px;font-size:1rem">${tr('Sur cet appareil')} · ${auMo(total)}</h3>${list.map(s => `<div class="weak"><span>${s}. ${esc(SN(s))}</span><span>${auMo(auEntry(got[s]).b)} · ${auEntry(got[s]).q} kbps <button class="link" data-act="aud-del" data-v="${s}" aria-label="${tr('Supprimer')}">🗑</button></span></div>`).join('')}
       <button class="link" style="margin-top:6px;color:var(--ko)" data-act="aud-delall">${tr('Tout supprimer')}</button>` : ''}
     <p class="ref" id="aud-space" style="margin:8px 0 0"></p>
     <p class="ref" style="margin:6px 0 0">${tr("Les fichiers viennent d'everyayah.com et restent sur ton appareil. Le système peut les effacer si l'espace manque : retélécharge-les alors.")} <a href="https://everyayah.com/" target="_blank" rel="noopener">everyayah.com</a></p></div>`;
@@ -2773,11 +2780,11 @@ function audioScope(){ // sourates de la portée actuelle
 }
 const audioMsg = (t, ok) => { const e = $('aud-msg'); if (e){ e.textContent = t; e.style.color = ok === false ? 'var(--ko)' : ''; } };
 async function audioEst(){ // taille estimée : 6 fichiers mesurés (en-têtes) puis proportion au nombre de lettres
-  const rec = cfg.reciter, ss = audioSurahs(), chars = ss.map(s => Q[s - 1].a.reduce((t, v) => t + auChars(v.t), 0)), all = ss.flatMap(s => Q[s - 1].a.map((v, i) => ({s, a: i + 1, c: auChars(v.t)})));
+  const rec = cfg.reciter, q = auQ(rec, cfg.audQ), ss = audioSurahs(), chars = ss.map(s => Q[s - 1].a.reduce((t, v) => t + auChars(v.t), 0)), all = ss.flatMap(s => Q[s - 1].a.map((v, i) => ({s, a: i + 1, c: auChars(v.t)})));
   audioMsg(tr('Calcul…'));
   try {
     const pick = Array.from({length: Math.min(6, all.length)}, (_, i) => all[Math.floor((i + 0.5) * all.length / Math.min(6, all.length))]);
-    const samples = await Promise.all(pick.map(async x => { const r = await fetch(auUrl(rec, x.s, x.a), {method: 'HEAD', mode: 'cors'}); if (!r.ok) throw new Error('HTTP ' + r.status);
+    const samples = await Promise.all(pick.map(async x => { const r = await fetch(auUrl(rec, x.s, x.a, q), {method: 'HEAD', mode: 'cors'}); if (!r.ok) throw new Error('HTTP ' + r.status);
       return {bytes: +r.headers.get('content-length'), chars: x.c}; }));
     if (samples.some(x => !x.bytes)) throw new Error('taille inconnue');
     const items = ss.map((s, i) => ({s, bytes: auEstimate(samples, chars[i])})), plan = auPlan(items, cfg.audCap * 1e6);
@@ -2786,14 +2793,14 @@ async function audioEst(){ // taille estimée : 6 fichiers mesurés (en-têtes) 
   } catch (e){ audioMsg(tr('Impossible de calculer la taille ({e}). Vérifie ta connexion.', {e: e.message}), false); }
 }
 async function audioGo(){
-  const rec = cfg.reciter, P = audioUI.plan; if (!P || !P.take.length || audioUI.busy) return;
+  const rec = cfg.reciter, q = auQ(rec, cfg.audQ), P = audioUI.plan; if (!P || !P.take.length || audioUI.busy) return;
   audioUI.busy = true; audioUI.ctl = new AbortController(); const sig = audioUI.ctl.signal; home();
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch {}
-  const cache = await caches.open(AUDIO_CACHE), cap = cfg.audCap * 1e6, sum = () => Object.values(audioSet(rec)).reduce((t, x) => t + x, 0);
+  const cache = await caches.open(AUDIO_CACHE), cap = cfg.audCap * 1e6, sum = () => Object.values(audioSet(rec)).reduce((t, x) => t + auEntry(x).b, 0);
   const totalV = P.take.reduce((t, s) => t + Q[s - 1].a.length, 0); let doneV = 0, stopped = '';
   try {
     for (const s of P.take){
-      const urls = Q[s - 1].a.map((_, i) => auUrl(rec, s, i + 1)); let bytes = 0;
+      const urls = Q[s - 1].a.map((_, i) => auUrl(rec, s, i + 1, q)); let bytes = 0, old = audioSet(rec)[s] ? auEntry(audioSet(rec)[s]) : null;
       try {
         for (let i = 0; i < urls.length; i += 3){
           await Promise.all(urls.slice(i, i + 3).map(async u => {
@@ -2806,7 +2813,8 @@ async function audioGo(){
           const bar = $('aud-bar'); if (bar) bar.style.width = Math.round(100 * doneV / totalV) + '%';
           audioMsg(tr('Téléchargement… {a} / {b} versets', {a: doneV, b: totalV}));
         }
-        audioOff[rec] = {...audioSet(rec), [s]: bytes}; store.set('hifz.audio', audioOff);
+        audioOff[rec] = {...audioSet(rec), [s]: {b: bytes, q}}; store.set('hifz.audio', audioOff);
+        if (old && old.q !== q) await Promise.all(Q[s - 1].a.map((_, i) => cache.delete(auUrl(rec, s, i + 1, old.q)).catch(() => {})));   // l'autre qualité n'est plus utile
       } catch (e){ await Promise.all(urls.map(u => cache.delete(u).catch(() => {}))); throw e; }   // sourate incomplète : on ne garde rien
     }
     stopped = 'ok';
@@ -2814,7 +2822,7 @@ async function audioGo(){
   audioUI.busy = false; audioUI.ctl = null; audioUI.plan = null; home();
   audioMsg(stopped === 'ok' ? tr('Terminé : disponible sans connexion.') : stopped === 'cap' ? tr('Plafond de taille atteint : la sourate en cours n\'a pas été gardée.') : stopped === 'cancel' ? tr('Téléchargement annulé.') : tr('Échec du téléchargement ({e}). Les sourates terminées sont gardées.', {e: stopped.slice(4)}), stopped === 'ok' ? true : false);
 }
-async function audioDel(s){ const rec = cfg.reciter, cache = await caches.open(AUDIO_CACHE); await Promise.all(Q[s - 1].a.map((_, i) => cache.delete(auUrl(rec, s, i + 1)))); const o = {...audioSet(rec)}; delete o[s]; audioOff[rec] = o; store.set('hifz.audio', audioOff); home(); }
+async function audioDel(s){ const rec = cfg.reciter, cache = await caches.open(AUDIO_CACHE), q = auEntry(audioSet(rec)[s] || 64).q; await Promise.all(Q[s - 1].a.map((_, i) => cache.delete(auUrl(rec, s, i + 1, q)))); const o = {...audioSet(rec)}; delete o[s]; audioOff[rec] = o; store.set('hifz.audio', audioOff); home(); }
 async function audioDelAll(){ if (!confirm(tr("Supprimer tout l'audio téléchargé de ce récitateur ?"))) return; for (const s of Object.keys(audioSet(cfg.reciter))) await audioDel(+s); }
 /* ---------- rappels : notifications Web Push (envoyées par la fonction Supabase « send-reminders ») ---------- */
 const remState = () => Object.assign({on: false, time: '20:00', two: false, time2: '21:30'}, store.get('hifz.remind', {}));
