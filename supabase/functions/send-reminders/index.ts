@@ -5,12 +5,12 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 
-type Sub = { id: number; user_id: string; endpoint: string; p256dh: string; auth: string; remind_time: string; tz: string; lang: string; last_sent: string | null };
+type Sub = { id: number; user_id: string; endpoint: string; p256dh: string; auth: string; remind_time: string; remind_time2: string | null; tz: string; lang: string; last_sent: string | null; last_sent2: string | null };
 
-const MSG: Record<string, { title: string; plain: string; due: (n: number) => string }> = {
-  fr: { title: 'Hifz', plain: "C'est l'heure de ta révision 📖", due: (n) => `${n} verset${n > 1 ? 's' : ''} à revoir aujourd'hui 📖` },
-  en: { title: 'Hifz', plain: 'Time for your review 📖', due: (n) => `${n} verse${n !== 1 ? 's' : ''} to review today 📖` },
-  ar: { title: 'حفظ', plain: 'حان وقت مراجعتك 📖', due: (n) => `${n} ${n === 1 ? 'آية' : 'آيات'} للمراجعة اليوم 📖` },
+const MSG: Record<string, { title: string; plain: string; due: (n: number) => string; late: string }> = {
+  fr: { title: 'Hifz', plain: "C'est l'heure de ta révision 📖", due: (n) => `${n} verset${n > 1 ? 's' : ''} à revoir aujourd'hui 📖`, late: "Il n'est pas trop tard pour ta révision du jour 🌙" },
+  en: { title: 'Hifz', plain: 'Time for your review 📖', due: (n) => `${n} verse${n !== 1 ? 's' : ''} to review today 📖`, late: "It's not too late for today's review 🌙" },
+  ar: { title: 'حفظ', plain: 'حان وقت مراجعتك 📖', due: (n) => `${n} ${n === 1 ? 'آية' : 'آيات'} للمراجعة اليوم 📖`, late: 'لم يفت الأوان بعد لمراجعة اليوم 🌙' },
 };
 
 // date (AAAA-MM-JJ) et minutes écoulées dans la journée, dans le fuseau de l'appareil
@@ -20,12 +20,18 @@ function localParts(now: Date, tz: string) {
   return { date: `${p.year}-${p.month}-${p.day}`, minutes: Number(p.hour) * 60 + Number(p.minute) };
 }
 
-// un rappel part une seule fois par jour local, à partir de l'heure choisie (et jusqu'à 3 h plus tard si un passage a été manqué)
+// chaque rappel (1er et 2e) part une seule fois par jour local, à partir de son heure (et jusqu'à 3 h plus tard si un passage a été manqué)
 function decide(sub: Sub, now: Date) {
   let lp;
   try { lp = localParts(now, sub.tz); } catch { lp = localParts(now, 'UTC'); }
-  const [h, m] = sub.remind_time.split(':').map(Number), target = h * 60 + m;
-  return { send: sub.last_sent !== lp.date && lp.minutes >= target && lp.minutes < target + 180, date: lp.date };
+  const due = (t: string | null, last: string | null) => {
+    if (!t) return false;
+    const [h, m] = t.split(':').map(Number), target = h * 60 + m;
+    return last !== lp.date && lp.minutes >= target && lp.minutes < target + 180;
+  };
+  // si les deux sont dans la fenêtre (passage manqué), seul le dernier compte
+  const second = due(sub.remind_time2, sub.last_sent2);
+  return { first: !second && due(sub.remind_time, sub.last_sent), second, date: lp.date };
 }
 
 Deno.serve(async (req) => {
@@ -38,18 +44,19 @@ Deno.serve(async (req) => {
   let sent = 0, skipped = 0, removed = 0;
   for (const s of (subs ?? []) as Sub[]) {
     const d = decide(s, now);
-    if (!d.send) continue;
+    if (!d.first && !d.second) continue;
+    const mark = d.second ? { last_sent: d.date, last_sent2: d.date } : { last_sent: d.date }; // le 2e rappel remplace le 1er s'il n'est pas encore parti
     const { data: ud } = await db.from('user_data').select('data').eq('user_id', s.user_id).maybeSingle();
     const days = (ud?.data?.days ?? {}) as Record<string, number>;
     if ((days[d.date] ?? 0) > 0) { // déjà révisé aujourd'hui : pas de rappel
-      await db.from('push_subs').update({ last_sent: d.date }).eq('id', s.id); skipped++; continue;
+      await db.from('push_subs').update(mark).eq('id', s.id); skipped++; continue;
     }
     const due = Object.values((ud?.data?.sched ?? {}) as Record<string, { due: number }>).filter((v) => v && v.due <= now.getTime()).length;
     const m = MSG[s.lang] ?? MSG.fr;
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-        JSON.stringify({ title: m.title, body: due > 0 ? m.due(due) : m.plain, url: './' }), { TTL: 6 * 3600, urgency: 'normal' });
-      await db.from('push_subs').update({ last_sent: d.date }).eq('id', s.id); sent++;
+        JSON.stringify({ title: m.title, body: d.second ? m.late : due > 0 ? m.due(due) : m.plain, url: './' }), { TTL: 6 * 3600, urgency: 'normal' });
+      await db.from('push_subs').update(mark).eq('id', s.id); sent++;
     } catch (e) {
       const code = (e as { statusCode?: number }).statusCode;
       if (code === 404 || code === 410) { await db.from('push_subs').delete().eq('id', s.id); removed++; } // appareil désinscrit

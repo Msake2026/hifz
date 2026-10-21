@@ -23,3 +23,5 @@ Les rappels envoient une notification chaque jour à l'heure choisie, **seulemen
 6. Sur l'iPhone, dans l'application installée : Réglages → Rappels → Activer, choisis une heure dans 5 à 10 minutes et attends la notification.
 
 La clé publique des notifications est dans `config.js` (`vapidPublicKey`). Pour changer de clés : génère-en d'autres, mets à jour `config.js` et les secrets, puis demande aux utilisateurs de réactiver les rappels.
+
+**Mise à jour (2e rappel facultatif)** : si tu avais déjà lancé `push.sql`, relance-le (il ajoute les colonnes `remind_time2`/`last_sent2` et remplace `push_subscribe`), puis redéploie la fonction `send-reminders` avec le nouveau `index.ts`.

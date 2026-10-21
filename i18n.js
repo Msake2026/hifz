@@ -561,7 +561,11 @@ window.I18N = {
 "Reçois une notification chaque jour à l'heure choisie, seulement si tu n'as pas encore révisé ce jour-là.": "Get a notification every day at the chosen time, only if you haven't reviewed yet that day.",
 "Sur iPhone, installe d'abord l'application sur l'écran d'accueil (Partager, puis « Sur l'écran d'accueil ») pour recevoir des rappels.": "On iPhone, first install the app on your Home Screen (Share, then “Add to Home Screen”) to receive reminders.",
 "Tester une notification": "Test a notification",
-"Ton navigateur ne gère pas les notifications.": "Your browser does not support notifications."
+"Ton navigateur ne gère pas les notifications.": "Your browser does not support notifications.",
+"Un 2e rappel plus tard, si je n'ai toujours pas révisé": "A second reminder later, if I still haven't reviewed",
+"Heure du 2e rappel": "Second reminder time",
+"Le 2e rappel doit être après le 1er.": "The second reminder must be after the first.",
+"Rappels activés à {t} et {t2}.": "Reminders on at {t} and {t2}."
 },
 "ar": {
 "(partie {a}/{b})": "(الجزء {a}/{b})",
@@ -1124,6 +1128,10 @@ window.I18N = {
 "Reçois une notification chaque jour à l'heure choisie, seulement si tu n'as pas encore révisé ce jour-là.": "استلم إشعاراً كل يوم في الوقت الذي تختاره، فقط إن لم تكن قد راجعت في ذلك اليوم.",
 "Sur iPhone, installe d'abord l'application sur l'écran d'accueil (Partager, puis « Sur l'écran d'accueil ») pour recevoir des rappels.": "على الآيفون ثبّت التطبيق أولاً على الشاشة الرئيسية (مشاركة ثم «إضافة إلى الشاشة الرئيسية») لتستلم التذكيرات.",
 "Tester une notification": "اختبر إشعاراً",
-"Ton navigateur ne gère pas les notifications.": "متصفحك لا يدعم الإشعارات."
+"Ton navigateur ne gère pas les notifications.": "متصفحك لا يدعم الإشعارات.",
+"Un 2e rappel plus tard, si je n'ai toujours pas révisé": "تذكير ثانٍ لاحقاً إن لم أكن قد راجعت بعد",
+"Heure du 2e rappel": "وقت التذكير الثاني",
+"Le 2e rappel doit être après le 1er.": "يجب أن يكون التذكير الثاني بعد الأول.",
+"Rappels activés à {t} et {t2}.": "التذكيرات مفعّلة عند {t} و{t2}."
 }
 };
