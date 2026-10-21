@@ -2,8 +2,11 @@
 // Appelée toutes les 5 minutes par pg_cron (voir supabase/README.md). Secrets requis (Edge Functions → Secrets) :
 // VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (mailto:…), CRON_SECRET. SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont fournis par Supabase.
 // Déployer avec « Verify JWT » désactivé : l'accès est protégé par CRON_SECRET.
+// Même passage toutes les 5 minutes : prévient les administrateurs (notification + e-mail) d'une nouvelle demande pour devenir enseignant.
+// L'e-mail est facultatif : il demande les secrets SMTP_USER (adresse Gmail d'envoi) et SMTP_PASS (mot de passe d'application Google) ; sans eux, seule la notification part.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
+import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
 
 type Sub = { id: number; user_id: string; endpoint: string; p256dh: string; auth: string; remind_time: string; remind_time2: string | null; tz: string; lang: string; last_sent: string | null; last_sent2: string | null };
 
@@ -34,6 +37,46 @@ function decide(sub: Sub, now: Date) {
   return { first: !second && due(sub.remind_time, sub.last_sent), second, date: lp.date };
 }
 
+const REQ = {
+  fr: (e: string) => ({ title: 'Hifz · demande enseignant', body: `${e} demande à devenir enseignant.` }),
+  en: (e: string) => ({ title: 'Hifz · teacher request', body: `${e} asks to become a teacher.` }),
+  ar: (e: string) => ({ title: 'حفظ · طلب معلّم', body: `${e} يطلب أن يصبح معلّماً.` }),
+};
+
+// demandes d'enseignant pas encore signalées : notification aux appareils des admins + e-mail aux admins (si SMTP configuré)
+async function notifyRequests(db: ReturnType<typeof createClient>) {
+  const { data: rows, error } = await db.from('teacher_requests').select('user_id').is('notified_at', null);
+  if (error || !rows?.length) return 0;      // table ou colonne absente (teacher.sql pas relancé) : on ignore
+  const { data: profs } = await db.from('profiles').select('id, email, blocked').in('id', rows.map((r: { user_id: string }) => r.user_id));
+  const reqs = (profs ?? []).map((p: { id: string; email: string; blocked: boolean }) => ({ user_id: p.id, profiles: { email: p.email, blocked: p.blocked } }));
+  const { data: admins } = await db.from('profiles').select('id, email').eq('role', 'admin').eq('blocked', false);
+  const ids = (admins ?? []).map((a: { id: string }) => a.id);
+  if (!ids.length) return 0;
+  const { data: subs } = await db.from('push_subs').select('id, endpoint, p256dh, auth, lang').in('user_id', ids);
+  const smtpUser = Deno.env.get('SMTP_USER'), smtpPass = Deno.env.get('SMTP_PASS');
+  let done = 0;
+  for (const r of reqs) {
+    if (r.profiles.blocked) continue;
+    const email = r.profiles.email;
+    let ok = false;
+    for (const sub of subs ?? []) {
+      const m = (REQ[sub.lang as keyof typeof REQ] ?? REQ.fr)(email);
+      try { await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify({ ...m, url: './' }), { TTL: 24 * 3600, urgency: 'normal' }); ok = true; }
+      catch (e) { const c = (e as { statusCode?: number }).statusCode; if (c === 404 || c === 410) await db.from('push_subs').delete().eq('id', sub.id); else console.error('push admin', c, (e as Error).message); }
+    }
+    if (smtpUser && smtpPass) {
+      try {
+        const c = new SMTPClient({ connection: { hostname: 'smtp.gmail.com', port: 465, tls: true, auth: { username: smtpUser, password: smtpPass } } });
+        await c.send({ from: smtpUser, to: (admins ?? []).map((a: { email: string }) => a.email), subject: 'Hifz : demande pour devenir enseignant',
+          content: `${email} demande à devenir enseignant.\n\nPour accepter ou refuser : Hifz → Réglages → Compte → Espace admin → « Demandes d'enseignant ».` });
+        await c.close(); ok = true;
+      } catch (e) { console.error('mail admin', (e as Error).message); }
+    }
+    if (ok) { await db.from('teacher_requests').update({ notified_at: new Date().toISOString() }).eq('user_id', r.user_id); done++; }
+  }
+  return done;
+}
+
 Deno.serve(async (req) => {
   if (req.headers.get('Authorization') !== `Bearer ${Deno.env.get('CRON_SECRET')}`) return new Response('forbidden', { status: 403 });
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
@@ -41,6 +84,7 @@ Deno.serve(async (req) => {
   const now = new Date();
   const { data: subs, error } = await db.from('push_subs').select('*');
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  let notified = 0; try { notified = await notifyRequests(db); } catch (e) { console.error('demandes', (e as Error).message); }
   let sent = 0, skipped = 0, removed = 0;
   for (const s of (subs ?? []) as Sub[]) {
     const d = decide(s, now);
@@ -63,5 +107,5 @@ Deno.serve(async (req) => {
       else console.error('push', s.id, code, (e as Error).message);
     }
   }
-  return new Response(JSON.stringify({ sent, skipped, removed }), { headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify({ sent, skipped, removed, notified }), { headers: { 'Content-Type': 'application/json' } });
 });

@@ -20,6 +20,7 @@ create table if not exists public.teacher_requests (
   user_id    uuid primary key references auth.users(id) on delete cascade,
   created_at timestamptz not null default now()
 );
+alter table public.teacher_requests add column if not exists notified_at timestamptz;   -- renseigné quand les administrateurs ont été prévenus (fonction send-reminders)
 alter table public.teacher_requests enable row level security;
 drop policy if exists "demande : lecture" on public.teacher_requests;
 create policy "demande : lecture" on public.teacher_requests for select to authenticated using (user_id = auth.uid());

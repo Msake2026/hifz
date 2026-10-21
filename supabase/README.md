@@ -13,6 +13,8 @@ L'administrateur initial se change dans `schema.sql` (fonction `bootstrap_admin_
 
 1. Dans le SQL Editor, exécute `teacher.sql` (après `schema.sql` ; relançable sans risque).
 2. Deux façons de nommer un enseignant : l'utilisateur clique **Compte → Devenir enseignant → Demander à devenir enseignant** et tu **Acceptes** ou **Refuses** dans l'Espace admin (carte « Demandes d'enseignant ») ; ou tu le fais toi-même : Espace admin → un compte → **Nommer enseignant**. (Après la mise à jour, relance `teacher.sql`.)
+
+**Être prévenu d'une demande** : la fonction `send-reminders` (même passage toutes les 5 minutes que les rappels) envoie une notification à tes appareils admin (il faut avoir activé les rappels dessus) et un e-mail à tous les admins. Après mise à jour : 1) relance `teacher.sql` ; 2) *Edge Functions → send-reminders* : colle le nouveau `index.ts` et redéploie ; 3) pour l'e-mail, ajoute deux secrets (*Edge Functions → Secrets*) : `SMTP_USER` = l'adresse Gmail d'envoi, `SMTP_PASS` = son mot de passe d'application Google (celui déjà utilisé pour l'envoi des e-mails de compte). Sans ces deux secrets, seule la notification part.
 3. L'élève ouvre **Réglages → Compte → Mon enseignant → Inviter un enseignant** et donne le code (8 caractères, valable 7 jours, usage unique). L'enseignant le saisit dans **Espace enseignant**.
 4. L'enseignant ne voit qu'un résumé (régularité, progression par sourate, erreurs fréquentes), jamais les réponses tapées ni les réglages ; chaque consultation est notée dans un journal que l'élève lit. L'élève ou l'enseignant peut rompre le lien à tout moment. Les règles sont testées sur un vrai PostgreSQL (`tests/` + workflow `sql-tests`).
 
