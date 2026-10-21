@@ -563,6 +563,7 @@ function setLang(l){ // change la langue de l'interface (le texte du Coran ne ch
   if (!['fr', 'en', 'ar'].includes(l) || l === LANG) return;
   LANG = l; cfg.lang = l; saveCfg(); applyLang();
   if (me && sb && remState().on) pushResync().catch(() => {});
+  mailLang();
   if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else home();
 }
 function go(tab){ cfg.tab = tab; saveCfg(); home(); window.scrollTo(0, 0); }
@@ -1907,7 +1908,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v19';
+const APP_VERSION = '21 oct. 2026 · v20';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -1978,6 +1979,12 @@ function refreshAccount(){
   if (screen === 'account' && me && acc.fromGate){ acc.fromGate = false; return go('home'); } // connexion réussie depuis l'écran d'accueil protégé
   if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else if (screen === 'tab' || !me) home();
 }
+let mailLangSent = '';
+function mailLang(u){ // garde la langue de l'interface dans le compte (user_metadata.lang) pour les e-mails de confirmation / mot de passe oublié
+  const have = mailLangSent || (u && u.user_metadata && u.user_metadata.lang) || '';
+  if (!sb || !me || have === LANG) return;
+  mailLangSent = LANG; sb.auth.updateUser({data: {lang: LANG}}).catch(() => { mailLangSent = ''; });
+}
 async function loadMe(sess){
   if (!sess || loadingMe) return; loadingMe = true;
   try {
@@ -1986,7 +1993,7 @@ async function loadMe(sess){
     if (!prof) throw new Error('relation profiles does not exist (profil introuvable)');
     if (prof.blocked){ await sb.auth.signOut(); me = null; acc.msg = tr('Ce compte est suspendu.'); acc.ok = false; return; }
     me = {user: {id: u.id, email: u.email}, profile: prof}; store.set('hifz.me', me);
-    sb.rpc('touch');
+    sb.rpc('touch'); mailLang(u);
     await cloudSyncOnLogin();
   } catch (e){
     const c = store.get('hifz.me', null); // hors ligne : on reprend le dernier profil connu de cette session
@@ -2128,7 +2135,7 @@ const doSignup = () => busy(async () => {
   if (pw.length < 8) throw new Error(tr('Le mot de passe doit faire 8 caractères au moins.'));
   if (pw !== $('ac-pass2').value) throw new Error(tr('Les deux mots de passe ne correspondent pas.'));
   if (!$('ac-consent').checked) throw new Error(tr("Coche la case pour accepter l'enregistrement de tes données."));
-  const {data, error} = await sb.auth.signUp({email, password: pw, options: {emailRedirectTo: REDIRECT()}}); if (error) throw error;
+  const {data, error} = await sb.auth.signUp({email, password: pw, options: {emailRedirectTo: REDIRECT(), data: {lang: LANG}}}); if (error) throw error;   // la langue choisie suit le compte : les e-mails arrivent dans cette langue
   if (data.user && data.user.identities && data.user.identities.length === 0) throw new Error(tr('Un compte existe déjà avec cet e-mail : connecte-toi.'));
   if (data.session){ await loadMe(data.session); acc.msg = tr('Compte créé.'); acc.ok = true; return; }
   acc.mode = 'login'; acc.ok = true; acc.resend = email;
@@ -2157,7 +2164,7 @@ const doLogout = async () => {
   clearTimeout(pushTimer); await cloudPush();
   if (remState().on) await pushDrop();
   if (acc.syncErr && !confirm(tr('La dernière synchronisation a échoué : te déconnecter perdra les changements non envoyés. Continuer ?'))) return;
-  await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.me'); } catch {}
+  await sb.auth.signOut(); me = null; mailLangSent = ''; try { localStorage.removeItem('hifz.me'); } catch {}
   syncPause = true; stats = {}; sched = {}; days = {}; errors = []; plan = null; custom.forEach(t => { delete MT[t.id]; }); custom = [];
   ['hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan', 'hifz.cloud'].forEach(k => { try { localStorage.removeItem(k); } catch {} });
   syncPause = false; acc.msg = tr('Déconnecté.'); acc.ok = true; acc.auto = true; acc.mode = 'login'; renderAccount();

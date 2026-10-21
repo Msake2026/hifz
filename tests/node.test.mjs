@@ -111,3 +111,16 @@ test('tajwīd : balises équilibrées, codes de la légende officielle seulement
   const allowed = new Set('hslnpmqcfwiaudbgo'); for (const c of codes) assert.ok(allowed.has(c), c);
   assert.equal((t.match(/\[[a-z]\[/g) || []).length, (t.match(/\]/g) || []).length);
 });
+
+test('modèles d\'e-mail : balises Supabase présentes, blocs {{ if }} équilibrés, trois langues, bouton vers {{ .ConfirmationURL }}', () => {
+  for (const f of ['confirm-signup', 'reset-password']) {
+    const t = read(`supabase/emails/${f}.html`);
+    const open = (t.match(/\{\{-?\s*(if|with)\b/g) || []).length, end = (t.match(/\{\{-?\s*end\s*-?\}\}/g) || []).length;
+    assert.equal(open, end, f + ' : {{ if/with }} et {{ end }} déséquilibrés');
+    assert.match(t, /\.Data\.lang/); assert.match(t, /\{\{ \.ConfirmationURL \}\}/);
+    assert.equal((t.match(/\{\{ \.ConfirmationURL \}\}/g) || []).length, 3, f + ' : un bouton par langue');
+    assert.match(t, /dir="rtl"/); assert.match(t, /eq \$l "en"/); assert.match(t, /eq \$l "ar"/);
+    const tri = read(`supabase/emails/${f}-trilingue.html`);   // secours : les trois langues dans le même message, sans condition
+    assert.ok(!/\{\{ *(if|with)/.test(tri)); assert.equal((tri.match(/\{\{ \.ConfirmationURL \}\}/g) || []).length, 3);
+  }
+});
