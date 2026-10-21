@@ -284,3 +284,38 @@ test('qualités conditionnelles : līn et questions posées sur de vrais versets
   }
   for (const a of ['qalqala', 'lin']) assert.ok(seen[a][0] > 200 && seen[a][1] > 200, 'oui et non bien répartis : ' + JSON.stringify(seen));
 });
+
+test('data/ahkam.js : ensembles de lettres cohérents, occurrences conformes à la règle, questions toujours valides', () => {
+  const html = read('index.html'); const hf = html.slice(html.indexOf('/* HF:begin'), html.indexOf('/* HF:end */')), ah = html.slice(html.indexOf('/* AH:begin'), html.indexOf('/* AH:end */'));
+  const { hfClusters, hfPick, ahIndex, ahBuild, ahLetterRule } = new Function(hf + ah + '; return {hfClusters, hfPick, ahIndex, ahBuild, ahLetterRule};')();
+  const w = {}; new Function('window', read('data/ahkam.js'))(w); const A = w.AHKAM;
+  const S = A.sets; assert.deepEqual(Object.fromEntries(Object.entries(S).map(([k, v]) => [k, [...v].length])), { H: 6, G: 4, N: 2, Q: 1, K: 15 });
+  assert.equal([...Object.values(S).join('')].length, 28); assert.equal(new Set(Object.values(S).join('')).size, 28, 'les 5 groupes couvrent les 28 lettres sans recouvrement');
+  assert.equal(S.H, 'ءهعحغخ'); assert.equal(S.Q, 'ب'); assert.ok(A.sources.length === 3 && A.sources.every(x => /oldid=\d+/.test(x.url)));
+  const Qd = loadGlobal('quran.js', 'QURAN').surahs, Q = Qd.map(s => ({ n: s.n, a: s.a.map(v => ({ t: v[0] })) }));
+  const nameOf = { H: S.H, M: 'يو', G: S.G, N: S.N, Q: S.Q, K: S.K };
+  let n = 0;
+  for (const [key, v] of Object.entries(A.occ)) {
+    const [sn, an] = key.split(':').map(Number), cl = hfClusters(Q[sn - 1].a[an - 1].t);
+    for (const o of v.split(',')) {
+      const [k, j, r] = o.split('.'); const a = cl[+k], b = cl[+j]; assert.ok(a && b && +j > +k, key + ' ' + o); n++;
+      if (r.startsWith('m')) { assert.equal(a.c, 'م'); assert.equal(r, b.c === 'ب' ? 'mK' : b.c === 'م' ? 'mG' : 'mH', key + ' ' + o); }
+      else { assert.ok(a.c === 'ن' || /[\u064B-\u064D]/.test(a.m), key); const bl = b.c === 'ٱ' ? 'ا' : b.c;
+        if (r === 'M') assert.ok('يو'.includes(b.c) && a.c === 'ن'); else assert.ok([...nameOf[r]].includes({ 'أ': 'ء', 'إ': 'ء', 'ؤ': 'ء', 'ئ': 'ء', 'ى': 'ي' }[bl] || bl), `${key} ${o} ${b.c}`); }
+    }
+  }
+  assert.ok(n > 15000, 'nombre d\'occurrences : ' + n);
+  for (const [key, v] of Object.entries(A.gh)) { const [sn, an] = key.split(':').map(Number), cl = hfClusters(Q[sn - 1].a[an - 1].t); for (const k of v.split(',')) assert.ok('نم'.includes(cl[+k].c) && /\u0651/.test(cl[+k].m), key); }
+  let seed = 3; const rnd = m => (seed = (seed * 16807) % 2147483647) % m, shuf = a => a.slice().sort(() => rnd(3) - 1);
+  const seen = {};
+  for (let i = 0; i < 1500; i++) for (const kind of ['nun', 'mim', 'letter', 'group', 'ghunna', 'tf']) {
+    const q = ahBuild(kind, A, Q, rnd, shuf); assert.ok(q, kind); seen[kind + (q.correct || '')] = 1;
+    assert.equal(new Set(q.options.map(o => o.v)).size, q.options.length, kind);
+    if (kind === 'letter') assert.equal(q.correct, ahLetterRule(A, q.letter)); assert.ok(q.options.some(o => o.v === q.correct), kind);
+    if (kind === 'group') assert.equal(q.options.filter(o => o.v === q.rule).length, 1);
+    if (kind === 'tf') assert.equal(q.correct, ahLetterRule(A, q.letter) === q.rule ? 't' : 'f');
+    if (kind === 'ghunna') { const t = Q[q.ref.s - 1].a[q.ref.a - 1].t; assert.equal(/\u0651/.test(q.a.m), q.correct === 't'); assert.ok('نم'.includes(q.a.c)); assert.equal(t.slice(q.a.s, q.a.e).includes(q.a.c), true); }
+    if (kind === 'nun') assert.ok(['H', 'G', 'N', 'Q', 'K'].includes(q.correct)); if (kind === 'mim') assert.ok(['mH', 'mK', 'mG'].includes(q.correct));
+  }
+  for (const r of ['nunH', 'nunG', 'nunN', 'nunQ', 'nunK', 'mimmH', 'mimmK', 'mimmG', 'ghunnat', 'ghunnaf']) assert.ok(seen[r], 'règle jamais tirée : ' + r);
+});

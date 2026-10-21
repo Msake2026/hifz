@@ -346,7 +346,7 @@ async function loadQuran(){
 
 /* ---------- état persistant ---------- */
 const DEF = {mode: 'mix', scope: {type: 'surah', from: 78, to: 114}, n: 10, input: 'recite', level: 40,
-  corr: 'standard', tjKind: 'rule', mkKind: 'zone', sfKind: 'pair', lastMemo: 'mix', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
+  corr: 'standard', tjKind: 'rule', mkKind: 'zone', sfKind: 'pair', ahKind: 'nun', lastMemo: 'mix', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
   lang: ['fr', 'en', 'ar'].includes((navigator.language || '').slice(0, 2)) ? navigator.language.slice(0, 2) : 'fr'};
 const stored = store.get('hifz.cfg', {});
 let cfg = Object.assign({}, DEF, stored);
@@ -494,6 +494,7 @@ const MODES = [
   ['tajweed','Tajwīd (entraînement)','Plusieurs types de questions : règle, couleurs, vrai ou faux', 'q'],
   ['makharij','Makhārij (points de sortie)','Reconnais d\'où sortent les lettres'],
   ['sifat',  'Ṣifāt (qualités des lettres)','Reconnais les qualités des lettres'],
+  ['ahkam',  'Aḥkām (nūn, mīm, tanwīn)','Idhhār, idghām, iqlāb, ikhfāʾ…'],
   ['cont',   'Récitation continue','Un passage entier d\'une traite'],
   ['half',   'Demi-vers',          'Complète la 2e moitié', 'm'],
   ['phrase', 'Phrase suivante',    'Prose : complète la phrase suivante', 'm']
@@ -597,6 +598,7 @@ function syncCfg(){
   if ($('slevel')) cfg.level = +v('slevel');
   if ($('stjk')) cfg.tjKind = v('stjk');
   if ($('smkk')) cfg.mkKind = v('smkk');
+  if ($('sahk')) cfg.ahKind = v('sahk');
   if ($('ssfk')) cfg.sfKind = v('ssfk');
   if ($('scont')) cfg.contLen = +v('scont');
   if ($('send')) cfg.endLen = +v('send');
@@ -649,7 +651,7 @@ function tabHome(){
 
   <div class="card"><h2>${tr('Ma série')}</h2>
     <div class="sumline"><span>${cfg.scope.type === 'matn' ? '📜 ' + tr('Moutoun') : '📖 ' + tr('Coran')}</span><span>${esc(scopeLabel(cfg.scope))}</span>
-      <span>${esc(modeTitle(cfg.mode))}</span>${cfg.mode === 'tajweed' ? `<span>${tr((TJKINDS.find(k => k[0] === cfg.tjKind) || TJKINDS[0])[1])}</span>` : cfg.mode === 'makharij' ? `<span>${tr((MKKINDS.find(k => k[0] === cfg.mkKind) || MKKINDS[0])[1])}</span>` : cfg.mode === 'sifat' ? `<span>${tr((SFKINDS.find(k => k[0] === cfg.sfKind) || SFKINDS[0])[1])}</span>` : ''}<span>${trp(cfg.n, '{n} question|{n} questions')}</span>${(MODE_OPTS[cfg.mode] || {}).input ? `<span>${tr(INPUTS[cfg.input] || '')}</span>` : ''}</div>
+      <span>${esc(modeTitle(cfg.mode))}</span>${cfg.mode === 'tajweed' ? `<span>${tr((TJKINDS.find(k => k[0] === cfg.tjKind) || TJKINDS[0])[1])}</span>` : cfg.mode === 'ahkam' ? `<span>${tr((AHKINDS.find(k => k[0] === cfg.ahKind) || AHKINDS[0])[1])}</span>` : cfg.mode === 'makharij' ? `<span>${tr((MKKINDS.find(k => k[0] === cfg.mkKind) || MKKINDS[0])[1])}</span>` : cfg.mode === 'sifat' ? `<span>${tr((SFKINDS.find(k => k[0] === cfg.sfKind) || SFKINDS[0])[1])}</span>` : ''}<span>${trp(cfg.n, '{n} question|{n} questions')}</span>${(MODE_OPTS[cfg.mode] || {}).input ? `<span>${tr(INPUTS[cfg.input] || '')}</span>` : ''}</div>
     <button class="pri big" data-act="start">${tr('Commencer')}</button>
     <div class="row" style="margin-top:8px"><button data-act="tab" data-v="train">${tr('Modifier')}</button><button data-act="lsopen">🎧 ${tr('Écouter')}</button></div>
   </div>
@@ -811,9 +813,10 @@ function tabPlan(){
 /* options utiles pour chaque exercice (n = nombre de questions : toujours) ; q = Coran seulement */
 const MODE_OPTS = {
   mix: {level: 1, end: 'q', beg: 'q', input: 1}, next: {input: 1}, cloze: {level: 1, input: 1}, which: {}, mcq: {}, mutash: {}, start: {input: 1},
-  order: {}, tajweed: {tj: 1}, makharij: {mk: 1}, sifat: {sf: 1}, end: {end: 'q', input: 1}, link: {end: 'q', beg: 'q', input: 1}, cont: {cont: 1, input: 1}, half: {input: 1}, phrase: {input: 1}
+  order: {}, tajweed: {tj: 1}, ahkam: {ah: 1}, makharij: {mk: 1}, sifat: {sf: 1}, end: {end: 'q', input: 1}, link: {end: 'q', beg: 'q', input: 1}, cont: {cont: 1, input: 1}, half: {input: 1}, phrase: {input: 1}
 };
 const modeHelp = {
+  ahkam: "Choisis le type de question : règle d'un verset (nūn sākin / tanwīn ou mīm sākin), règle d'une lettre, lettres d'une règle, ghunna, vrai ou faux. Cet exercice ne dépend pas de la portée choisie.",
   makharij: "Choisis le type de question : zone de sortie, lettres du même point, intruse, partie de la gorge, vrai ou faux. Cet exercice ne dépend pas de la portée choisie.",
   sifat: "Choisis le type de question : qualité d'une lettre, lettre d'une qualité, mots mnémotechniques du matn, vrai ou faux. Cet exercice ne dépend pas de la portée choisie.",
   tajweed: 'Plusieurs types de questions de tajwīd au choix : reconnaître la règle d\'une partie surlignée, trouver la partie d\'une règle, vrai ou faux (entraînement : annotation automatique non relue par un enseignant).',
@@ -824,9 +827,10 @@ const modeHelp = {
   link: 'Tu récites la fin d\'une sourate puis le début de la suivante.', cont: 'Tu récites un passage entier d\'une traite.',
   half: 'On te donne la première moitié, tu complètes la seconde.', phrase: 'On te donne une phrase, tu donnes la suivante.'
 };
-const CATS = [['memo', 'Mémorisation (Coran ou moutoun)'], ['tajwid', 'Tajwīd (entraînement)'], ['mkh', 'Makhārij (points de sortie)'], ['sfa', 'Ṣifāt (qualités des lettres)']];
-const CATMODE = {tajwid: 'tajweed', mkh: 'makharij', sfa: 'sifat'}, catOf = m => ({tajweed: 'tajwid', makharij: 'mkh', sifat: 'sfa'})[m] || 'memo';
+const CATS = [['memo', 'Mémorisation (Coran ou moutoun)'], ['tajwid', 'Tajwīd (entraînement)'], ['ahk', 'Aḥkām (nūn, mīm, tanwīn)'], ['mkh', 'Makhārij (points de sortie)'], ['sfa', 'Ṣifāt (qualités des lettres)']];
+const CATMODE = {tajwid: 'tajweed', ahk: 'ahkam', mkh: 'makharij', sfa: 'sifat'}, catOf = m => ({tajweed: 'tajwid', ahkam: 'ahk', makharij: 'mkh', sifat: 'sfa'})[m] || 'memo';
 const CATHELP = {memo: 'Teste ta mémoire du Coran ou des moutoun, avec les exercices ci-dessous.', tajwid: 'Entraîne-toi sur les règles de tajwīd des versets du Coran de ta portée.',
+  ahk: "Apprends les règles du nūn sākin, du tanwīn et du mīm sākin sur de vrais versets. Cet exercice ne dépend pas de la portée.",
   mkh: 'Apprends les points de sortie des lettres. Cet exercice ne dépend pas de la portée.', sfa: 'Apprends les qualités des lettres. Cet exercice ne dépend pas de la portée.'};
 function setCat(c){ // change le type d'exercice : mémorisation, tajwīd, makhārij ou ṣifāt
   const from = catOf(cfg.mode); if (from === c || !CATS.some(x => x[0] === c)) return;
@@ -906,6 +910,8 @@ function tabTrain(){
     <div class="row">
       <div><label class="f">${tr('Nombre de questions')}</label>
         <select id="sn">${[5, 10, 20, 30].map(n => `<option ${n === cfg.n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      ${o.ah ? `<div><label class="f" for="sahk">${tr('Type de question d\'aḥkām')}</label>
+        <select id="sahk">${AHKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.ahKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
       ${o.mk ? `<div><label class="f" for="smkk">${tr('Type de question de makhārij')}</label>
         <select id="smkk">${MKKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.mkKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
       ${o.sf ? `<div><label class="f" for="ssfk">${tr('Type de question de ṣifāt')}</label>
@@ -1018,8 +1024,20 @@ const weakHtml = weak => weak.length ? `<h2 style="margin-top:14px">${tr('À ret
 
 /* ---------- séance ---------- */
 let ses = null, cur = null, ls = null;
-const HFMODES = ['makharij', 'sifat'];
+const HFMODES = ['makharij', 'sifat', 'ahkam'];
+let AHKAM_P = null;
+function loadAhkam(){ // data/ahkam.js : chargé à la demande
+  if (window.AHKAM) return Promise.resolve(window.AHKAM);
+  return AHKAM_P ||= new Promise((ok, ko) => { const el = document.createElement('script'); el.src = 'data/ahkam.js';
+    el.onload = () => window.AHKAM && window.AHKAM.occ ? ok(window.AHKAM) : (AHKAM_P = null, ko(new Error('données incomplètes')));
+    el.onerror = () => { AHKAM_P = null; ko(new Error('hors ligne')); }; document.head.appendChild(el); });
+}
 function start(fixed){
+  if (cfg.mode === 'ahkam' && !fixed && !window.AHKAM){
+    $app.innerHTML = `<p class="sub" style="margin-top:40vh;text-align:center">${tr('Chargement…')}</p>`;
+    loadAhkam().then(() => start(fixed), e => { alert(tr('Impossible de charger ce contenu ({e}). Vérifie ta connexion puis réessaie.', {e: e.message})); home(); });
+    return;
+  }
   if (cfg.mode === 'tajweed' && !fixed && !(window.QX && window.QX.tajweed)){ // les annotations se chargent (et se contrôlent) à la première utilisation
     $app.innerHTML = `<p class="sub" style="margin-top:40vh;text-align:center">${tr('Chargement…')}</p>`;
     loadX('tajweed').then(() => start(fixed), e => { alert(tr('Impossible de charger ce contenu ({e}). Vérifie ta connexion puis réessaie.', {e: e.message})); home(); });
@@ -1061,7 +1079,7 @@ function nextQ(){
   let m = cfg.mode;
   if (m === 'tajweed' && (ses.fixed || !hasQ)) m = 'mix';
   if (HFMODES.includes(m)){
-    if (!ses.fixed){ cur = {m, r: null, done: false, audio: [], hf: true, label: tr(m === 'makharij' ? 'Makhārij' : 'Ṣifāt')}; return m === 'makharij' ? qMakharij() : qSifat(); }
+    if (!ses.fixed){ cur = {m, r: null, done: false, audio: [], hf: true, label: tr(m === 'makharij' ? 'Makhārij' : m === 'ahkam' ? 'Aḥkām' : 'Ṣifāt')}; return m === 'makharij' ? qMakharij() : m === 'ahkam' ? qAhkam() : qSifat(); }
     m = 'mix';                            // révisions guidées : pas d'exercice de makhārij / ṣifāt
   }   // révisions guidées (plan, versets dus…) : pas d'exercice de tajwīd
   if (m === 'mix'){
@@ -1441,6 +1459,49 @@ function condBuild(Q, rnd, shuf){ // « la lettre surlignée a-t-elle cette qual
   return null;
 }
 /* HF:end */
+/* AH:begin — règles du nūn sākin / tanwīn et du mīm sākin : constructeurs de questions (purs, testés en Node ; données : data/ahkam.js) */
+const AH_NOON = ['H', 'G', 'N', 'Q', 'K'], AH_MIM = ['mH', 'mK', 'mG'];
+const ahLetterRule = (A, c) => AH_NOON.find(r => A.sets[r].includes(c));
+function ahIndex(A){ // règle -> [[verset, position du nūn / tanwīn / mīm, position de la lettre suivante]] (calculé une fois)
+  if (A._idx) return A._idx;
+  const idx = {}; for (const [key, v] of Object.entries(A.occ)) for (const o of v.split(',')){ const [k, j, r] = o.split('.'); (idx[r] ||= []).push([key, +k, +j]); }
+  return (A._idx = idx);
+}
+function ahVerse(A, Q, kind, rnd, shuf){ // une occurrence réelle : la règle demandée est tirée parmi toutes (pas parmi les occurrences : chaque règle revient)
+  const idx = ahIndex(A), fam = kind === 'mim' ? AH_MIM : AH_NOON, rules = fam.filter(r => idx[r] && idx[r].length);
+  const want = hfPick(rules, rnd);
+  for (let t = 0; t < 60; t++){
+    const [key, k, j] = hfPick(idx[want === 'H' && rnd(25) === 0 && idx.M ? 'M' : want], rnd), [sn, an] = key.split(':').map(Number), text = Q[sn - 1].a[an - 1].t;
+    if (t < 40 && text.length > 170) continue;
+    const cl = hfClusters(text), a = cl[k], b = cl[j]; if (!a || !b) continue;
+    const muttlaq = want === 'H' && (idx.M || []).some(x => x[0] === key && x[1] === k && x[2] === j);
+    return {kind, ref: {s: sn, a: an}, text, a, b, correct: want, muttlaq, letter: b.c, options: fam.map(r => ({t: 'rule', v: r}))};
+  }
+  return null;
+}
+function ahBuild(kind, A, Q, rnd, shuf){
+  if (kind === 'nun' || kind === 'mim') return ahVerse(A, Q, kind, rnd, shuf);
+  if (kind === 'ghunna'){
+    const keys = Object.keys(A.gh), want = rnd(2) === 0;
+    for (let t = 0; t < 200; t++){
+      const key = hfPick(keys, rnd), [sn, an] = key.split(':').map(Number), text = Q[sn - 1].a[an - 1].t, cl = hfClusters(text);
+      const ks = want ? A.gh[key].split(',').map(Number) : cl.map((x, k) => k).filter(k => 'نم'.includes(cl[k].c) && /[َُِ]/.test(cl[k].m) && !/ّ/.test(cl[k].m));
+      if (!ks.length || text.length > 170) continue;
+      const k = hfPick(ks, rnd), x = cl[k];
+      return {kind, ref: {s: sn, a: an}, text, a: x, b: null, letter: x.c, correct: want ? 't' : 'f', options: [{t: 'yn', v: 't'}, {t: 'yn', v: 'f'}]};
+    }
+    return null;
+  }
+  const letters = Object.keys(A.sets).flatMap(r => [...A.sets[r]]);
+  if (kind === 'letter'){ const c = hfPick(letters, rnd); return {kind, letter: c, correct: ahLetterRule(A, c), options: AH_NOON.map(r => ({t: 'rule', v: r}))}; }
+  if (kind === 'group'){ const r = hfPick(AH_NOON, rnd); return {kind, rule: r, correct: r, options: shuf(AH_NOON).slice(0, 5).map(x => ({t: 'letters', v: x, letters: A.sets[x]}))}; }
+  const truth = rnd(2) === 0, c = hfPick(letters, rnd), real = ahLetterRule(A, c), shown = truth ? real : hfPick(AH_NOON.filter(r => r !== real), rnd);   // tf
+  return {kind: 'tf', letter: c, rule: shown, correct: truth ? 't' : 'f', options: [{t: 'tf', v: 't'}, {t: 'tf', v: 'f'}]};
+}
+/* AH:end */
+const AHKINDS = [['nun', 'Règle du nūn sākin ou du tanwīn dans un verset'], ['mim', 'Règle du mīm sākin dans un verset'], ['letter', "Règle d'une lettre (après nūn sākin / tanwīn)"], ['group', "Lettres d'une règle"], ['ghunna', 'Ghunna (nūn et mīm avec chadda)'], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
+const AH_NAME = {gh: 'الغنة · ghunna', H: 'الإظهار · idhhār', G: 'الإدغام بغنة · idghām bi-ghunna', N: 'الإدغام بغير غنة · idghām bi-ghayri ghunna', Q: 'الإقلاب · iqlāb', K: 'الإخفاء · ikhfāʾ',
+  mH: 'الإظهار الشفوي · idhhār shafawī', mK: 'الإخفاء الشفوي · ikhfāʾ shafawī', mG: 'الإدغام الشفوي · idghām shafawī'};
 const MKKINDS = [['zone', 'Zone de sortie (gorge, langue, lèvres…)'], ['same', 'Lettres du même point'], ['odd', "Trouver l'intruse"], ['halq', 'Partie de la gorge'], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
 const SFKINDS = [['pair', "Qualité d'une lettre"], ['which', "Trouver la lettre d'une qualité"], ['mnemo', 'Mots mnémotechniques du matn'], ['cond', 'Qualités conditionnelles (qalqala, līn)'], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
 const AREAGLOSS = {halq: 'gorge', lisan: 'langue', shafatan: 'lèvres', khayshum: 'cavité nasale', jawf: 'cavité buccale (voyelles longues)'};
@@ -1448,7 +1509,7 @@ const hfAttr = id => window.HURUF.attrs.find(a => a.id === id);
 const hfAttrL = id => `${hfAttr(id).ar} · ${hfAttr(id).tr}`;
 const hfLet = c => `<span class="ar" style="font-size:1.25em">${c}</span>`;
 const hfGroup = a => a.map(hfLet).join(' ');
-function hfKeyLabel(k){ const [t, v] = k.split(':'); return t === 'mk' ? `${tr('Makhārij')} · ${hfLet(v)}` : `${tr('Ṣifāt')} · ${esc(hfAttrL(v))}`; }
+function hfKeyLabel(k){ const [t, v] = k.split(':'); if (t === 'ah') return `${tr('Aḥkām')} · ${esc(AH_NAME[v] || v)}`; return t === 'mk' ? `${tr('Makhārij')} · ${hfLet(v)}` : `${tr('Ṣifāt')} · ${esc(hfAttrL(v))}`; }
 function hfStat(key, ok){ const x = hfs[key] || [0, 0]; hfs[key] = [x[0] + (ok ? 1 : 0), x[1] + (ok ? 0 : 1)]; store.set('hifz.hf', hfs);
   const y = ((ses.hf ||= {})[key] ||= [0, 0]); y[ok ? 0 : 1]++; }
 const HFNOTE = () => { const S = window.HURUF.sources, a = (x, t) => `<a href="${x.url}" target="_blank" rel="noopener">${t}</a>`;
@@ -1460,11 +1521,13 @@ function hfOpt(o){
   if (o.t === 'letter') return `<span class="ar" style="font-size:1.6rem">${o.v}</span>`;
   if (o.t === 'throat') return `<span class="ar" style="font-size:1.25rem">${o.ar}</span>`;
   if (o.t === 'attr') return esc(hfAttrL(o.v));
+  if (o.t === 'rule') return esc(AH_NAME[o.v]);
+  if (o.t === 'letters') return `<span class="ar" style="font-size:1.4rem">${[...o.letters].join(' ')}</span>`;
   if (o.t === 'yn') return o.v === 't' ? tr('Oui') : tr('Non');
   return o.v === 't' ? tr('Vrai') : tr('Faux');
 }
-function hfShow(q, stem, bigHtml, explain, stat){
-  cur.correct = q.correct; cur.stat = stat; cur.explain = explain + HFNOTE();
+function hfShow(q, stem, bigHtml, explain, stat, note = HFNOTE()){
+  cur.correct = q.correct; cur.stat = stat; cur.explain = explain + note;
   shell(`<p class="ref">${stem}</p>${bigHtml ? `<div class="ar" style="text-align:center;font-size:2.6rem;line-height:1.6">${bigHtml}</div>` : ''}
     ${q.options.map(o => `<button class="opt" data-act="opt" data-v="${o.v}">${hfOpt(o)}</button>`).join('')}<div id="fb"></div>`);
 }
@@ -1496,6 +1559,32 @@ function qCond(){
   shell(`<p class="ref">${tr('La lettre surlignée a-t-elle cette qualité ici : « {a} » ?', {a: attrAr})}</p>
     <div class="rd tj" style="font-size:${cfg.rdSize}rem">${esc(q.before)}<mark class="tjq">${esc(q.mark)}</mark>${esc(q.after)}</div>${qref(q.ref)}
     ${q.options.map(o => `<button class="opt" data-act="opt" data-v="${o.v}">${hfOpt(o)}</button>`).join('')}<div id="fb"></div>${CONDRULE()}`);
+}
+const AHNOTE = () => { const S = window.AHKAM.sources, a = (x, t) => `<a href="${x.url}" target="_blank" rel="noopener">${t}</a>`;
+  return `<p class="ref" style="margin:8px 0 0">${tr("Sources : deux articles de Wikipédia arabe et le texte d'Ibn al-Jazarī (Wikisource). Les occurrences viennent du texte du Coran, contrôlées une à une contre l'annotation du tajwīd : seuls les versets où tout concorde sont utilisés.")} ${a(S[0], 'Wikipédia (nūn)')} · ${a(S[1], 'Wikipédia (mīm)')} · ${a(S[2], 'Wikisource')}</p>`; };
+function qAhkam(){
+  const A = window.AHKAM, kinds = ['nun', 'mim', 'letter', 'group', 'ghunna', 'tf'];
+  const q = ahBuild(cfg.ahKind === 'mix' ? kinds[rnd(kinds.length)] : cfg.ahKind || 'nun', A, Q, rnd, shuffle) || ahBuild('letter', A, Q, rnd, shuffle);
+  const set = r => hfGroup([...A.sets[r]]), nm = r => `<b>${esc(AH_NAME[r])}</b>`, opts = () => q.options.map(o => `<button class="opt" data-act="opt" data-v="${o.v}">${hfOpt(o)}</button>`).join('');
+  let stem, view = '', explain, stat = 'ah:' + q.correct;
+  if (q.kind === 'nun' || q.kind === 'mim' || q.kind === 'ghunna'){
+    const t = q.text, a = q.a, b = q.b, mk = x => `<mark class="tjq">${esc(t.slice(x.s, x.e))}</mark>`;
+    view = esc(t.slice(0, a.s)) + mk(a) + (b ? esc(t.slice(a.e, b.s)) + mk(b) + esc(t.slice(b.e)) : esc(t.slice(a.e)));
+    cur.r = q.ref;
+    if (q.kind === 'ghunna'){ stem = tr('Cette lettre surlignée a-t-elle une ghunna de chadda (nūn ou mīm avec chadda) ?'); stat = 'ah:gh';
+      explain = q.correct === 't' ? tr('{l} porte une chadda : ghunna complète (2 temps).', {l: hfLet(q.letter)}) : tr('{l} porte une voyelle sans chadda : pas de ghunna de chadda.', {l: hfLet(q.letter)}); }
+    else if (q.kind === 'nun'){ stem = tr('Quelle règle pour le nūn sākin ou le tanwīn surligné, devant la lettre surlignée ?');
+      explain = `${hfLet(q.b.c)} → ${nm(q.correct)} · ${set(q.correct)}` + (q.muttlaq ? `<br>${tr("Idhhār muṭlaq : le ي ou le و est dans le même mot (دنيا، بنيان، قنوان، صنوان), pas d'idghām.")}` : ''); }
+    else { stem = tr('Quelle règle pour le mīm sākin surligné, devant la lettre surlignée ?');
+      explain = `${hfLet(q.b.c)} → ${nm(q.correct)} (${tr('ب : ikhfāʾ shafawī ; م : idghām shafawī ; les autres lettres : idhhār shafawī')})`; }
+    cur.correct = q.correct; cur.stat = stat; cur.explain = explain + AHNOTE();
+    return shell(`<p class="ref">${stem}</p><div class="rd tj" style="font-size:${cfg.rdSize}rem">${view}</div>${qref(q.ref)}${opts()}<div id="fb"></div>`);
+  }
+  if (q.kind === 'letter'){ stem = tr('Quelle règle pour cette lettre quand elle suit un nūn sākin ou un tanwīn ?'); view = q.letter; explain = `${hfLet(q.letter)} → ${nm(q.correct)} · ${set(q.correct)}`; }
+  else if (q.kind === 'group'){ stem = tr('Quelles lettres déclenchent cette règle après un nūn sākin ou un tanwīn ? {r}', {r: nm(q.rule)}); explain = `${nm(q.rule)} : ${set(q.rule)}`; stat = 'ah:' + q.rule; }
+  else { const real = ahLetterRule(A, q.letter); stem = tr('Vrai ou faux : après un nūn sākin ou un tanwīn, la lettre ci-dessous entraîne « {r} ».', {r: nm(q.rule)}); view = q.letter;
+    explain = `${q.correct === 't' ? tr('Vrai :') : tr('Faux :')} ${hfLet(q.letter)} → ${nm(real)} · ${set(real)}`; stat = 'ah:' + real; }
+  hfShow(q, stem, view, explain, stat, AHNOTE());
 }
 function qSifat(noCond){
   const H = window.HURUF, kinds = noCond ? ['pair', 'which', 'mnemo', 'tf'] : ['pair', 'which', 'mnemo', 'cond', 'tf'];
@@ -2286,7 +2375,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v27';
+const APP_VERSION = '21 oct. 2026 · v28';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
