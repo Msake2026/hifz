@@ -442,6 +442,16 @@
       E("home()"); E("go('progress')"); eq(E('[...missingKeys]'), [], L);
     }
   });
+  test('Espace admin : surveillance des e-mails (calme, attention, alerte, nom de domaine)', async () => {
+    const mk = (n, agoH) => Array.from({length: n}, (_, i) => ({id: 'u' + agoH + i, email: `u${agoH}-${i}@x.fr`, role: 'user', blocked: false, created_at: new Date(Date.now() - agoH * 36e5).toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}));
+    reset(); E("me = {user: {id: 'a', email: 'admin@x.fr'}, profile: {role: 'admin'}}");
+    for (const [users, expect, label] of [[mk(2, 3), ['✓', null], 'calme'], [mk(16, 0.2), ['⚠', 'approches'], 'attention'], [mk(26, 0.2), ['⛔', 'approches'], 'alerte']]){
+      W.__u = users; E("adm.users = window.__u; adm.detail = null; adm.q = ''; renderAdmin()"); const t = appText(); ok(t.includes('Surveillance des e-mails'), label + ' : carte'); ok(t.includes(expect[0]), label + ' : ' + expect[0]);
+      if (expect[1]) ok(t.includes(expect[1]), label + ' : message'); else ok(!t.includes('approches'), 'pas d’alerte en situation calme'); noErr('admin ' + label);
+    }
+    W.__u = mk(45, 100); E("adm.users = window.__u; renderAdmin()"); ok(/Tu as 45 comptes/.test(appText()), 'passage au nom de domaine'); ok(!appText().includes('approches'));
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); adm.users = window.__u; renderAdmin()`); eq(E('[...missingKeys]'), [], L); } E("setLang('fr'); me = null; adm.users = null");
+  });
   test('Chaque onglet s’affiche dans les 3 langues sans erreur ni « undefined »', async () => {
     for (const L of ['fr', 'en', 'ar']){
       reset(); E(`setLang('${L}')`);

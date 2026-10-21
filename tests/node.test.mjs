@@ -377,3 +377,32 @@ test('audio du plan du jour : sourates concernées, déjà téléchargées, dét
   assert.equal(auWifi({ type: 'wifi' }), true); assert.equal(auWifi({ type: 'ethernet' }), true); assert.equal(auWifi({ type: 'cellular' }), false);
   assert.equal(auWifi({ type: 'wifi', saveData: true }), false, 'mode économie de données'); assert.equal(auWifi({ effectiveType: '4g' }), false, 'type inconnu : jamais automatique'); assert.equal(auWifi(undefined), false);
 });
+
+test('surveillance des e-mails : seuils d\'alerte et passage au nom de domaine', () => {
+  const html = read('index.html'), wa = html.slice(html.indexOf('/* WA:begin'), html.indexOf('/* WA:end */'));
+  const { WA, admWatch } = new Function(wa + '; return {WA, admWatch};')(); const now = Date.UTC(2026, 9, 21, 12);
+  const mk = (n, agoH) => Array.from({ length: n }, () => ({ created_at: new Date(now - agoH * 36e5).toISOString() }));
+  let w = admWatch([], now); assert.deepEqual([w.h1, w.h24, w.total, w.level, w.domain], [0, 0, 0, 0, false]);
+  w = admWatch(mk(3, 0.5).concat(mk(5, 5), mk(10, 100)), now); assert.deepEqual([w.h1, w.h24, w.total, w.level], [3, 8, 18, 0]);
+  w = admWatch(mk(WA.HOUR_LIMIT * WA.WARN, 0.2), now); assert.equal(w.hourLevel, 1); assert.equal(w.level, 1);
+  w = admWatch(mk(WA.HOUR_LIMIT * WA.ALERT, 0.2), now); assert.equal(w.hourLevel, 2);
+  w = admWatch(mk(WA.DAY_LIMIT * WA.ALERT, 10), now); assert.equal(w.hourLevel, 0); assert.equal(w.dayLevel, 2); assert.equal(w.level, 2);
+  assert.equal(admWatch(mk(WA.DOMAIN_USERS, 500), now).domain, true); assert.equal(admWatch(mk(WA.DOMAIN_USERS - 1, 500), now).domain, false);
+  assert.equal(admWatch([{ created_at: null }], now).h24, 0, 'date absente');
+});
+
+test('confidentialité : chaque service contacté automatiquement est cité dans la page, tout nouveau service fait échouer ce test', () => {
+  const html = read('index.html'), sw = read('sw.js'), cfg = read('config.js');
+  const legal = html.slice(html.indexOf('function renderLegal'), html.indexOf('function summarize') > 0 ? html.indexOf('function summarize') : undefined);
+  // services contactés par l'application sans clic de l'utilisateur -> mot attendu dans la page de confidentialité
+  const auto = { 'supabase.co': 'Supabase', 'cdn.jsdelivr.net': 'jsDelivr', 'api.alquran.cloud': 'AlQuran Cloud', 'cdn.islamic.network': 'AlQuran Cloud', 'everyayah.com': 'everyayah.com', 'github.io': 'GitHub' };
+  for (const [host, word] of Object.entries(auto)) assert.ok(legal.includes(word), `la page de confidentialité doit citer « ${word} » (${host})`);
+  // liens que l'utilisateur ouvre lui-même (aucune donnée envoyée) : seuls ces autres hôtes sont admis dans le code
+  const linkOnly = ['www.cnil.fr', 'tanzil.net', 'alquran.cloud', '1x.ax', 'www.w3.org', 'schemas.openxmlformats.org', 'ar.wikipedia.org', 'ar.wikisource.org', 'github.com', 'resend.com', 'supabase.com', 'api.alquran.cloud'];
+  const hosts = new Set([...(html + sw + cfg).matchAll(/https?:\/\/([a-zA-Z0-9.-]+)/g)].map(m => m[1].toLowerCase()));
+  const unknown = [...hosts].filter(h => !Object.keys(auto).some(a => h === a || h.endsWith('.' + a)) && !linkOnly.includes(h) && !/^localhost|^127\./.test(h));
+  assert.deepEqual(unknown, [], 'nouveau service dans le code : ajoute-le à la page de confidentialité (renderLegal) puis à ce test');
+  // données collectées : la page doit les décrire
+  for (const w of ['adresse e-mail', 'progression', 'Rappels', 'notifications', 'région', 'audio']) assert.ok(new RegExp(w, 'i').test(legal) || new RegExp(w, 'i').test(html.slice(html.indexOf('Stockage sur ton appareil'), html.indexOf('Stockage sur ton appareil') + 900)), 'à décrire dans la page : ' + w);
+  assert.match(cfg, /contact:\s*'[^']+@[^']+'/); assert.doesNotMatch(cfg, /region:\s*''/, 'région Supabase renseignée');
+});

@@ -2484,7 +2484,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v32';
+const APP_VERSION = '21 oct. 2026 · v33';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2939,7 +2939,7 @@ function renderLegal(){
     ${sec('Qui reçoit les données ?', [tr("L'administrateur du site, et les services techniques utilisés : Supabase (comptes et base de données{region}), GitHub (hébergement du site), jsDelivr (bibliothèque du site), AlQuran Cloud (texte du Coran et audio) et, si tu télécharges de l'audio hors ligne, everyayah.com (fichiers audio). Certains de ces services sont situés hors de l'Union européenne.", {region})])}
     ${sec('Combien de temps ?', [tr("Tant que ton compte existe. Tu peux le supprimer à tout moment (Réglages, puis Mon compte) : ton compte et ta progression enregistrée sont alors effacés.")])}
     ${sec('Tes droits', [tr("Tu peux demander l'accès à tes données, leur rectification, leur effacement, leur portabilité, la limitation de leur traitement, ou t'opposer à certains usages. Tu peux déjà supprimer ton compte et exporter ta progression toi-même dans l'application ; pour toute autre demande, écris à {contact}. Tu peux aussi saisir la CNIL : {cnil}.", {contact, cnil})])}
-    ${sec('Stockage sur ton appareil', [tr("Ce site n'utilise ni cookies publicitaires ni outil de mesure d'audience. Il garde sur ton appareil (stockage local et cache du navigateur) ta session, ta progression et les fichiers de l'application pour fonctionner hors ligne."),
+    ${sec('Stockage sur ton appareil', [tr("Ce site n'utilise ni cookies publicitaires ni outil de mesure d'audience. Il garde sur ton appareil (stockage local et cache du navigateur) ta session, ta progression, les fichiers de l'application pour fonctionner hors ligne et, si tu les télécharges, les fichiers audio des sourates choisies."),
       tr("Les photos et fichiers que tu importes pour ajouter un matn sont lus directement sur ton appareil : ils ne sont pas envoyés à un serveur.")])}
     ${sec('Sécurité', [tr("Les échanges sont chiffrés (HTTPS) et l'accès aux données est limité par des règles de la base de données : chacun ne voit que ses propres données, seul l'administrateur voit l'ensemble.")])}
     ${sec("Conditions d'utilisation", [tr("Hifz est un outil d'aide à la mémorisation, fourni gratuitement et sans garantie. Les textes (Coran, moutoun) viennent de sources publiques citées dans l'application et peuvent contenir des erreurs : vérifie toujours avec ton mushaf et ton enseignant. Tu es responsable de l'usage de ton compte et de la confidentialité de ton mot de passe. Un compte peut être suspendu en cas d'abus.")])}
@@ -2961,6 +2961,24 @@ async function adminLoad(){
   adm.msg = '';
   try { const {data, error} = await sb.rpc('admin_users'); if (error) throw error; adm.users = data; } catch (e){ adm.msg = friendly(e); }
   renderAdmin();
+}
+/* WA:begin — surveillance des e-mails d'inscription (fonction pure, testée en Node). Seuils indicatifs : limite d'envoi de Supabase 30 e-mails/heure (valeur par défaut),
+   plafond d'un compte Gmail ≈ 500 e-mails/jour (sources tierces) ; seules les inscriptions sont comptées (pas les « mot de passe oublié » ni les renvois). */
+const WA = {HOUR_LIMIT: 30, DAY_LIMIT: 500, WARN: 0.5, ALERT: 0.8, DOMAIN_USERS: 40};
+function admWatch(users, now){
+  const t = u => Date.parse(u.created_at) || 0, h1 = users.filter(u => t(u) > now - 36e5).length, h24 = users.filter(u => t(u) > now - 864e5).length;
+  const lvl = (n, lim) => n >= lim * WA.ALERT ? 2 : n >= lim * WA.WARN ? 1 : 0;
+  return {h1, h24, total: users.length, hourLevel: lvl(h1, WA.HOUR_LIMIT), dayLevel: lvl(h24, WA.DAY_LIMIT), level: Math.max(lvl(h1, WA.HOUR_LIMIT), lvl(h24, WA.DAY_LIMIT)), domain: users.length >= WA.DOMAIN_USERS};
+}
+/* WA:end */
+function watchHtml(){
+  if (!adm.users) return '';
+  const w = admWatch(adm.users, Date.now()), mark = ['✓', '⚠', '⛔'][w.level], col = ['', 'var(--gold)', 'var(--ko)'][w.level];
+  return `<div class="card"><h2>${tr('Surveillance des e-mails')}</h2>
+    <p class="sub" style="margin:0 0 6px;${col ? 'color:' + col : ''}"><b>${mark}</b> ${trp(w.h1, '{n} inscription cette heure|{n} inscriptions cette heure')} · ${trp(w.h24, '{n} inscription sur 24 h|{n} inscriptions sur 24 h')}</p>
+    <p class="ref" style="margin:0">${tr("Repères : limite d'envoi de Supabase (30 e-mails par heure par défaut) et plafond d'un compte Gmail (environ 500 e-mails par jour). Seules les inscriptions sont comptées : les mots de passe oubliés et les renvois s'y ajoutent.")}</p>
+    ${w.level ? `<p class="fb ${w.level > 1 ? 'ko' : 'mid'}" style="margin:8px 0 0">${tr("Tu approches des limites d'envoi : prévois un nom de domaine avec Resend (supabase/README.md) avant d'inviter beaucoup de monde.")}</p>` : ''}
+    ${w.domain ? `<p class="ref" style="margin:8px 0 0">${tr("Tu as {n} comptes : c'est le moment de prévoir un nom de domaine avec Resend pour que les e-mails restent fiables.", {n: w.total})}</p>` : ''}</div>`;
 }
 function renderAdmin(){
   setNav(false); screen = 'admin';
@@ -2985,6 +3003,7 @@ function renderAdmin(){
     <h1 style="margin-top:8px">${tr('Espace admin')}</h1>
     <p class="sub">${adm.users ? `${trp(adm.users.length, '{n} compte|{n} comptes')} · ${trp(active, '{n} actif sur 7 jours|{n} actifs sur 7 jours')}` : tr('Chargement…')}</p>
     ${adm.msg ? `<div class="fb ko">${esc(adm.msg)}</div>` : ''}
+    ${watchHtml()}
     <div class="row" style="margin-bottom:10px"><input type="text" id="adm-q" placeholder="${tr('Rechercher un e-mail')}" value="${esc(adm.q)}" autocomplete="off"><button data-act="adm-refresh" style="flex:0 0 auto">🔄 ${tr('Actualiser')}</button></div>
     <div class="card">${adm.users ? (list.map(row).join('') || `<p class="sub" style="margin:0">${tr('Aucun compte.')}</p>`) : ''}</div>`;
   const q = $('adm-q'); if (q) q.oninput = () => { adm.q = q.value; const pos = q.selectionStart; renderAdmin(); const n = $('adm-q'); n.focus(); n.setSelectionRange(pos, pos); };

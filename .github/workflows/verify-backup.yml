@@ -1,11 +1,14 @@
 name: Vérifier la dernière sauvegarde
-# Déchiffre la dernière sauvegarde avec BACKUP_PASSPHRASE et contrôle son contenu.
+# Chaque dimanche (et sur demande) : déchiffre la dernière sauvegarde avec BACKUP_PASSPHRASE et contrôle son contenu ; ouvre un ticket en cas de problème.
 # Le journal est public : il n'affiche que des noms de fichiers et des nombres de lignes, jamais de données.
 on:
+  schedule:
+    - cron: '12 7 * * 0'
   workflow_dispatch:
 permissions:
   actions: read
   contents: read
+  issues: write
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -37,3 +40,15 @@ jobs:
           done
           echo "comptes (id/e-mail) : $(($(wc -l < "$D/auth_users_ids.csv") - 1))"
           echo "✓ sauvegarde lisible et complète"
+      - name: Ouvrir un ticket si le contrôle échoue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "Vérification de la sauvegarde : échec"
+        run: |
+          gh label create surveillance --color B60205 --description "Alerte automatique (sauvegarde, contrôles)" --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
+          N=$(gh issue list --repo "$GITHUB_REPOSITORY" --label surveillance --state open --json number --jq 'length')
+          if [ "$N" = "0" ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --label surveillance --title "$TITLE" \
+              --body "Le contrôle automatique « $TITLE » a échoué : $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. Détails dans le journal de cette exécution (supabase/README.md, section sauvegarde)."
+          fi

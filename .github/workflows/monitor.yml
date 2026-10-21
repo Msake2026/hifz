@@ -1,0 +1,44 @@
+name: Surveillance
+# Chaque jour : la dernière sauvegarde réussie doit avoir moins de 36 heures. Sinon, un ticket « surveillance » est ouvert (GitHub t'écrit alors par e-mail).
+# « simulate » : lance volontairement l'échec pour tester l'alerte.
+on:
+  schedule:
+    - cron: '41 6 * * *'
+  workflow_dispatch:
+    inputs:
+      simulate:
+        description: "Simuler un échec pour tester l'alerte"
+        type: boolean
+        default: false
+permissions:
+  actions: read
+  contents: read
+  issues: write
+jobs:
+  fraicheur:
+    runs-on: ubuntu-latest
+    steps:
+      - name: La dernière sauvegarde réussie est récente
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIMULATE: ${{ inputs.simulate }}
+        run: |
+          set -euo pipefail
+          [ "${SIMULATE:-false}" != "true" ] || { echo "::error::échec simulé"; exit 1; }
+          T=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow backup.yml --status success --limit 1 --json createdAt --jq '.[0].createdAt // empty')
+          [ -n "$T" ] || { echo "::error::aucune sauvegarde réussie"; exit 1; }
+          AGE=$(( ( $(date -u +%s) - $(date -u -d "$T" +%s) ) / 3600 ))
+          echo "dernière sauvegarde réussie : $T (il y a $AGE h)"
+          [ "$AGE" -le 36 ] || { echo "::error::dernière sauvegarde trop ancienne ($AGE h)"; exit 1; }
+      - name: Ouvrir un ticket si le contrôle échoue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "Sauvegarde de la base : trop ancienne ou absente"
+        run: |
+          gh label create surveillance --color B60205 --description "Alerte automatique (sauvegarde, contrôles)" --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
+          N=$(gh issue list --repo "$GITHUB_REPOSITORY" --label surveillance --state open --json number --jq 'length')
+          if [ "$N" = "0" ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --label surveillance --title "$TITLE" \
+              --body "Le contrôle automatique « $TITLE » a échoué : $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. Détails dans le journal de cette exécution (supabase/README.md, section sauvegarde)."
+          fi
