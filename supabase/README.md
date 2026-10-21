@@ -25,3 +25,17 @@ Les rappels envoient une notification chaque jour à l'heure choisie, **seulemen
 La clé publique des notifications est dans `config.js` (`vapidPublicKey`). Pour changer de clés : génère-en d'autres, mets à jour `config.js` et les secrets, puis demande aux utilisateurs de réactiver les rappels.
 
 **Mise à jour (2e rappel facultatif)** : si tu avais déjà lancé `push.sql`, relance-le (il ajoute les colonnes `remind_time2`/`last_sent2` et remplace `push_subscribe`), puis redéploie la fonction `send-reminders` avec le nouveau `index.ts`.
+
+## Sauvegarde automatique de la base
+
+Le plan gratuit de Supabase ne fait pas de sauvegarde que tu puisses restaurer toi-même. Le dépôt contient donc `.github/workflows/backup.yml` : chaque nuit (et sur demande), GitHub exporte les tables du site (`profiles`, `user_data`, `push_subs`…) et la correspondance id ↔ e-mail des comptes (sans mots de passe), puis **chiffre** le tout. Le dépôt étant public, une sauvegarde non chiffrée serait lisible par tous : ne retire jamais le chiffrement.
+
+Mise en route (une fois) :
+1. Supabase → **Connect** → onglet **Session pooler** (adresse compatible IPv4, nécessaire pour GitHub) : copie l'URI et remplace `[YOUR-PASSWORD]` par le mot de passe de la base (Project Settings → Database → Reset database password si tu l'as perdu).
+2. GitHub → dépôt → **Settings → Secrets and variables → Actions → New repository secret** : crée `SUPABASE_DB_URL` (cette URI) et `BACKUP_PASSPHRASE` (phrase secrète d'au moins 20 caractères, garde-la aussi dans ton gestionnaire de mots de passe : sans elle la sauvegarde est illisible).
+3. Onglet **Actions → Sauvegarde de la base → Run workflow** pour un premier essai. Un fichier `sauvegarde-chiffree` apparaît dans la page de l'exécution (conservé 30 jours ; télécharge-en un de temps en temps ailleurs).
+
+Restaurer : `gpg -d hifz-backup-….tar.gz.gpg | tar xz`, puis, dans un projet neuf, exécuter `public.sql` dans le SQL Editor (les messages « already exists » sont sans gravité), puis relancer `schema.sql` et `push.sql` (ils peuvent être relancés sans risque) pour recréer les déclencheurs sur les comptes. Les comptes eux-mêmes (mots de passe) restent gérés par Supabase : si le projet est perdu, les personnes recréent leur compte, et `auth_users_ids.csv` permet de rattacher leurs anciennes données à leur e-mail.
+
+GitHub désactive les tâches planifiées d'un dépôt sans activité pendant 60 jours : un commit ou un lancement manuel les réactive.
+

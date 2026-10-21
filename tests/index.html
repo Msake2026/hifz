@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hifz – tests</title>
+<style>
+  body{font:15px/1.5 system-ui,sans-serif;margin:16px auto;max-width:760px;padding:0 16px}
+  .ok{color:#1a7f37}.ko{color:#c0392b;font-weight:600}.mut{color:#777}
+  li{margin:2px 0;list-style:none}pre{white-space:pre-wrap;margin:2px 0 6px 20px;font-size:13px}
+  iframe{position:fixed;right:0;bottom:0;width:390px;height:520px;border:1px solid #ccc;background:#fff;opacity:.0001;pointer-events:none}
+</style></head><body>
+<h1>Tests Hifz</h1>
+<p class="mut">Ouvre cette page depuis <code>http://localhost</code> (ex. <code>python3 -m http.server 8765</code> dans le dossier <code>hifz</code>, puis <code>/tests/</code>).
+Les tests pilotent la vraie application dans un cadre invisible, avec de vrais clics. Ta progression locale est sauvegardée puis restaurée.</p>
+<p id="sum"><b>En cours…</b></p><ul id="out"></ul>
+<script src="tests.js"></script>
+</body></html>

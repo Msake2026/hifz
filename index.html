@@ -209,6 +209,7 @@ input[type=email],input[type=password],input[type=time]{direction:ltr;text-align
 </style>
 </head>
 <body>
+<script src="quran.js"></script>
 <script src="moutoun.js"></script>
 <script src="mutashabihat.js"></script>
 <script src="config.js"></script>
@@ -294,23 +295,41 @@ let OFF = [], PAGE_LEN = [], PAGE_JUZ = [];
 const isQ = s => typeof s === 'number';
 const book = s => isQ(s) ? Q[s - 1] : MT[s];
 const pk = k => { const [s, a] = k.split(':'); return {s: /^\d+$/.test(s) ? +s : s, a: +a}; };
-const CACHE_KEY = 'hifz.quran.v2';
+const CACHE_KEY = 'hifz.quran.v2'; // ancien cache du navigateur (remplacé par quran.js) : supprimé pour libérer de la place
+const quranOk = q => Array.isArray(q) && q.length === 114 && q.reduce((n, s) => n + s.a.length, 0) === 6236 && q.every((s, i) => s.n === i + 1 && s.a.every(v => v.t && v.p >= 1 && v.p <= 604));
+async function sha256hex(txt){
+  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+  return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+async function bundledQuran(){ // texte embarqué (quran.js, généré par tools/build_quran.py) : contrôlé avant usage
+  const B = window.QURAN; if (!B) return null;
+  const q = B.surahs.map(s => ({n: s.n, ar: s.ar, en: s.en, a: s.a.map(([t, j, p]) => ({t, j, p}))}));
+  if (!quranOk(q)) return null;
+  if (window.crypto && crypto.subtle){ // indisponible hors HTTPS/localhost : le contrôle de structure ci-dessus reste appliqué
+    try { if (await sha256hex(q.flatMap(s => s.a.map(v => v.t)).join('\n')) !== B.sha256) return null; } catch {}
+  }
+  return q;
+}
 async function loadQuran(){
-  Q = store.get(CACHE_KEY, null);
-  if (!(Q && Q.length === 114)){
-    const r = await fetch('https://api.alquran.cloud/v1/quran/quran-uthmani');
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const surahs = (await r.json()).data.surahs;
-    Q = surahs.map(s => ({
-      n: s.number, ar: s.name, en: s.englishName,
-      a: s.ayahs.map((v, i) => {
-        let t = v.text.replace(/﻿/g, '').trim();
-        // l'API préfixe la basmala au verset 1 (sauf sourates 1 et 9) : on la retire
-        if (i === 0 && s.number !== 1 && s.number !== 9) t = t.split(/\s+/).slice(4).join(' ');
-        return {t, j: v.juz, p: v.page};
-      })
-    }));
-    store.set(CACHE_KEY, Q);
+  Q = await bundledQuran();
+  if (Q) try { localStorage.removeItem(CACHE_KEY); } catch {}
+  else { // secours : texte embarqué absent ou altéré → cache du navigateur, puis api.alquran.cloud
+    Q = store.get(CACHE_KEY, null);
+    if (!quranOk(Q)){
+      const r = await fetch('https://api.alquran.cloud/v1/quran/quran-uthmani');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const surahs = (await r.json()).data.surahs;
+      Q = surahs.map(s => ({
+        n: s.number, ar: s.name, en: s.englishName,
+        a: s.ayahs.map((v, i) => {
+          let t = v.text.replace(/\ufeff/g, '').trim();
+          if (i === 0 && s.number !== 1 && s.number !== 9) t = t.split(/\s+/).slice(4).join(' ');
+          return {t, j: v.juz, p: v.page};
+        })
+      }));
+      if (!quranOk(Q)) throw new Error('Coran incomplet');
+      store.set(CACHE_KEY, Q);
+    }
   }
   let n = 0; OFF = Q.map(s => { const o = n; n += s.a.length; return o; });
   PAGE_LEN = new Array(605).fill(0); PAGE_JUZ = new Array(605).fill(0);
@@ -890,7 +909,7 @@ function tabSettings(){
     <button data-act="legal">${tr('Lire la confidentialité et les conditions')}</button></div>
 
   <div class="card"><h2>${tr('Sources')}</h2>
-    <p class="ref" style="margin:0">${tr("Coran : texte uthmani du projet Tanzil via api.alquran.cloud (lecture de Ḥafṣ). Audio : cdn.islamic.network (AlQuran Cloud). Moutoun : Wikisource arabe et hadith-api (voir l'écran Réviser pour chaque matn). Versets proches : calculés automatiquement.")}</p>
+    <p class="ref" style="margin:0">${tr("Coran : texte uthmani du projet Tanzil, embarqué dans le site et vérifié (lecture de Ḥafṣ). Audio : cdn.islamic.network (AlQuran Cloud). Moutoun : Wikisource arabe et hadith-api (voir l'écran Réviser pour chaque matn). Versets proches : calculés automatiquement.")}</p>
   </div>`;
 }
 const weakHtml = weak => weak.length ? `<h2 style="margin-top:14px">${tr('À retravailler')}</h2>` + weak.map(([s, r, n]) =>
@@ -1821,7 +1840,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v16';
+const APP_VERSION = '21 oct. 2026 · v17';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

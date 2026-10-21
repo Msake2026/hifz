@@ -1,6 +1,6 @@
 // Service worker Hifz : l'application fonctionne hors ligne, mais NE MET JAMAIS EN CACHE les échanges de compte (Supabase).
-const SHELL = 'hifz-shell-v5', RUNTIME = 'hifz-runtime-v5';
-const FILES = ['./', './index.html', './config.js', './i18n.js', './manifest.webmanifest', './icon.svg', './moutoun.js', './mutashabihat.js',
+const SHELL = 'hifz-shell-v6', RUNTIME = 'hifz-runtime-v6';
+const FILES = ['./', './index.html', './config.js', './i18n.js', './manifest.webmanifest', './icon.svg', './quran.js', './moutoun.js', './mutashabihat.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
   './fonts/fonts.css', './fonts/amiri-quran-arabic.woff2', './fonts/amiri-quran-latin.woff2', './fonts/cormorant-garamond-latin.woff2', './fonts/cormorant-garamond-latin-ext.woff2',
   './fonts/inter-latin.woff2', './fonts/inter-latin-ext.woff2', './fonts/noto-sans-arabic-arabic.woff2'];
