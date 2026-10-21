@@ -575,7 +575,7 @@ function tabHome(){
 }
 
 /* -- Plan de mémorisation : sabaq (nouveau), sabqi (révision récente), manzil (révision ancienne) -- */
-const PLAN_AMT = ['v3', 'v5', 'v10', 'v15', 'p0.25', 'p0.5', 'p1'];
+const PLAN_AMT = ['v3', 'v5', 'v10', 'v16', 'p0.25', 'p0.5', 'p1'];
 const amtLabel = a => a[0] === 'v' ? tr('{n} versets', {n: a.slice(1)}) : ({'p0.25': tr('¼ page'), 'p0.5': tr('½ page'), 'p1': tr('1 page')})[a];
 let pdraft = null, planEditing = false, sab = null;
 const dayKey = d => today(d || new Date());
@@ -1821,7 +1821,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v15';
+const APP_VERSION = '21 oct. 2026 · v16';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
