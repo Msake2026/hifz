@@ -540,7 +540,9 @@ window.I18N = {
 "Vider la liste": "Clear the list",
 "{n} ligne au total.|{n} lignes au total.": "{n} line in total.|{n} lines in total.",
 "à": "to",
-"photo": "photo"
+"photo": "photo",
+"Vérifie que le texte est bien dans l'ordre du matn, de la première à la dernière ligne, surtout entre les parties importées : rien ne doit manquer ni se répéter.": "Check that the text is in the right order of the matn, from the first to the last line, especially between the imported parts: nothing should be missing or repeated.",
+"Tu as importé ce texte depuis des fichiers ou des photos : as-tu vérifié que les vers sont dans le bon ordre ?": "You imported this text from files or photos: have you checked that the verses are in the right order?"
 },
 "ar": {
 "(partie {a}/{b})": "(الجزء {a}/{b})",
@@ -1082,6 +1084,8 @@ window.I18N = {
 "Vider la liste": "إفراغ القائمة",
 "{n} ligne au total.|{n} lignes au total.": "{n} سطر في المجموع.|{n} أسطر في المجموع.",
 "à": "إلى",
-"photo": "صورة"
+"photo": "صورة",
+"Vérifie que le texte est bien dans l'ordre du matn, de la première à la dernière ligne, surtout entre les parties importées : rien ne doit manquer ni se répéter.": "تحقّق من أن النص مرتّب بحسب ترتيب المتن، من السطر الأول إلى الأخير، خاصةً بين الأجزاء المستوردة: يجب ألا ينقص شيء ولا يتكرّر.",
+"Tu as importé ce texte depuis des fichiers ou des photos : as-tu vérifié que les vers sont dans le bon ordre ?": "استوردت هذا النص من ملفات أو صور: هل تحقّقت من أن الأبيات في الترتيب الصحيح؟"
 }
 };

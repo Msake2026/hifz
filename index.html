@@ -1344,7 +1344,8 @@ const CM = {img: 15, doc: 20, txt: 2, pdfPages: 40, scanPages: 12, lines: 3000, 
 let cmQueue = [], cmHist = [];
 const mb = n => (n / 1048576).toFixed(1);
 const absUrl = p => new URL(p, location.href).href;
-const cmStatus = m => { const e = $('cm-status'); if (e) e.textContent = m || ''; };
+const cmStatus = (m, warn) => { const e = $('cm-status'); if (e){ e.textContent = m || ''; e.className = warn ? 'fb mid' : 'ref'; e.style.margin = warn ? '8px 0 0' : '6px 0 0'; e.style.whiteSpace = 'pre-line'; } };
+let cmImported = false; // le texte vient d'un import : on rappelle de vérifier l'ordre avant d'enregistrer
 const cmBusy = b => document.querySelectorAll('[data-act^="cm-"]').forEach(x => { x.disabled = b; });
 const cleanText = t => t.replace(/[\u200e\u200f\ufeff]/g, '').split('\n').map(l => l.replace(/[ \t]+/g, ' ').trim()).filter(Boolean).join('\n');
 async function imgToCanvas(file, max){
@@ -1469,6 +1470,7 @@ function appendMatnText(text, name){ // ajoute la partie à la suite du texte, d
   const ta = $('cm-text'), old = ta.value.trim(), have = old ? old.split('\n').length : 0, add = text.split('\n').length;
   if (have + add > CM.lines) throw new Error(tr('Ce matn devient trop long ({n} lignes, maximum {m}). Enregistre-le, puis crée un second matn pour la suite.', {n: have + add, m: CM.lines}));
   cmHist.push(ta.value); if (cmHist.length > 30) cmHist.shift();
+  cmImported = true;
   ta.value = (old ? old + '\n' : '') + text;
   const ti = $('cm-title'); if (ti && !ti.value.trim() && name) ti.value = name.replace(/\.[^.]+$/, '');
   return {add, total: have + add};
@@ -1485,7 +1487,8 @@ async function runQueue(){
       catch (e){ cmStatus(tr("Import arrêté à « {name} » : {msg}", {name: cmName(f), msg: e && e.message ? e.message : tr('Lecture impossible.')}) + (done ? ' ' + tr('Les parties précédentes ont été ajoutées.') : '')); return; }
       cmQueue.shift(); done++; renderQueue();
     }
-    cmStatus(tr("Texte lu : vérifie-le et corrige-le avant d'enregistrer.") + (last ? ' ' + trp(last.total, '{n} ligne au total.|{n} lignes au total.') : ''));
+    cmStatus(tr("Texte lu : vérifie-le et corrige-le avant d'enregistrer.") + (last ? ' ' + trp(last.total, '{n} ligne au total.|{n} lignes au total.') : '')
+      + '\n⚠️ ' + tr("Vérifie que le texte est bien dans l'ordre du matn, de la première à la dernière ligne, surtout entre les parties importées : rien ne doit manquer ni se répéter."), true);
   } finally { cmBusy(false); renderQueue(); }
 }
 
@@ -1494,6 +1497,8 @@ function addCustom(){
   const title = $('cm-title').value.trim(), kind = $('cm-kind').value;
   const lines = $('cm-text').value.split('\n').map(s => s.trim()).filter(Boolean);
   if (!title || !lines.length) return alert(tr('Indique un titre et colle le texte.'));
+  if (cmImported && !confirm(tr('Tu as importé ce texte depuis des fichiers ou des photos : as-tu vérifié que les vers sont dans le bon ordre ?'))) return;
+  cmImported = false;
   const a = lines.map(l => {
     if (kind === 'poem'){
       const parts = l.split(/\s*(?:\*|\/\/|\\\\)\s*/).map(x => x.trim()).filter(Boolean);
@@ -1811,7 +1816,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v11';
+const APP_VERSION = '21 oct. 2026 · v12';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
