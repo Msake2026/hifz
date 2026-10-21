@@ -319,3 +319,28 @@ test('data/ahkam.js : ensembles de lettres cohérents, occurrences conformes à 
   }
   for (const r of ['nunH', 'nunG', 'nunN', 'nunQ', 'nunK', 'mimmH', 'mimmK', 'mimmG', 'ghunnat', 'ghunnaf']) assert.ok(seen[r], 'règle jamais tirée : ' + r);
 });
+
+test('madd : type déduit du texte coïncide avec la marque de la source (n, p, m, o) et questions valides', () => {
+  const html = read('index.html'); const code = ['/* TJ:begin', '/* HF:begin', '/* MD:begin'].map(m => html.slice(html.indexOf(m), html.indexOf(m.replace(':begin', ':end') + ' */'))).join('\n');
+  const esc = t => String(t);
+  const { tjSegs, tjMulti, tjParts, mdKind, mdBuild, MD_CODE } = new Function('esc', code + '; return {tjSegs, tjMulti, tjParts, mdKind, mdBuild, MD_CODE};')(esc);
+  const w = {}; new Function('window', read('data/tajweed.js'))(w); const T = w.QX.tajweed.s;
+  let spans = 0, ok = 0; const types = {};
+  T.forEach(sur => sur.forEach(raw => { const segs = tjSegs(raw); segs.forEach((x, i) => { if (x.c && 'npmo'.includes(x.c)) { spans++; const r = mdKind(x.c, segs.slice(i + 1).map(y => y.t).join('')); if (r) { ok++; types[r.type] = (types[r.type] || 0) + 1; } } }); }));
+  assert.ok(ok / spans > 0.99, 'part des parties dont le type concorde avec la source : ' + ok / spans);
+  for (const t of ['tabii', 'muttasil', 'munfasil', 'lazim', 'arid']) assert.ok(types[t] > 50, 'type présent : ' + t + ' ' + types[t]);
+  // la durée / le code de chaque type correspond à la légende : n=2, o=4-5, m=6, p=2-4-6
+  assert.deepEqual(MD_CODE, { tabii: 'n', muttasil: 'o', munfasil: 'o', lazim: 'm', arid: 'p' });
+  // cas connus : 2:5 « ٱلْمُفْلِحُونَ » etc. : madd muttaṣil dans « جَآءَ », munfaṣil dans « قَالُوٓا۟ إِنَّمَا », lāzim dans « ٱلضَّآلِّينَ », ʿāriḍ en fin de verset
+  const kinds = (c, after) => (mdKind(c, after) || {}).type;
+  assert.equal(kinds('o', 'ءَ ٱلْحَقُّ'), 'muttasil'); assert.equal(kinds('o', 'ا۟ إِنَّمَا'), 'munfasil'); assert.equal(kinds('m', 'لِّينَ'), 'lazim'); assert.equal(kinds('p', 'نِ'), 'arid'); assert.equal(kinds('n', 'لِمِينَ وَ'), 'tabii');
+  assert.equal(mdKind('o', 'لِمِينَ وَ'), null, 'incohérent avec la source : jamais posé'); assert.equal(mdKind('m', ''), null, 'mukaṭṭaʿāt : non tranché');
+  let seed = 9; const rnd = n => (seed = (seed * 16807) % 2147483647) % n, shuf = a => a.slice().sort(() => rnd(3) - 1), seen = {};
+  for (let i = 0; i < 600; i++) {
+    const q = mdBuild('type', T, rnd, shuf); assert.ok(q); seen[q.type] = 1;
+    const x = q.segs[q.pick]; assert.equal(MD_CODE[q.type], x.c); const r = mdKind(x.c, q.segs.slice(q.pick + 1).map(y => y.t).join('')); assert.equal(r.type, q.type);
+    const pieces = tjMulti(q.segs, [q.pick]); assert.equal(pieces.map(p => p.t).join(''), q.segs.map(p => p.t).join('')); assert.equal(pieces.filter(p => p.k).length >= 1, true);
+    assert.ok(tjParts(pieces).includes('<mark'));
+  }
+  assert.deepEqual(Object.keys(seen).sort(), ['arid', 'lazim', 'munfasil', 'muttasil', 'tabii']);
+});

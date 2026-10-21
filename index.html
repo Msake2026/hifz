@@ -346,7 +346,7 @@ async function loadQuran(){
 
 /* ---------- état persistant ---------- */
 const DEF = {mode: 'mix', scope: {type: 'surah', from: 78, to: 114}, n: 10, input: 'recite', level: 40,
-  corr: 'standard', tjKind: 'rule', mkKind: 'zone', sfKind: 'pair', ahKind: 'nun', lastMemo: 'mix', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
+  corr: 'standard', tjKind: 'rule', mkKind: 'zone', sfKind: 'pair', ahKind: 'nun', mdKind: 'type', lastMemo: 'mix', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
   lang: ['fr', 'en', 'ar'].includes((navigator.language || '').slice(0, 2)) ? navigator.language.slice(0, 2) : 'fr'};
 const stored = store.get('hifz.cfg', {});
 let cfg = Object.assign({}, DEF, stored);
@@ -495,6 +495,7 @@ const MODES = [
   ['makharij','Makhārij (points de sortie)','Reconnais d\'où sortent les lettres'],
   ['sifat',  'Ṣifāt (qualités des lettres)','Reconnais les qualités des lettres'],
   ['ahkam',  'Aḥkām (nūn, mīm, tanwīn)','Idhhār, idghām, iqlāb, ikhfāʾ…'],
+  ['madd',   'Madd (prolongations)','Reconnais le type de madd'],
   ['cont',   'Récitation continue','Un passage entier d\'une traite'],
   ['half',   'Demi-vers',          'Complète la 2e moitié', 'm'],
   ['phrase', 'Phrase suivante',    'Prose : complète la phrase suivante', 'm']
@@ -599,6 +600,7 @@ function syncCfg(){
   if ($('stjk')) cfg.tjKind = v('stjk');
   if ($('smkk')) cfg.mkKind = v('smkk');
   if ($('sahk')) cfg.ahKind = v('sahk');
+  if ($('smdk')) cfg.mdKind = v('smdk');
   if ($('ssfk')) cfg.sfKind = v('ssfk');
   if ($('scont')) cfg.contLen = +v('scont');
   if ($('send')) cfg.endLen = +v('send');
@@ -651,7 +653,7 @@ function tabHome(){
 
   <div class="card"><h2>${tr('Ma série')}</h2>
     <div class="sumline"><span>${cfg.scope.type === 'matn' ? '📜 ' + tr('Moutoun') : '📖 ' + tr('Coran')}</span><span>${esc(scopeLabel(cfg.scope))}</span>
-      <span>${esc(modeTitle(cfg.mode))}</span>${cfg.mode === 'tajweed' ? `<span>${tr((TJKINDS.find(k => k[0] === cfg.tjKind) || TJKINDS[0])[1])}</span>` : cfg.mode === 'ahkam' ? `<span>${tr((AHKINDS.find(k => k[0] === cfg.ahKind) || AHKINDS[0])[1])}</span>` : cfg.mode === 'makharij' ? `<span>${tr((MKKINDS.find(k => k[0] === cfg.mkKind) || MKKINDS[0])[1])}</span>` : cfg.mode === 'sifat' ? `<span>${tr((SFKINDS.find(k => k[0] === cfg.sfKind) || SFKINDS[0])[1])}</span>` : ''}<span>${trp(cfg.n, '{n} question|{n} questions')}</span>${(MODE_OPTS[cfg.mode] || {}).input ? `<span>${tr(INPUTS[cfg.input] || '')}</span>` : ''}</div>
+      <span>${esc(modeTitle(cfg.mode))}</span>${cfg.mode === 'tajweed' ? `<span>${tr((TJKINDS.find(k => k[0] === cfg.tjKind) || TJKINDS[0])[1])}</span>` : cfg.mode === 'madd' ? `<span>${tr((MDKINDS.find(k => k[0] === cfg.mdKind) || MDKINDS[0])[1])}</span>` : cfg.mode === 'ahkam' ? `<span>${tr((AHKINDS.find(k => k[0] === cfg.ahKind) || AHKINDS[0])[1])}</span>` : cfg.mode === 'makharij' ? `<span>${tr((MKKINDS.find(k => k[0] === cfg.mkKind) || MKKINDS[0])[1])}</span>` : cfg.mode === 'sifat' ? `<span>${tr((SFKINDS.find(k => k[0] === cfg.sfKind) || SFKINDS[0])[1])}</span>` : ''}<span>${trp(cfg.n, '{n} question|{n} questions')}</span>${(MODE_OPTS[cfg.mode] || {}).input ? `<span>${tr(INPUTS[cfg.input] || '')}</span>` : ''}</div>
     <button class="pri big" data-act="start">${tr('Commencer')}</button>
     <div class="row" style="margin-top:8px"><button data-act="tab" data-v="train">${tr('Modifier')}</button><button data-act="lsopen">🎧 ${tr('Écouter')}</button></div>
   </div>
@@ -813,9 +815,10 @@ function tabPlan(){
 /* options utiles pour chaque exercice (n = nombre de questions : toujours) ; q = Coran seulement */
 const MODE_OPTS = {
   mix: {level: 1, end: 'q', beg: 'q', input: 1}, next: {input: 1}, cloze: {level: 1, input: 1}, which: {}, mcq: {}, mutash: {}, start: {input: 1},
-  order: {}, tajweed: {tj: 1}, ahkam: {ah: 1}, makharij: {mk: 1}, sifat: {sf: 1}, end: {end: 'q', input: 1}, link: {end: 'q', beg: 'q', input: 1}, cont: {cont: 1, input: 1}, half: {input: 1}, phrase: {input: 1}
+  order: {}, tajweed: {tj: 1}, ahkam: {ah: 1}, madd: {md: 1}, makharij: {mk: 1}, sifat: {sf: 1}, end: {end: 'q', input: 1}, link: {end: 'q', beg: 'q', input: 1}, cont: {cont: 1, input: 1}, half: {input: 1}, phrase: {input: 1}
 };
 const modeHelp = {
+  madd: "Choisis le type de question : type de madd d'un verset, durée, cause, vrai ou faux. Cet exercice ne dépend pas de la portée choisie.",
   ahkam: "Choisis le type de question : règle d'un verset (nūn sākin / tanwīn ou mīm sākin), règle d'une lettre, lettres d'une règle, ghunna, vrai ou faux. Cet exercice ne dépend pas de la portée choisie.",
   makharij: "Choisis le type de question : zone de sortie, lettres du même point, intruse, partie de la gorge, vrai ou faux. Cet exercice ne dépend pas de la portée choisie.",
   sifat: "Choisis le type de question : qualité d'une lettre, lettre d'une qualité, mots mnémotechniques du matn, vrai ou faux. Cet exercice ne dépend pas de la portée choisie.",
@@ -827,10 +830,11 @@ const modeHelp = {
   link: 'Tu récites la fin d\'une sourate puis le début de la suivante.', cont: 'Tu récites un passage entier d\'une traite.',
   half: 'On te donne la première moitié, tu complètes la seconde.', phrase: 'On te donne une phrase, tu donnes la suivante.'
 };
-const CATS = [['memo', 'Mémorisation (Coran ou moutoun)'], ['tajwid', 'Tajwīd (entraînement)'], ['ahk', 'Aḥkām (nūn, mīm, tanwīn)'], ['mkh', 'Makhārij (points de sortie)'], ['sfa', 'Ṣifāt (qualités des lettres)']];
-const CATMODE = {tajwid: 'tajweed', ahk: 'ahkam', mkh: 'makharij', sfa: 'sifat'}, catOf = m => ({tajweed: 'tajwid', ahkam: 'ahk', makharij: 'mkh', sifat: 'sfa'})[m] || 'memo';
+const CATS = [['memo', 'Mémorisation (Coran ou moutoun)'], ['tajwid', 'Tajwīd (entraînement)'], ['ahk', 'Aḥkām (nūn, mīm, tanwīn)'], ['mdd', 'Madd (prolongations)'], ['mkh', 'Makhārij (points de sortie)'], ['sfa', 'Ṣifāt (qualités des lettres)']];
+const CATMODE = {tajwid: 'tajweed', ahk: 'ahkam', mdd: 'madd', mkh: 'makharij', sfa: 'sifat'}, catOf = m => ({tajweed: 'tajwid', ahkam: 'ahk', madd: 'mdd', makharij: 'mkh', sifat: 'sfa'})[m] || 'memo';
 const CATHELP = {memo: 'Teste ta mémoire du Coran ou des moutoun, avec les exercices ci-dessous.', tajwid: 'Entraîne-toi sur les règles de tajwīd des versets du Coran de ta portée.',
   ahk: "Apprends les règles du nūn sākin, du tanwīn et du mīm sākin sur de vrais versets. Cet exercice ne dépend pas de la portée.",
+  mdd: 'Apprends à reconnaître les madd sur de vrais versets (naturel, muttaṣil, munfaṣil, lāzim, ʿāriḍ). Cet exercice ne dépend pas de la portée.',
   mkh: 'Apprends les points de sortie des lettres. Cet exercice ne dépend pas de la portée.', sfa: 'Apprends les qualités des lettres. Cet exercice ne dépend pas de la portée.'};
 function setCat(c){ // change le type d'exercice : mémorisation, tajwīd, makhārij ou ṣifāt
   const from = catOf(cfg.mode); if (from === c || !CATS.some(x => x[0] === c)) return;
@@ -910,6 +914,8 @@ function tabTrain(){
     <div class="row">
       <div><label class="f">${tr('Nombre de questions')}</label>
         <select id="sn">${[5, 10, 20, 30].map(n => `<option ${n === cfg.n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      ${o.md ? `<div><label class="f" for="smdk">${tr('Type de question de madd')}</label>
+        <select id="smdk">${MDKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.mdKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
       ${o.ah ? `<div><label class="f" for="sahk">${tr('Type de question d\'aḥkām')}</label>
         <select id="sahk">${AHKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.ahKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
       ${o.mk ? `<div><label class="f" for="smkk">${tr('Type de question de makhārij')}</label>
@@ -1024,7 +1030,7 @@ const weakHtml = weak => weak.length ? `<h2 style="margin-top:14px">${tr('À ret
 
 /* ---------- séance ---------- */
 let ses = null, cur = null, ls = null;
-const HFMODES = ['makharij', 'sifat', 'ahkam'];
+const HFMODES = ['makharij', 'sifat', 'ahkam', 'madd'];
 let AHKAM_P = null;
 function loadAhkam(){ // data/ahkam.js : chargé à la demande
   if (window.AHKAM) return Promise.resolve(window.AHKAM);
@@ -1038,7 +1044,7 @@ function start(fixed){
     loadAhkam().then(() => start(fixed), e => { alert(tr('Impossible de charger ce contenu ({e}). Vérifie ta connexion puis réessaie.', {e: e.message})); home(); });
     return;
   }
-  if (cfg.mode === 'tajweed' && !fixed && !(window.QX && window.QX.tajweed)){ // les annotations se chargent (et se contrôlent) à la première utilisation
+  if ((cfg.mode === 'tajweed' || cfg.mode === 'madd') && !fixed && !(window.QX && window.QX.tajweed)){ // les annotations se chargent (et se contrôlent) à la première utilisation
     $app.innerHTML = `<p class="sub" style="margin-top:40vh;text-align:center">${tr('Chargement…')}</p>`;
     loadX('tajweed').then(() => start(fixed), e => { alert(tr('Impossible de charger ce contenu ({e}). Vérifie ta connexion puis réessaie.', {e: e.message})); home(); });
     return;
@@ -1079,7 +1085,7 @@ function nextQ(){
   let m = cfg.mode;
   if (m === 'tajweed' && (ses.fixed || !hasQ)) m = 'mix';
   if (HFMODES.includes(m)){
-    if (!ses.fixed){ cur = {m, r: null, done: false, audio: [], hf: true, label: tr(m === 'makharij' ? 'Makhārij' : m === 'ahkam' ? 'Aḥkām' : 'Ṣifāt')}; return m === 'makharij' ? qMakharij() : m === 'ahkam' ? qAhkam() : qSifat(); }
+    if (!ses.fixed){ cur = {m, r: null, done: false, audio: [], hf: true, label: tr(m === 'makharij' ? 'Makhārij' : m === 'ahkam' ? 'Aḥkām' : m === 'madd' ? 'Madd' : 'Ṣifāt')}; return m === 'makharij' ? qMakharij() : m === 'ahkam' ? qAhkam() : m === 'madd' ? qMadd() : qSifat(); }
     m = 'mix';                            // révisions guidées : pas d'exercice de makhārij / ṣifāt
   }   // révisions guidées (plan, versets dus…) : pas d'exercice de tajwīd
   if (m === 'mix'){
@@ -1502,6 +1508,45 @@ function ahBuild(kind, A, Q, rnd, shuf){
 const AHKINDS = [['nun', 'Règle du nūn sākin ou du tanwīn dans un verset'], ['mim', 'Règle du mīm sākin dans un verset'], ['letter', "Règle d'une lettre (après nūn sākin / tanwīn)"], ['group', "Lettres d'une règle"], ['ghunna', 'Ghunna (nūn et mīm avec chadda)'], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
 const AH_NAME = {gh: 'الغنة · ghunna', H: 'الإظهار · idhhār', G: 'الإدغام بغنة · idghām bi-ghunna', N: 'الإدغام بغير غنة · idghām bi-ghayri ghunna', Q: 'الإقلاب · iqlāb', K: 'الإخفاء · ikhfāʾ',
   mH: 'الإظهار الشفوي · idhhār shafawī', mK: 'الإخفاء الشفوي · ikhfāʾ shafawī', mG: 'الإدغام الشفوي · idghām shafawī'};
+/* MD:begin — madd : type déduit du contexte du texte ET recoupé avec la marque de la source de tajwīd (fonctions pures, testées en Node) */
+const MD_CODE = {tabii: 'n', muttasil: 'o', munfasil: 'o', lazim: 'm', arid: 'p'};
+const MD_SUKSH = /[ّْ۟]/;
+function mdFollow(after){ // lettres (avec leurs signes) qui suivent la partie ; sp = début d'un nouveau mot
+  const cl = []; let sp = false;
+  for (const ch of after){
+    if (ch === ' ') sp = true;
+    else if (/[ء-يٱ-ۓ]/.test(ch)){ cl.push({c: ch, m: '', sp}); sp = false; }
+    else if (cl.length && /[ً-ٰٟۖ-ۭ]/.test(ch)) cl[cl.length - 1].m += ch;
+  }
+  return cl;
+}
+function mdKind(code, after){ // null quand le contexte ne permet pas de trancher ou ne concorde pas avec la source : la question n'est alors jamais posée
+  let cl = mdFollow(after);
+  while (cl.length && 'اى'.includes(cl[0].c) && MD_SUKSH.test(cl[0].m) && !cl[0].sp) cl = cl.slice(1);   // alif muet du pluriel
+  if (!cl.length) return null;
+  const n = cl[0], type = 'ءأإؤئ'.includes(n.c) ? (n.sp ? 'munfasil' : 'muttasil') : (!n.sp && MD_SUKSH.test(n.m)) ? 'lazim' : (!n.sp && cl.length === 1) ? 'arid' : 'tabii';
+  return MD_CODE[type] === code ? {type, next: n.c} : null;
+}
+function mdBuild(kind, T, rnd, shuf){ // T : annotations de tajwīd (tableau par sourate puis par verset) ; une partie surlignée parmi 5 types de madd
+  const types = ['tabii', 'muttasil', 'munfasil', 'lazim', 'arid'], want = hfPick(types, rnd);
+  for (let t = 0; t < 600; t++){
+    const si = rnd(T.length), vi = rnd(T[si].length), raw = T[si][vi]; if (raw.length > 260) continue;
+    const segs = tjSegs(raw), cands = [];
+    segs.forEach((x, i) => { if ('npmo'.includes(x.c) && x.c){ const r = mdKind(x.c, segs.slice(i + 1).map(y => y.t).join('')); if (r && r.type === want) cands.push({i, r}); } });
+    if (!cands.length) continue;
+    const pk = hfPick(cands, rnd);
+    return {kind, type: want, ref: {s: si + 1, a: vi + 1}, raw, segs, pick: pk.i, next: pk.r.next};
+  }
+  return null;
+}
+/* MD:end */
+const MDKINDS = [['type', 'Type de madd dans un verset'], ['count', 'Durée du madd (en temps)'], ['cause', 'Cause du madd (règle du matn)'], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
+const MD_NAME = {tabii: 'المد الطبيعي · madd ṭabīʿī', muttasil: 'المد المتصل · madd muttaṣil', munfasil: 'المد المنفصل · madd munfaṣil', lazim: 'المد اللازم · madd lāzim', arid: 'المد العارض للسكون · madd ʿāriḍ lil-sukūn'};
+const MD_COUNT = {tabii: '2', muttasil: '4-5', munfasil: '4-5', lazim: '6', arid: '2-4-6'};
+const MD_COUNTLABEL = {'2': '2 temps', '4-5': '4 à 5 temps', '6': '6 temps', '2-4-6': '2, 4 ou 6 temps'};
+const MD_CAUSE = {tabii: "Aucune hamza ni sukūn n'accompagne la lettre de madd.", muttasil: 'Une hamza suit la lettre de madd dans le même mot.',
+  munfasil: 'La lettre de madd termine un mot et le mot suivant commence par une hamza.', lazim: "Un sukūn (ou une chadda) stable suit la lettre de madd, à l'enchaînement comme à l'arrêt.",
+  arid: "Le sukūn qui suit la lettre de madd vient de l'arrêt (waqf) sur la dernière lettre."};
 const MKKINDS = [['zone', 'Zone de sortie (gorge, langue, lèvres…)'], ['same', 'Lettres du même point'], ['odd', "Trouver l'intruse"], ['halq', 'Partie de la gorge'], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
 const SFKINDS = [['pair', "Qualité d'une lettre"], ['which', "Trouver la lettre d'une qualité"], ['mnemo', 'Mots mnémotechniques du matn'], ['cond', 'Qualités conditionnelles (qalqala, līn)'], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
 const AREAGLOSS = {halq: 'gorge', lisan: 'langue', shafatan: 'lèvres', khayshum: 'cavité nasale', jawf: 'cavité buccale (voyelles longues)'};
@@ -1509,7 +1554,7 @@ const hfAttr = id => window.HURUF.attrs.find(a => a.id === id);
 const hfAttrL = id => `${hfAttr(id).ar} · ${hfAttr(id).tr}`;
 const hfLet = c => `<span class="ar" style="font-size:1.25em">${c}</span>`;
 const hfGroup = a => a.map(hfLet).join(' ');
-function hfKeyLabel(k){ const [t, v] = k.split(':'); if (t === 'ah') return `${tr('Aḥkām')} · ${esc(AH_NAME[v] || v)}`; return t === 'mk' ? `${tr('Makhārij')} · ${hfLet(v)}` : `${tr('Ṣifāt')} · ${esc(hfAttrL(v))}`; }
+function hfKeyLabel(k){ const [t, v] = k.split(':'); if (t === 'md') return `${tr('Madd')} · ${esc(MD_NAME[v] || v)}`; if (t === 'ah') return `${tr('Aḥkām')} · ${esc(AH_NAME[v] || v)}`; return t === 'mk' ? `${tr('Makhārij')} · ${hfLet(v)}` : `${tr('Ṣifāt')} · ${esc(hfAttrL(v))}`; }
 function hfStat(key, ok){ const x = hfs[key] || [0, 0]; hfs[key] = [x[0] + (ok ? 1 : 0), x[1] + (ok ? 0 : 1)]; store.set('hifz.hf', hfs);
   const y = ((ses.hf ||= {})[key] ||= [0, 0]); y[ok ? 0 : 1]++; }
 const HFNOTE = () => { const S = window.HURUF.sources, a = (x, t) => `<a href="${x.url}" target="_blank" rel="noopener">${t}</a>`;
@@ -1522,6 +1567,8 @@ function hfOpt(o){
   if (o.t === 'throat') return `<span class="ar" style="font-size:1.25rem">${o.ar}</span>`;
   if (o.t === 'attr') return esc(hfAttrL(o.v));
   if (o.t === 'rule') return esc(AH_NAME[o.v]);
+  if (o.t === 'mtype') return esc(MD_NAME[o.v]);
+  if (o.t === 'mcount') return esc(tr(MD_COUNTLABEL[o.v]));
   if (o.t === 'letters') return `<span class="ar" style="font-size:1.4rem">${[...o.letters].join(' ')}</span>`;
   if (o.t === 'yn') return o.v === 't' ? tr('Oui') : tr('Non');
   return o.v === 't' ? tr('Vrai') : tr('Faux');
@@ -1585,6 +1632,29 @@ function qAhkam(){
   else { const real = ahLetterRule(A, q.letter); stem = tr('Vrai ou faux : après un nūn sākin ou un tanwīn, la lettre ci-dessous entraîne « {r} ».', {r: nm(q.rule)}); view = q.letter;
     explain = `${q.correct === 't' ? tr('Vrai :') : tr('Faux :')} ${hfLet(q.letter)} → ${nm(real)} · ${set(real)}`; stat = 'ah:' + real; }
   hfShow(q, stem, view, explain, stat, AHNOTE());
+}
+const MDNOTE = () => { const T = window.QX.tajweed, a = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
+  return `<p class="ref" style="margin:8px 0 0">${tr("Durées et marques : légende du tajwīd d'Islamic Network (annotation automatique, non relue par un enseignant). Causes : texte d'Ibn al-Jazarī sur Wikisource. Le type de madd est déduit du texte du verset et n'est posé que s'il concorde avec la marque de la source.")} ${a(T.legend, tr('Légende officielle'))} · ${a(window.HURUF.sources[0].url, 'Wikisource')}</p>`; };
+function qMadd(){
+  const T = window.QX.tajweed.s, kinds = ['type', 'count', 'cause', 'tf'];
+  let kind = cfg.mdKind === 'mix' ? kinds[rnd(kinds.length)] : cfg.mdKind || 'type';
+  const nm = t => `<b>${esc(MD_NAME[t])}</b>`, cnt = t => esc(tr(MD_COUNTLABEL[MD_COUNT[t]])), why = t => esc(tr(MD_CAUSE[t]));
+  const q = kind === 'cause' ? null : mdBuild(kind, T, rnd, shuffle);
+  if (!q){ // règle du matn, sans verset : « quel madd quand… ? »
+    const t = hfPick(['lazim', 'muttasil', 'munfasil', 'arid'], rnd), qq = {correct: t, options: ['lazim', 'muttasil', 'munfasil', 'arid'].map(v => ({t: 'mtype', v}))};
+    cur.reveal = ''; return hfShow(qq, tr('Quel madd correspond à cette règle : {c}', {c: `<b>${esc(tr(MD_CAUSE[t]))}</b>`}), '', `${nm(t)} · ${cnt(t)}<br>${why(t)}`, 'md:' + t, MDNOTE());
+  }
+  const pieces = tjMulti(q.segs, [q.pick]), view = tjParts(pieces), full = tjParts(pieces, {colors: true});
+  cur.r = q.ref; cur.reveal = full;
+  const expl = `${nm(q.type)} · ${cnt(q.type)}<br>${why(q.type)}`;
+  let stem, options, correct = q.type;
+  if (q.kind === 'count'){ stem = tr('Quelle durée pour le madd surligné ?'); options = ['2', '4-5', '6', '2-4-6'].map(v => ({t: 'mcount', v})); correct = MD_COUNT[q.type]; }
+  else if (q.kind === 'tf'){ const truth = rnd(2) === 0, shown = truth ? q.type : hfPick(['tabii', 'muttasil', 'munfasil', 'lazim', 'arid'].filter(x => x !== q.type), rnd);
+    stem = tr('Ce madd surligné est-il un « {t} » ?', {t: esc(MD_NAME[shown])}); options = [{t: 'tf', v: 't'}, {t: 'tf', v: 'f'}]; correct = truth ? 't' : 'f'; }
+  else { stem = tr('Quel type de madd pour la partie surlignée ?'); options = shuffle(['tabii', 'muttasil', 'munfasil', 'lazim', 'arid']).map(v => ({t: 'mtype', v})); }
+  cur.correct = correct; cur.stat = 'md:' + q.type; cur.explain = expl + MDNOTE();
+  shell(`<p class="ref">${stem}</p><div class="rd tj" id="tjv" style="font-size:${cfg.rdSize}rem">${view}</div>${qref(q.ref)}
+    ${options.map(o => `<button class="opt" data-act="opt" data-v="${o.v}">${hfOpt(o)}</button>`).join('')}<div id="fb"></div>`);
 }
 function qSifat(noCond){
   const H = window.HURUF, kinds = noCond ? ['pair', 'which', 'mnemo', 'tf'] : ['pair', 'which', 'mnemo', 'cond', 'tf'];
@@ -1658,6 +1728,7 @@ function onOpt(el){
     ok = el.dataset.v === cur.correct;
     btns.forEach(b => { const c = b.dataset.v === cur.correct ? 'c' : b === el ? 'w' : ''; if (c) b.classList.add(c); });
     cur.info = {ans: el.textContent}; hfStat(cur.stat, ok);
+    if (cur.reveal && $('tjv')) $('tjv').innerHTML = cur.reveal;      // le verset se colore une fois la réponse donnée
     finish(ok ? 1 : 0, `<br>${cur.explain}`); return;
   }
   if (cur.m === 'tajweed'){
@@ -2375,7 +2446,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v28';
+const APP_VERSION = '21 oct. 2026 · v29';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
