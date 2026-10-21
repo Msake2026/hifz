@@ -113,7 +113,7 @@ body.has-nav main{padding-bottom:96px}
 .rv.hid{filter:blur(9px);cursor:pointer;user-select:none}
 .rv.playing,.rv.focus{background:color-mix(in srgb,var(--accent) 18%,transparent)}
 .vend{color:var(--accent);font-size:.8em;white-space:nowrap}
-.tjq{background:#ffe38a;color:#222;border-radius:4px;padding:0 3px}
+.tjq{background:#ffe38a;color:#222;border-radius:4px;padding:0 3px}.tjn{color:#8a6d1f;font-weight:700;font-size:.55em;margin:0 3px 0 1px}
 .rd.tj{background:#fbf6e8;color:#222;padding:8px 10px;border-radius:10px} .rd.tj .vend{color:#8a6d1f}   /* page claire : les couleurs officielles du tajwīd restent lisibles aussi en mode sombre */
 .tj-h,.tj-s,.tj-l{color:#AAAAAA}.tj-n{color:#537FFF}.tj-p{color:#4050FF}.tj-m{color:#000EBC}.tj-o{color:#2144C1}.tj-q{color:#DD0008}.tj-c{color:#D500B7}.tj-f{color:#9400A8}
 .tj-w{color:#58B800}.tj-i{color:#26BFFD}.tj-a{color:#169777}.tj-u{color:#169200}.tj-d,.tj-b{color:#A1A1A1}.tj-g{color:#FF7E1E}
@@ -345,7 +345,7 @@ async function loadQuran(){
 
 /* ---------- état persistant ---------- */
 const DEF = {mode: 'mix', scope: {type: 'surah', from: 78, to: 114}, n: 10, input: 'recite', level: 40,
-  corr: 'standard', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
+  corr: 'standard', tjKind: 'rule', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
   lang: ['fr', 'en', 'ar'].includes((navigator.language || '').slice(0, 2)) ? navigator.language.slice(0, 2) : 'fr'};
 const stored = store.get('hifz.cfg', {});
 let cfg = Object.assign({}, DEF, stored);
@@ -489,7 +489,7 @@ const MODES = [
   ['order',  'Ordre des sourates', 'Quelle sourate vient après ?', 'q'],
   ['end',    'Fin de sourate',     'Récite les derniers versets', 'q'],
   ['link',   'Fin + début suivant','Enchaîne la fin d\'une sourate et le début de la suivante', 'q'],
-  ['tajweed','Tajwīd (entraînement)','Reconnais la règle de la partie surlignée', 'q'],
+  ['tajweed','Tajwīd (entraînement)','Plusieurs types de questions : règle, couleurs, vrai ou faux', 'q'],
   ['cont',   'Récitation continue','Un passage entier d\'une traite'],
   ['half',   'Demi-vers',          'Complète la 2e moitié', 'm'],
   ['phrase', 'Phrase suivante',    'Prose : complète la phrase suivante', 'm']
@@ -590,6 +590,7 @@ function syncCfg(){
   }
   if ($('sn')) cfg.n = +v('sn');
   if ($('slevel')) cfg.level = +v('slevel');
+  if ($('stjk')) cfg.tjKind = v('stjk');
   if ($('scont')) cfg.contLen = +v('scont');
   if ($('send')) cfg.endLen = +v('send');
   if ($('sbeg')) cfg.begLen = +v('sbeg');
@@ -641,7 +642,7 @@ function tabHome(){
 
   <div class="card"><h2>${tr('Ma série')}</h2>
     <div class="sumline"><span>${cfg.scope.type === 'matn' ? '📜 ' + tr('Moutoun') : '📖 ' + tr('Coran')}</span><span>${esc(scopeLabel(cfg.scope))}</span>
-      <span>${esc(modeTitle(cfg.mode))}</span><span>${trp(cfg.n, '{n} question|{n} questions')}</span>${(MODE_OPTS[cfg.mode] || {}).input ? `<span>${tr(INPUTS[cfg.input] || '')}</span>` : ''}</div>
+      <span>${esc(modeTitle(cfg.mode))}</span>${cfg.mode === 'tajweed' ? `<span>${tr((TJKINDS.find(k => k[0] === cfg.tjKind) || TJKINDS[0])[1])}</span>` : ''}<span>${trp(cfg.n, '{n} question|{n} questions')}</span>${(MODE_OPTS[cfg.mode] || {}).input ? `<span>${tr(INPUTS[cfg.input] || '')}</span>` : ''}</div>
     <button class="pri big" data-act="start">${tr('Commencer')}</button>
     <div class="row" style="margin-top:8px"><button data-act="tab" data-v="train">${tr('Modifier')}</button><button data-act="lsopen">🎧 ${tr('Écouter')}</button></div>
   </div>
@@ -803,10 +804,10 @@ function tabPlan(){
 /* options utiles pour chaque exercice (n = nombre de questions : toujours) ; q = Coran seulement */
 const MODE_OPTS = {
   mix: {level: 1, end: 'q', beg: 'q', input: 1}, next: {input: 1}, cloze: {level: 1, input: 1}, which: {}, mcq: {}, mutash: {}, start: {input: 1},
-  order: {}, tajweed: {}, end: {end: 'q', input: 1}, link: {end: 'q', beg: 'q', input: 1}, cont: {cont: 1, input: 1}, half: {input: 1}, phrase: {input: 1}
+  order: {}, tajweed: {tj: 1}, end: {end: 'q', input: 1}, link: {end: 'q', beg: 'q', input: 1}, cont: {cont: 1, input: 1}, half: {input: 1}, phrase: {input: 1}
 };
 const modeHelp = {
-  tajweed: 'Une partie du verset est surlignée : choisis sa règle de tajwīd (entraînement : annotation automatique non relue par un enseignant).',
+  tajweed: 'Plusieurs types de questions de tajwīd au choix : reconnaître la règle d\'une partie surlignée, trouver la partie d\'une règle, vrai ou faux (entraînement : annotation automatique non relue par un enseignant).',
   mix: 'Un mélange de tous les exercices.', next: 'On te donne un verset, tu donnes la suite.', cloze: 'Des mots du verset sont cachés : retrouve-les.',
   which: 'Tu identifies la sourate (ou le matn) d\'un verset en touchant la bonne réponse.', mcq: 'Tu touches le bon verset suivant parmi quatre.',
   mutash: 'Tu touches la vraie suite d\'un verset qui ressemble à d\'autres.', start: 'Tu récites le premier verset d\'une sourate.',
@@ -878,6 +879,8 @@ function tabTrain(){
     <div class="row">
       <div><label class="f">${tr('Nombre de questions')}</label>
         <select id="sn">${[5, 10, 20, 30].map(n => `<option ${n === cfg.n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      ${o.tj ? `<div><label class="f" for="stjk">${tr('Type de question de tajwīd')}</label>
+        <select id="stjk">${TJKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.tjKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
       ${o.level ? `<div><label class="f">${tr('Mots cachés (mots manquants)')}</label>
         <select id="slevel">${[20, 40, 60, 80].map(n => `<option value="${n}" ${n === cfg.level ? 'selected' : ''}>${n} %</option>`).join('')}</select></div>` : ''}
       ${o.cont ? `<div><label class="f">${tr("Versets à réciter d'une traite")}</label>
@@ -1269,10 +1272,41 @@ function tjSegs(str){ // « abc[n[ـٰ]def » -> [{t: 'abc', c: ''}, {t: 'ـٰ',
   return out;
 }
 const TJ_LETTER = /[\u0621-\u064A\u0671-\u06D3]/, TJ_LAST = /([\u0621-\u064A\u0671-\u06D3][\u064B-\u065F\u0670\u06D6-\u06ED\u0640]*)$/;
-function tjFocus(segs, pick){ // texte avant / surligné / après ; si la partie n'est qu'un signe, on y joint la lettre qui le porte
-  const before = segs.slice(0, pick).map(x => x.t).join(''), t = segs[pick].t, after = segs.slice(pick + 1).map(x => x.t).join('');
-  if (TJ_LETTER.test(t)) return {before, mark: t, after};
-  const m = TJ_LAST.exec(before); return m ? {before: before.slice(0, m.index), mark: m[1] + t, after} : {before, mark: t, after};
+function tjMulti(segs, picks){ // morceaux {t, c, k} : k = numéro (1…) de la partie surlignée, 0 sinon. Une partie réduite à un signe reçoit sa lettre porteuse
+  const out = [];
+  segs.forEach((x, i) => {
+    const k = picks.indexOf(i) + 1;
+    if (k && !TJ_LETTER.test(x.t) && out.length){
+      const last = out[out.length - 1], m = last.k ? null : TJ_LAST.exec(last.t);
+      if (m){ last.t = last.t.slice(0, m.index); out.push({t: m[1], c: last.c, k}); }
+    }
+    out.push({t: x.t, c: x.c, k});
+  });
+  return out.filter(x => x.t);
+}
+function tjParts(pieces, o = {}){ // HTML : parties surlignées (<mark>), numéros facultatifs, couleurs facultatives
+  const seg = p => o.colors && p.c ? `<span class="tj-${p.c}">${esc(p.t)}</span>` : esc(p.t);
+  let out = '', i = 0;
+  while (i < pieces.length){
+    const p = pieces[i];
+    if (!p.k){ out += seg(p); i++; continue; }
+    let inner = ''; while (i < pieces.length && pieces[i].k === p.k){ inner += seg(pieces[i]); i++; }
+    out += `<mark class="tjq">${inner}</mark>` + (o.numbers ? `<sup class="tjn">${p.k}</sup>` : '');
+  }
+  return out;
+}
+function tjFindPicks(segs, fam, rnd, shuf){ // 1 partie de la règle demandée + 3 parties d'autres règles (de familles différentes si possible), dans l'ordre du texte
+  const mine = [], others = [];
+  segs.forEach((x, i) => { if (x.c === fam) mine.push(i); else if (x.c) others.push(i); });
+  if (!mine.length || others.length < 3) return null;
+  const target = mine[rnd(mine.length)], byFam = {}; others.forEach(i => (byFam[segs[i].c] ||= []).push(i));
+  const chosen = []; for (const f of shuf(Object.keys(byFam))) if (chosen.length < 3) chosen.push(byFam[f][rnd(byFam[f].length)]);
+  for (const i of shuf(others)) if (chosen.length < 3 && !chosen.includes(i)) chosen.push(i);
+  return {picks: [...chosen, target].sort((x, y) => x - y), target};
+}
+function tjFalseFam(fam, names, shuf){ // une autre règle, de préférence de la même famille (madd, noon sākina…)
+  const ids = Object.keys(names).filter(c => c !== fam), same = ids.filter(c => TJGROUP[c] === TJGROUP[fam]);
+  return shuf(same.length ? same : ids)[0];
 }
 function tjOptions(fam, names, shuf){ // 4 propositions : la bonne, 2 de la même famille de règles si possible, puis d'autres
   const ids = Object.keys(names).filter(c => c !== fam), same = shuf(ids.filter(c => TJGROUP[c] === TJGROUP[fam])), other = shuf(ids.filter(c => TJGROUP[c] !== TJGROUP[fam]));
@@ -1281,16 +1315,33 @@ function tjOptions(fam, names, shuf){ // 4 propositions : la bonne, 2 de la mêm
 /* TJ:end */
 function tjStat(code, ok){ const x = tjs[code] || [0, 0]; tjs[code] = [x[0] + (ok ? 1 : 0), x[1] + (ok ? 0 : 1)]; store.set('hifz.tj', tjs); (ses.tj ||= {})[code] = [((ses.tj[code] || [0, 0])[0]) + (ok ? 1 : 0), ((ses.tj[code] || [0, 0])[1]) + (ok ? 0 : 1)]; }
 const TJNOTE = () => `<p class="ref" style="margin:8px 0 0">${tr("Entraînement : les règles viennent d'une annotation automatique (Islamic Network), non relue par un enseignant. En cas de doute, fie-toi à ton professeur.")}</p>`;
+const TJKINDS = [['rule', 'Reconnaître la règle'], ['color', 'Reconnaître la règle (avec les couleurs, plus facile)'], ['find', "Trouver la partie d'une règle"], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
 function qTajweed(){
   const {r} = cur, raw = window.QX.tajweed.s[r.s - 1][r.a - 1], segs = tjSegs(raw);
   const fams = [...new Set(segs.filter(x => x.c).map(x => x.c))];
   if (!fams.length){ cur.m = 'cloze'; return qCloze(); }
-  const fam = fams[rnd(fams.length)], idx = segs.map((x, i) => x.c === fam ? i : -1).filter(i => i >= 0), F = tjFocus(segs, idx[rnd(idx.length)]);
-  cur.correct = fam; cur.raw = raw; cur.audio = [r]; cur.opts = tjOptions(fam, TJNAME, shuffle);
-  shell(`<p class="ref">${tr('Quelle est la règle de tajwīd de la partie surlignée ?')}</p>
-    <div class="rd tj" id="tjv" style="font-size:${cfg.rdSize}rem">${esc(F.before)}<mark class="tjq">${esc(F.mark)}</mark>${esc(F.after)}</div>${qref(r)}
-    ${cur.opts.map(c => `<button class="opt" data-act="opt" data-v="${c}">${esc(tr(TJNAME[c]))}</button>`).join('')}
-    <div id="fb"></div>${TJNOTE()}`);
+  let kind = cfg.tjKind === 'mix' ? ['rule', 'color', 'find', 'tf'][rnd(4)] : cfg.tjKind || 'rule';
+  const fam = fams[rnd(fams.length)], idx = segs.map((x, i) => x.c === fam ? i : -1).filter(i => i >= 0), pick = idx[rnd(idx.length)];
+  cur.raw = raw; cur.segs = segs; cur.audio = [r]; cur.stat = fam;
+  const nm = c => esc(tr(TJNAME[c])), body = (q, view, answers) => shell(`<p class="ref">${q}</p><div class="rd tj" id="tjv" style="font-size:${cfg.rdSize}rem">${view}</div>${qref(r)}${answers}<div id="fb"></div>${TJNOTE()}`);
+  if (kind === 'find'){
+    const F = tjFindPicks(segs, fam, rnd, shuffle);
+    if (F){
+      cur.tjk = 'find'; cur.picks = F.picks; cur.pieces = tjMulti(segs, F.picks); cur.correct = String(F.picks.indexOf(F.target) + 1);
+      return body(tr("Touche la partie qui suit cette règle : {r}", {r: `<b>${nm(fam)}</b>`}), tjParts(cur.pieces, {numbers: true}),
+        F.picks.map((_, j) => `<button class="opt" data-act="opt" data-v="${j + 1}">${tr('Partie {n}', {n: j + 1})}</button>`).join(''));
+    }
+    kind = 'rule';                        // pas assez de parties dans ce verset : question simple
+  }
+  if (kind === 'tf'){
+    const truth = rnd(2) === 0, shown = truth ? fam : tjFalseFam(fam, TJNAME, shuffle);
+    cur.tjk = 'tf'; cur.pieces = tjMulti(segs, [pick]); cur.correct = truth ? 't' : 'f';
+    return body(tr('Cette partie suit-elle la règle « {r} » ?', {r: `<b>${nm(shown)}</b>`}), tjParts(cur.pieces),
+      `<button class="opt" data-act="opt" data-v="t">${tr('Vrai')}</button><button class="opt" data-act="opt" data-v="f">${tr('Faux')}</button>`);
+  }
+  cur.tjk = kind; cur.pieces = tjMulti(segs, [pick]); cur.correct = fam; cur.opts = tjOptions(fam, TJNAME, shuffle);
+  body(tr('Quelle est la règle de tajwīd de la partie surlignée ?'), tjParts(cur.pieces, {colors: kind === 'color'}),
+    cur.opts.map(c => `<button class="opt" data-act="opt" data-v="${c}">${nm(c)}</button>`).join(''));
 }
 function qOrder(){
   const {r} = cur; cur.r = {s: r.s, a: 1}; cur.correct = r.s + 1; cur.label = `${r.s}. ${SN(r.s)} → ${r.s + 1}. ${SN(r.s + 1)}`;
@@ -1310,9 +1361,11 @@ function onOpt(el){
   if (cur.m === 'tajweed'){
     ok = el.dataset.v === cur.correct;
     btns.forEach(b => { const c = b.dataset.v === cur.correct ? 'c' : b === el ? 'w' : ''; if (c) b.classList.add(c); });
-    $('tjv').innerHTML = tjHtml(cur.raw);                                   // la phrase se colore une fois la réponse donnée
-    extra = `<br>${tr('Règle selon la source :')} <b>${esc(tr(TJNAME[cur.correct]))}</b>`;
-    cur.info = {ans: TJNAME[el.dataset.v]}; tjStat(cur.correct, ok);
+    $('tjv').innerHTML = tjParts(cur.pieces, {colors: true, numbers: cur.tjk === 'find'});   // la phrase se colore une fois la réponse donnée
+    const name = c => `<b>${esc(tr(TJNAME[c]))}</b>`;
+    extra = cur.tjk === 'find' ? `<br>${cur.picks.map((i, j) => `${tr('Partie {n}', {n: j + 1})} : ${name(cur.segs[i].c)}`).join('<br>')}`
+      : `<br>${tr('Règle selon la source :')} ${name(cur.stat)}`;
+    cur.info = {ans: el.textContent}; tjStat(cur.stat, ok);
     finish(ok ? 1 : 0, extra); return;
   }
   if (cur.m === 'which' || cur.m === 'order'){
@@ -2018,7 +2071,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v23';
+const APP_VERSION = '21 oct. 2026 · v24';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

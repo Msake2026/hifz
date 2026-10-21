@@ -243,11 +243,41 @@
     // révisions guidées : jamais d'exercice de tajwīd
     E("cfg.scope = {type: 'surah', from: 1, to: 3}; cfg.mode = 'tajweed'; start([{s: 1, a: 1}, {s: 1, a: 2}])"); ok(!$q('mark.tjq'), 'série guidée : pas de tajwīd'); noErr('série guidée');
   });
+  test('Tajwīd : liste déroulante des types de questions (règle, couleurs, trouver la partie, vrai/faux, mélange)', async () => {
+    reset("cfg.mode = 'tajweed'; cfg.scope = {type: 'surah', from: 2, to: 2}; cfg.n = 5; tjs = {};");
+    E("go('train')"); const sel = $q('#stjk'); ok(sel, 'liste déroulante dans les options de la série'); eq([...sel.options].map(o => o.value), ['rule', 'color', 'find', 'tf', 'mix']);
+    sel.value = 'tf'; sel.dispatchEvent(new W.Event('change')); eq(E('cfg.tjKind'), 'tf', 'le choix est enregistré'); E("go('home')"); ok(D.body.textContent.includes('Vrai ou faux'), 'rappelé dans le résumé de la série');
+    E("go('train')"); clickAct('mode', 'cloze'); ok(!$q('#stjk'), 'liste absente pour les autres exercices'); clickAct('mode', 'tajweed'); ok($q('#stjk'));
+    const seen = new Set();
+    for (const kind of ['rule', 'color', 'find', 'tf', 'mix']){
+      E(`cfg.tjKind = '${kind}'; cfg.n = 30; tjs = {}`); E("start()"); for (let i = 0; i < 40 && !$q('.opt'); i++) await wait(100);
+      for (let n = 0; n < 10; n++){
+        const k = E('cur.tjk'); seen.add(k); const btns = $$q('.opt'), marks = $$q('mark.tjq'); noErr(`${kind}/${k}`);
+        if (kind !== 'mix') ok(k === kind || (kind === 'find' && k === 'rule'), `type ${kind} → ${k}`);
+        const colored = !!$q('#tjv [class^="tj-"]');
+        if (k === 'find'){ eq(btns.length, 4); eq(marks.length, 4); eq($$q('#tjv sup.tjn').length, 4); ok(!colored, 'pas de couleurs avant la réponse'); }
+        else if (k === 'tf'){ eq(btns.map(b => b.dataset.v).sort(), ['f', 't']); eq(marks.length, 1); ok(!colored); }
+        else if (k === 'color'){ eq(btns.length, 4); eq(marks.length, 1); ok(colored, 'les couleurs aident dans la version facile'); }
+        else { eq(btns.length, 4); eq(marks.length, 1); ok(!colored, 'sans couleurs avant la réponse'); }
+        const good = btns.filter(b => b.dataset.v === E('cur.correct')); eq(good.length, 1, 'une seule bonne réponse');
+        const wantOk = n % 2 === 0; click(wantOk ? good[0] : btns.find(b => b !== good[0])); noErr('réponse');
+        ok(fb().classList.contains(wantOk ? 'ok' : 'ko'), `${k} tirage ${n}`); ok($q('#tjv [class^="tj-"]'), 'coloré après la réponse');
+        if (k === 'find') ok(/Partie 1 :/.test(fb().textContent) && /Partie 4 :/.test(fb().textContent), 'la règle de chaque partie est donnée');
+        clickAct('nextq'); for (let i = 0; i < 20 && !$q('.opt') && !D.body.textContent.includes('Résultat'); i++) await wait(50);
+        if (!$q('.opt')) break;
+      }
+      E("home()");
+    }
+    ok(['rule', 'color', 'find', 'tf'].every(k => seen.has(k)), 'le mélange propose tous les types : ' + [...seen]);
+    eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'la mémorisation n’est pas modifiée');
+  });
   test('Tajwīd : aucune clé de traduction manquante (en, ar)', async () => {
     for (const L of ['en', 'ar']){
-      reset(`setLang('${L}'); cfg.mode = 'tajweed'; cfg.scope = {type: 'surah', from: 1, to: 1}; cfg.n = 1; tjs = {n: [1, 2], q: [3, 0]};`); E("go('train')"); E("start()");
-      for (let i = 0; i < 40 && !$q('.opt'); i++) await wait(100); ok($q('mark.tjq'), L); click($q('.opt')); clickAct('nextq'); E("go('progress')");
-      eq(E('[...missingKeys]'), [], L);
+      reset(`setLang('${L}'); cfg.mode = 'tajweed'; cfg.scope = {type: 'surah', from: 2, to: 2}; cfg.n = 4; tjs = {n: [1, 2], q: [3, 0]};`); E("go('train')"); eq(E('[...missingKeys]'), [], L + ' liste');
+      for (const kind of ['rule', 'color', 'find', 'tf']){
+        E(`cfg.tjKind = '${kind}'; ses = null`); E("start()"); for (let i = 0; i < 40 && !$q('.opt'); i++) await wait(100); ok($q('mark.tjq'), L + ' ' + kind); click($q('.opt')); eq(E('[...missingKeys]'), [], `${L} ${kind}`);
+      }
+      E("home()"); E("go('progress')"); eq(E('[...missingKeys]'), [], L);
     }
   });
   test('Chaque onglet s’affiche dans les 3 langues sans erreur ni « undefined »', async () => {

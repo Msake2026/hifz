@@ -159,22 +159,41 @@ test('révision espacée : intervalle adaptatif et liste « à renforcer en prio
   assert.deepEqual(weakList([], {}, {}, T), []);
 });
 
-test('exercice de tajwīd : segments, contexte de la lettre, propositions', () => {
+test('exercice de tajwīd : segments, parties surlignées, parties à trouver, vrai/faux, propositions', () => {
   const html = read('index.html'); const code = html.slice(html.indexOf('/* TJ:begin'), html.indexOf('/* TJ:end */'));
-  const { TJFAM, TJGROUP, tjSegs, tjFocus, tjOptions } = new Function(code + '; return {TJFAM, TJGROUP, tjSegs, tjFocus, tjOptions};')();
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const { TJFAM, TJGROUP, tjSegs, tjMulti, tjParts, tjFindPicks, tjFalseFam, tjOptions } = new Function('esc', code + '; return {TJFAM, TJGROUP, tjSegs, tjMulti, tjParts, tjFindPicks, tjFalseFam, tjOptions};')(esc);
   // segments : le texte est conservé, les codes de la source sont regroupés comme dans sa légende
   const raw = 'بِسْمِ [h[ٱ]للَّهِ [h[ٱ][l[ل]رَّحْمَ[n[ـٰ]نِ [s[و]مَ[d[ن ي]'; const segs = tjSegs(raw);
   assert.equal(segs.map(x => x.t).join(''), raw.replace(/\[[a-z]\[/g, '').replace(/\]/g, ''));
   assert.deepEqual(segs.filter(x => x.c).map(x => x.c), ['h', 'h', 'l', 'n', 'l', 'd']);      // s -> l (lettre muette / lām solaire), b -> d
   assert.equal(TJFAM.s, 'l'); assert.equal(TJFAM.b, 'd'); assert.equal(Object.keys(TJGROUP).length, 15);
   assert.deepEqual(tjSegs('abc'), [{ t: 'abc', c: '' }]);
-  // une partie réduite à un signe reçoit sa lettre porteuse ; une partie avec lettre reste telle quelle
-  const sg = tjSegs('رَّحْمَ[n[ـٰ]نِ'); const i = sg.findIndex(x => x.c === 'n'), F = tjFocus(sg, i);
-  assert.equal(F.before + F.mark + F.after, 'رَّحْمَـٰنِ'); assert.ok(/^[\u0621-\u064A]/.test(F.mark) && F.mark.endsWith('ـٰ'), 'lettre + signe : ' + F.mark);
-  const sl = tjSegs('x[l[ل]y'), L = tjFocus(sl, 1); assert.deepEqual(L, { before: 'x', mark: 'ل', after: 'y' });
-  // propositions : 4 distinctes, la bonne dedans, de préférence de la même famille de règles
+  // une partie réduite à un signe reçoit sa lettre porteuse ; le texte total ne change jamais
+  const sg = tjSegs('رَّحْمَ[n[ـٰ]نِ'), i = sg.findIndex(x => x.c === 'n'), P = tjMulti(sg, [i]);
+  assert.equal(P.map(x => x.t).join(''), 'رَّحْمَـٰنِ'); const mk = P.filter(x => x.k).map(x => x.t).join('');
+  assert.ok(/^[\u0621-\u064A]/.test(mk) && mk.endsWith('ـٰ'), 'lettre + signe : ' + mk);
+  const L = tjMulti(tjSegs('x[l[ل]y'), [1]); assert.deepEqual(L.filter(x => x.k).map(x => x.t), ['ل']);
+  // rendu : une seule balise <mark> par partie, numéros et couleurs facultatifs, texte échappé
+  const h = tjParts(tjMulti(tjSegs('a<[n[b]c'), [1]), { colors: true, numbers: true });
+  assert.equal(h, 'a&lt;<mark class="tjq"><span class="tj-n">b</span></mark><sup class="tjn">1</sup>c');
+  assert.equal(tjParts(tjMulti(tjSegs('a[n[b]c'), [1])), 'a<mark class="tjq">b</mark>c');
+  // deux parties voisines : jamais de chevauchement, numéros distincts
+  const two = tjParts(tjMulti(tjSegs('[n[ب][q[ج]'), [0, 1]), { numbers: true }); assert.equal((two.match(/<mark/g) || []).length, 2); assert.ok(two.includes('>1</sup>') && two.includes('>2</sup>'));
+  // parties à trouver : 4 parties, dont une seule de la règle demandée, de préférence de règles différentes
   const names = Object.fromEntries('hlnpmoqcfwiaudg'.split('').map(c => [c, c]));
-  const shuf = a => a.slice().sort(() => Math.random() - 0.5);
+  let seed = 7; const rnd = n => (seed = (seed * 16807) % 2147483647) % n, shuf = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const verse = tjSegs('[n[a]x[p[b]x[q[c]x[f[d]x[n[e]x[g[f]'); 
+  for (let k = 0; k < 50; k++) {
+    const F = tjFindPicks(verse, 'n', rnd, shuf); assert.equal(F.picks.length, 4); assert.ok(F.picks.includes(F.target)); assert.equal(verse[F.target].c, 'n');
+    assert.equal(F.picks.filter(i => verse[i].c === 'n').length, 1, 'une seule bonne partie'); assert.deepEqual(F.picks, [...F.picks].sort((x, y) => x - y));
+    assert.equal(new Set(F.picks.filter(i => i !== F.target).map(i => verse[i].c)).size, 3, 'trois autres règles différentes');
+  }
+  assert.equal(tjFindPicks(tjSegs('[n[a]x[p[b]'), 'n', rnd, shuf), null, 'verset trop pauvre : pas de question');
+  assert.equal(tjFindPicks(verse, 'o', rnd, shuf), null, 'règle absente du verset');
+  // vrai/faux : l'autre règle est différente et de préférence de la même famille
+  for (const fam of 'hlnpmoqcfwiaudg') for (let k = 0; k < 10; k++) { const f = tjFalseFam(fam, names, shuf); assert.notEqual(f, fam); assert.equal(TJGROUP[f], TJGROUP[fam], 'même famille'); }
+  // propositions : 4 distinctes, la bonne dedans, de préférence de la même famille de règles
   for (const fam of 'hlnpmoqcfwiaudg') {
     const o = tjOptions(fam, names, shuf); assert.equal(o.length, 4); assert.equal(new Set(o).size, 4); assert.ok(o.includes(fam));
     const same = o.filter(c => c !== fam && TJGROUP[c] === TJGROUP[fam]).length;
@@ -184,7 +203,7 @@ test('exercice de tajwīd : segments, contexte de la lettre, propositions', () =
 
 test('data/tajweed.js : les 15 familles de règles existent et chaque verset est bien segmenté', () => {
   const html = read('index.html'); const code = html.slice(html.indexOf('/* TJ:begin'), html.indexOf('/* TJ:end */'));
-  const { tjSegs } = new Function(code + '; return {tjSegs};')();
+  const { tjSegs } = new Function('esc', code + '; return {tjSegs};')(x => x);
   const w = {}; new Function('window', read('data/tajweed.js'))(w); const all = w.QX.tajweed.s.flat();
   const fam = new Set(); let spans = 0;
   for (const v of all) { const sg = tjSegs(v); for (const x of sg) if (x.c) { fam.add(x.c); spans++; } }
