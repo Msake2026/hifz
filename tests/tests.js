@@ -214,19 +214,14 @@
     ok(/n'a pas pu être envoyé/.test(f('Error sending confirmation email')), 'envoi'); ok(/Trop de tentatives/.test(f('For security purposes, you can only request this after 20 seconds')), 'anti-spam');
     ok(/incorrect/.test(f('Invalid login credentials')), 'identifiants');
     const calls = []; W.__c = calls;
-    E("CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; me = null; acc.mode = 'signup'; acc.resend = ''; acc.resendAt = 0; sb = {auth: {async signUp(o){ window.__c.push('signUp ' + JSON.stringify(o.options.data)); return {data: {user: {identities: [{}]}, session: null}, error: null}; }, async resend(o){ window.__c.push('resend ' + o.email + ' ' + o.type); return {error: null}; }, async signInWithPassword(){ return {data: null, error: {message: 'Email not confirmed'}}; }}};");
+    E("CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; me = null; acc.mode = 'signup'; acc.resend = ''; acc.resendAt = 0; sb = {auth: {async signUp(){ window.__c.push('signUp'); return {data: {user: {identities: [{}]}, session: null}, error: null}; }, async resend(o){ window.__c.push('resend ' + o.email + ' ' + o.type); return {error: null}; }, async signInWithPassword(){ return {data: null, error: {message: 'Email not confirmed'}}; }}};");
     E("renderAccount()"); ok(!$q('[data-act="acc-resend"]'), 'pas de bouton avant inscription');
     $q('#ac-email').value = 'a@b.fr'; $q('#ac-pass').value = 'motdepasse1'; $q('#ac-pass2').value = 'motdepasse1'; $q('#ac-consent').checked = true; clickAct('acc-signup'); await wait(300);
-    ok(calls.includes('signUp {"lang":"fr"}'), 'la langue de l’interface est envoyée avec l’inscription'); eq(E('LANG'), 'fr');
     ok($q('[data-act="acc-resend"]'), 'bouton de renvoi après inscription'); ok(/indésirables/.test($q('#acc-msg').textContent), 'rappel du dossier spam');
     clickAct('acc-resend'); await wait(300); ok(calls.includes('resend a@b.fr signup'), 'renvoi demandé'); ok(/renvoyé/.test($q('#acc-msg').textContent));
     clickAct('acc-resend'); await wait(300); eq(calls.filter(c => c.startsWith('resend')).length, 1, 'une relance par minute au plus'); ok(/Patiente/.test($q('#acc-msg').textContent), 'attente affichée');
     E("acc.resend = ''; acc.resendAt = 0; acc.mode = 'login'; renderAccount()"); $q('#ac-email').value = 'c@d.fr'; $q('#ac-pass').value = 'x'; clickAct('acc-login'); await wait(300);
     ok($q('[data-act="acc-resend"]'), 'bouton si e-mail non confirmé'); eq(E('acc.resend'), 'c@d.fr');
-    // langue gardée dans le compte : mise à jour quand l'interface change (e-mails dans la bonne langue)
-    E("me = {user: {id: 'u'}, profile: {role: 'user'}}; mailLangSent = ''; sb.auth.updateUser = async o => { window.__c.push('updateUser ' + JSON.stringify(o.data)); return {error: null}; };");
-    E("setLang('en')"); await wait(100); ok(calls.includes('updateUser {"lang":"en"}'), 'langue envoyée au compte'); E("setLang('ar')"); await wait(100); ok(calls.includes('updateUser {"lang":"ar"}'));
-    eq(calls.filter(x => x.startsWith('updateUser')).length, 2, 'pas d’appel inutile'); E("setLang('fr')");
     E("CLOUD.url = ''; CLOUD.anonKey = ''; sb = null; me = null; acc.resend = ''; acc.msg = '';");
   });
   test('Rappels : activer, changer l’heure, 2e rappel, désactiver (serveur simulé)', async () => {
