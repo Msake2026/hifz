@@ -49,7 +49,7 @@ begin
   perform t.fails('insert into public.teacher_links (teacher_id, student_id) values (''' || f1 || ''', ''' || a || ''')');
   perform t.fails('insert into public.teacher_invites (code, student_id, expires_at) values (''ZZZZZZZZ'', ''' || a || ''', now())');
   perform t.fails('delete from public.teacher_invites');
-  perform t.fails('update public.profiles set role = ''teacher'' where id = ''' || a || '''');
+  update public.profiles set role = 'teacher' where id = a; get diagnostics n = row_count; assert n = 0, 'un utilisateur ne peut pas se donner un rôle (aucune ligne modifiée)';
   perform t.as_user(f1);
   perform t.fails('insert into public.teacher_links (teacher_id, student_id) values (''' || f1 || ''', ''' || a || ''')');
 
