@@ -102,6 +102,7 @@ details textarea{min-height:120px;margin-top:6px}
 #nav button.sel{color:var(--accent);font-weight:600}
 #nav svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 #nav .badge{position:absolute;top:4px;left:calc(50% + 6px);background:var(--ko);color:#fff;border-radius:10px;font-size:.62rem;line-height:1;padding:3px 5px;font-weight:600}
+html{scroll-padding-bottom:170px}   /* un champ qui prend le focus ne reste pas caché derrière la barre « Commencer » ni le menu (WCAG 2.4.11) */
 body.has-nav main{padding-bottom:96px}
 .cta{position:sticky;bottom:calc(66px + env(safe-area-inset-bottom));padding:10px 0 4px;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:5}
 .grid.named{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:6px}
