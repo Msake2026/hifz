@@ -10,6 +10,6 @@ window.HIFZ_CLOUD = {
 
 // Mentions affichées dans la page « Confidentialité et conditions ».
 window.HIFZ_LEGAL = {
-  contact: 'amrouniali@gmail.com',  // adresse pour les demandes sur les données
+  contact: 'hifz.app.contact@gmail.com',  // adresse pour les demandes sur les données
   region: 'Londres (eu-west-2)'                        // région du projet Supabase (Project Settings → General), ex. « Paris (eu-west-3) »
 };
