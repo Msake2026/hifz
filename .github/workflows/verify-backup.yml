@@ -1,0 +1,39 @@
+name: Vérifier la dernière sauvegarde
+# Déchiffre la dernière sauvegarde avec BACKUP_PASSPHRASE et contrôle son contenu.
+# Le journal est public : il n'affiche que des noms de fichiers et des nombres de lignes, jamais de données.
+on:
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Télécharger la dernière sauvegarde réussie
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          RUN=$(gh run list -R "$GITHUB_REPOSITORY" --workflow backup.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          [ -n "$RUN" ] || { echo "::error::aucune sauvegarde réussie trouvée"; exit 1; }
+          echo "exécution $RUN"
+          gh run download "$RUN" -R "$GITHUB_REPOSITORY" -n sauvegarde-chiffree -D dl
+          ls -l dl
+      - name: Déchiffrer et contrôler
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          umask 077
+          F=$(ls dl/*.gpg | head -1)
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 -d "$F" > b.tar.gz || { echo "::error::déchiffrement impossible : mauvaise phrase secrète ?"; exit 1; }
+          tar tzf b.tar.gz
+          tar xzf b.tar.gz
+          D=$(ls -d hifz-backup-*/ | head -1)
+          for t in profiles user_data push_subs; do
+            n=$(awk -v t="public.$t" '$0 ~ "^COPY " t " " {c=1; next} c && /^\\\.$/ {c=0} c {n++} END {print n+0}' "$D/public.sql")
+            echo "table $t : $n ligne(s)"
+          done
+          echo "comptes (id/e-mail) : $(($(wc -l < "$D/auth_users_ids.csv") - 1))"
+          echo "✓ sauvegarde lisible et complète"
