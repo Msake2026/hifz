@@ -537,6 +537,7 @@ function syncCfg(){
 function setLang(l){ // change la langue de l'interface (le texte du Coran ne change pas)
   if (!['fr', 'en', 'ar'].includes(l) || l === LANG) return;
   LANG = l; cfg.lang = l; saveCfg(); applyLang();
+  if (me && sb && remState().on) pushResync().catch(() => {});
   if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else home();
 }
 function go(tab){ cfg.tab = tab; saveCfg(); home(); window.scrollTo(0, 0); }
@@ -870,6 +871,8 @@ function tabSettings(){
     <div class="row" style="margin-top:12px;align-items:end"><div><label class="f">${tr('Rappel quotidien (calendrier)')}</label><input type="time" id="rtime" value="20:00"></div>
       <button data-act="ics">📅 ${tr('Ajouter au calendrier')}</button></div>
   </div>
+
+  ${remindCard()}
 
   <div class="card"><h2>${tr('Mes données')}</h2>
     <div class="row"><button data-act="export">⬇ ${tr('Exporter ma progression')}</button><button data-act="import">⬆ ${tr('Importer')}</button></div>
@@ -1560,6 +1563,7 @@ const onClick = e => {
     case 'home': home(); break;
     case 'tab': go(v); break;
     case 'upd': forceUpdate(el); break;
+    case 'rem-on': case 'rem-save': case 'rem-off': case 'rem-test': remAction(el.dataset.act); break;
     case 'cm-cam': $('cm-f-cam').click(); break;
     case 'cm-img': $('cm-f-img').click(); break;
     case 'cm-doc': $('cm-f-doc').click(); break;
@@ -1817,7 +1821,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v13';
+const APP_VERSION = '21 oct. 2026 · v14';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2050,6 +2054,7 @@ const doSync = () => busy(async () => { await cloudSyncOnLogin(); await cloudPus
 const doLogout = async () => {
   if (!confirm(tr('Te déconnecter ? La progression de cet appareil sera effacée (elle reste dans ton compte).'))) return;
   clearTimeout(pushTimer); await cloudPush();
+  if (remState().on) await pushDrop();
   if (acc.syncErr && !confirm(tr('La dernière synchronisation a échoué : te déconnecter perdra les changements non envoyés. Continuer ?'))) return;
   await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.me'); } catch {}
   syncPause = true; stats = {}; sched = {}; days = {}; errors = []; plan = null; custom.forEach(t => { delete MT[t.id]; }); custom = [];
@@ -2062,6 +2067,65 @@ const doDeleteMe = () => busy(async () => {
   await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.cloud'); localStorage.removeItem('hifz.me'); } catch {}
   acc.mode = 'login'; acc.ok = true; acc.msg = tr('Compte supprimé. La progression de cet appareil est conservée.');
 });
+
+/* ---------- rappels : notifications Web Push (envoyées par la fonction Supabase « send-reminders ») ---------- */
+const remState = () => Object.assign({on: false, time: '20:00'}, store.get('hifz.remind', {}));
+const PUSH_OK = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const urlB64 = x => Uint8Array.from(atob(x.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+const remMsg = (m, ok) => { const e = $('rem-msg'); if (e){ e.textContent = m || ''; e.style.color = ok === false ? 'var(--ko)' : ''; } };
+function remindCard(){
+  if (!cloudOn() || !me || !CLOUD.vapidPublicKey) return '';
+  const r = remState(), ok = PUSH_OK(), needInstall = IOS && !IOS_APP;
+  return `<div class="card"><h2>${tr('Rappels')}</h2>
+    <p class="ref" style="margin:0 0 8px">${tr("Reçois une notification chaque jour à l'heure choisie, seulement si tu n'as pas encore révisé ce jour-là.")}</p>
+    ${!ok ? `<p class="ref" style="margin:0">${tr('Ton navigateur ne gère pas les notifications.')}</p>`
+    : needInstall ? `<p class="ref" style="margin:0">${tr("Sur iPhone, installe d'abord l'application sur l'écran d'accueil (Partager, puis « Sur l'écran d'accueil ») pour recevoir des rappels.")}</p>`
+    : `<label class="f" for="rem-time">${tr('Heure du rappel')}</label><input type="time" id="rem-time" value="${esc(r.time)}">
+       <div class="row" style="margin-top:10px">${r.on
+        ? `<button data-act="rem-save">${tr("Enregistrer l'heure")}</button><button data-act="rem-test">${tr('Tester une notification')}</button><button data-act="rem-off">${tr('Désactiver les rappels')}</button>`
+        : `<button class="pri" data-act="rem-on">${tr('Activer les rappels sur cet appareil')}</button>`}</div>
+       <p id="rem-msg" class="ref" style="margin:8px 0 0">${r.on ? tr('Rappels activés à {t}.', {t: esc(r.time)}) : ''}</p>`}
+  </div>`;
+}
+async function pushSubscribeServer(sub, time){
+  const j = sub.toJSON(), {error} = await sb.rpc('push_subscribe', {p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_time: time,
+    p_tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', p_lang: LANG});
+  if (error) throw error;
+}
+async function pushEnable(time){
+  if (!me || !sb) throw new Error(tr('Connecte-toi pour activer les rappels.'));
+  if (!CLOUD.vapidPublicKey) throw new Error(tr('Les rappels ne sont pas encore activés sur ce site.'));
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error(tr("Heure invalide."));
+  if (Notification.permission !== 'granted' && await Notification.requestPermission() !== 'granted') throw new Error(tr('Notifications refusées : autorise-les dans les réglages de ton téléphone.'));
+  const reg = await navigator.serviceWorker.ready;
+  const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: urlB64(CLOUD.vapidPublicKey)});
+  await pushSubscribeServer(sub, time);
+  store.set('hifz.remind', {on: true, time});
+}
+async function pushDrop(){ // retire l'abonnement (serveur + appareil)
+  try {
+    const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
+    if (sub){ if (sb) await sb.rpc('push_unsubscribe', {p_endpoint: sub.endpoint}); await sub.unsubscribe(); }
+  } catch {}
+  store.set('hifz.remind', {on: false, time: remState().time});
+}
+async function pushResync(){ // change la langue/l'heure sans redemander la permission
+  const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
+  if (sub) await pushSubscribeServer(sub, remState().time);
+}
+async function remAction(act){
+  const time = $('rem-time') ? $('rem-time').value : remState().time;
+  try {
+    if (act === 'rem-on' || act === 'rem-save'){ await pushEnable(time); home(); remMsg(tr('Rappels activés à {t}.', {t: time}), true); }
+    else if (act === 'rem-off'){ await pushDrop(); home(); remMsg(tr('Rappels désactivés.'), true); }
+    else if (act === 'rem-test'){
+      if (Notification.permission !== 'granted') throw new Error(tr('Notifications refusées : autorise-les dans les réglages de ton téléphone.'));
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification('Hifz', {body: tr("C'est l'heure de ta révision 📖"), icon: 'icons/icon-192.png', tag: 'hifz-test'});
+      remMsg(tr('Notification de test envoyée.'), true);
+    }
+  } catch (e){ remMsg(friendly(e), false); }
+}
 
 /* confidentialité et conditions : décrit le fonctionnement réel du site (voir supabase/schema.sql, config.js) */
 const LEGAL_DATE = '2026-10-21';
@@ -2079,6 +2143,7 @@ function renderLegal(){
     ${sec('Qui est responsable ?', [tr("Hifz est un site personnel et gratuit d'aide à la mémorisation du Coran. Responsable du site : contact par e-mail uniquement ({contact}).", {contact})])}
     ${sec('Quelles données ?', [tr("Compte : ton adresse e-mail, ton mot de passe (transmis au service d'authentification Supabase, qui le stocke de façon sécurisée ; ce site ne le conserve pas), la date d'inscription, ta dernière activité et ton rôle."),
       tr("Progression : tes statistiques, ton historique d'erreurs (y compris les réponses que tu saisis), ton plan de mémorisation, tes réglages et les textes que tu ajoutes toi-même."),
+      tr("Rappels (facultatif) : si tu actives les notifications, l'adresse technique de ton appareil pour les notifications (fournie par Apple, Google ou Mozilla), l'heure choisie, ton fuseau horaire et ta langue sont enregistrés pour t'envoyer le rappel, qui transite par le service de notifications de ton système. Tu peux les désactiver à tout moment dans Réglages."),
       tr("Données techniques : comme sur tout site, les hébergeurs et services utilisés peuvent enregistrer des informations de connexion, par exemple l'adresse IP.")])}
     ${sec('Pourquoi ?', [tr("Pour créer ton compte, te connecter et synchroniser ta progression entre tes appareils. L'administrateur peut consulter la liste des comptes et la progression pour gérer le service. Les données ne sont ni vendues ni utilisées pour de la publicité.")])}
     ${sec('Sur quelle base ?', [tr("Ton consentement, donné en cochant la case à l'inscription. Tu peux le retirer à tout moment en supprimant ton compte.")])}

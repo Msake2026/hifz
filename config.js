@@ -4,7 +4,8 @@
 // N'écris JAMAIS ici la clé « service_role » (secrète).
 window.HIFZ_CLOUD = {
   url: 'https://rdtfpinikhqxbufnoqvm.supabase.co',
-  anonKey: 'sb_publishable_EmfYn0tBDUM-QgHfNSCc5A_qwU2IVDw'   // clé « publishable » (publique par conception)
+  anonKey: 'sb_publishable_EmfYn0tBDUM-QgHfNSCc5A_qwU2IVDw',   // clé « publishable » (publique par conception)
+  vapidPublicKey: 'BGSyzd0fSnxyLCKcsbtliLDWAeWZb1A38k-bY9yLWDq04L_Ki16sCALo8ldhM1FhbSxB75rxRnVv0WFO7XWvBxM' // clé PUBLIQUE des notifications (la clé privée est dans un secret Supabase)
 };
 
 // Mentions affichées dans la page « Confidentialité et conditions ».
