@@ -15,6 +15,17 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.profiles where id = auth.uid() and role = 'teacher' and not blocked)
 $$;
 
+-- Demandes pour devenir enseignant (l'utilisateur demande, l'administrateur accepte ou refuse)
+create table if not exists public.teacher_requests (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.teacher_requests enable row level security;
+drop policy if exists "demande : lecture" on public.teacher_requests;
+create policy "demande : lecture" on public.teacher_requests for select to authenticated using (user_id = auth.uid());
+revoke all on public.teacher_requests from anon, authenticated;
+grant select on public.teacher_requests to authenticated;
+
 create or replace function public.admin_set_role(target uuid, new_role text) returns void
 language plpgsql security definer set search_path = public as $$
 begin
@@ -22,6 +33,7 @@ begin
   if new_role not in ('user', 'admin', 'teacher') then raise exception 'rôle inconnu'; end if;
   if target = auth.uid() and new_role <> 'admin' then raise exception 'Tu ne peux pas retirer ton propre rôle admin.'; end if;
   update public.profiles set role = new_role where id = target;
+  delete from public.teacher_requests where user_id = target;       -- la demande est traitée
 end $$;
 
 -- 2. Tables (lecture seule pour les utilisateurs connectés, et seulement leurs propres lignes ; écritures par les fonctions)
@@ -164,3 +176,37 @@ revoke all on function public.is_teacher(), public.invite_create(), public.invit
 grant execute on function public.is_teacher(), public.invite_create(), public.invite_cancel(text), public.link_revoke(uuid), public.links_mine(),
   public.access_log_mine(), public.invite_accept(text), public.teacher_students(), public.teacher_student_data(uuid),
   public.admin_set_role(uuid, text) to authenticated;
+
+-- 9. Demande pour devenir enseignant
+create or replace function public.teacher_request() returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null or not public.is_active() then raise exception 'accès refusé' using errcode = '42501'; end if;
+  if exists (select 1 from public.profiles where id = auth.uid() and role in ('teacher', 'admin')) then raise exception 'Tu as déjà ce rôle.'; end if;
+  insert into public.teacher_requests (user_id) values (auth.uid()) on conflict do nothing;
+end $$;
+
+create or replace function public.teacher_request_cancel() returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'accès refusé' using errcode = '42501'; end if;
+  delete from public.teacher_requests where user_id = auth.uid();
+end $$;
+
+create or replace function public.admin_teacher_requests() returns table (user_id uuid, email text, created_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'accès refusé' using errcode = '42501'; end if;
+  return query select r.user_id, p.email, r.created_at from public.teacher_requests r join public.profiles p on p.id = r.user_id
+    where not p.blocked order by r.created_at;
+end $$;
+
+create or replace function public.admin_teacher_decline(target uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'accès refusé' using errcode = '42501'; end if;
+  delete from public.teacher_requests where user_id = target;
+end $$;
+
+revoke all on function public.teacher_request(), public.teacher_request_cancel(), public.admin_teacher_requests(), public.admin_teacher_decline(uuid) from public, anon;
+grant execute on function public.teacher_request(), public.teacher_request_cancel(), public.admin_teacher_requests(), public.admin_teacher_decline(uuid) to authenticated;

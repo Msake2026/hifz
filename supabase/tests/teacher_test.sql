@@ -113,6 +113,20 @@ begin
   perform t.as_super(); update public.profiles set blocked = false where id = b; update public.profiles set blocked = true where id = f1;
   perform t.as_user(f1); perform t.fails('select public.teacher_student_data(''' || b || ''')', '42501');
 
+  -- 7 bis. demande pour devenir enseignant
+  perform t.as_super(); update public.profiles set blocked = false, role = 'user' where id = f1;
+  perform t.as_user(f1); perform public.teacher_request(); perform public.teacher_request(); assert (select count(*) from public.teacher_requests) = 1, 'une seule demande par personne, et visible par elle seule';
+  perform t.as_user(c1); assert (select count(*) from public.teacher_requests) = 0, 'les demandes des autres sont invisibles'; perform public.teacher_request();
+  perform t.fails('select count(*) from public.admin_teacher_requests()', '42501'); perform t.fails('select public.admin_teacher_decline(''' || f1 || ''')', '42501');
+  perform t.fails('insert into public.teacher_requests (user_id) values (''' || a || ''')'); perform t.fails('select public.admin_set_role(''' || c1 || ''', ''teacher'')', '42501');
+  perform t.as_user(ad); assert (select count(*) from public.admin_teacher_requests()) = 2, 'l''admin voit les demandes';
+  perform public.admin_set_role(f1, 'teacher'); assert (select count(*) from public.admin_teacher_requests()) = 1 and (select role from public.profiles where id = f1) = 'teacher', 'accepter = rôle donné, demande effacée';
+  perform public.admin_teacher_decline(c1); assert (select count(*) from public.admin_teacher_requests()) = 0, 'refuser efface la demande';
+  perform t.as_user(f1); perform t.fails('select public.teacher_request()');   -- déjà enseignant
+  perform t.as_user(c1); perform public.teacher_request(); perform public.teacher_request_cancel(); assert (select count(*) from public.teacher_requests) = 0, 'annulation par l''utilisateur';
+  perform t.as_super(); update public.profiles set blocked = true where id = c1; perform t.as_user(c1); perform t.fails('select public.teacher_request()', '42501');
+  perform t.as_super(); update public.profiles set blocked = false where id = c1;
+
   -- 8. suppression d'un compte élève : le lien et le journal partent avec lui
   perform t.as_super(); update public.profiles set blocked = false where id = f1; delete from auth.users where id = a;
   assert (select count(*) from public.teacher_access_log where student_id = a) = 0 and (select count(*) from public.teacher_links where student_id = a) = 0, 'cascade à la suppression';
