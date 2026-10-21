@@ -368,6 +368,27 @@
       E("go('progress')"); eq(E('[...missingKeys]'), [], L);
     }
   });
+  test('Audio hors ligne : estimation, téléchargement d’une sourate, lecture depuis l’appareil, plafond, suppression (réseau requis)', async () => {
+    const url1 = 'https://everyayah.com/data/Alafasy_64kbps/001001.mp3', net = await fetch(url1, {method: 'HEAD', mode: 'cors'}).then(r => r.ok).catch(() => false);
+    if (!net) return;                                            // pas d'accès à everyayah.com : test ignoré
+    reset("cfg.reciter = 'ar.alafasy'; cfg.audFrom = 1; cfg.audTo = 1; cfg.audCap = 50; audioOff = {}; audioUI = {plan: null, busy: false, ctl: null};"); await W.caches.delete('hifz-audio-v1');
+    E("go('settings')"); ok($q('[data-act="aud-est"]') && $q('#aud-from') && $q('#aud-cap'), 'carte Audio hors ligne'); ok($q('[data-act="aud-dl"]').disabled, 'téléchargement impossible avant le calcul de la taille');
+    clickAct('aud-est'); for (let i = 0; i < 100 && !E('audioUI.plan'); i++) await wait(100); const P = E('audioUI.plan'); ok(P && P.take.length === 1, 'estimation faite'); noErr('estimation');
+    ok(/Estimation/.test($q('#aud-msg').textContent)); ok(!$q('[data-act="aud-dl"]').disabled);
+    clickAct('aud-dl'); for (let i = 0; i < 300 && (E('audioUI.busy') || !E("audioSet('ar.alafasy')[1]")); i++) await wait(100); noErr('téléchargement');
+    const cache = await W.caches.open('hifz-audio-v1'), keys = await cache.keys(); eq(keys.length, 7, '7 versets de la Fatiha dans le cache');
+    const got = E("audioSet('ar.alafasy')[1]"); ok(got > 100000, 'octets enregistrés : ' + got); const ratio = P.used / got; ok(ratio > 0.8 && ratio < 2.2, 'estimation raisonnable : ' + ratio.toFixed(2));
+    eq(E("audioUrl({s: 1, a: 1})"), url1); ok(E("audioUrl({s: 2, a: 1})").includes('islamic.network'), 'sourates non téléchargées : lecture en ligne');
+    ok(appText().includes('Sur cet appareil') && appText().includes('Al-Faatiha'), 'liste des sourates téléchargées');
+    if (W.navigator.serviceWorker.controller){                    // le service worker sert les plages d'octets depuis le cache
+      const r = await W.fetch(url1, {headers: {Range: 'bytes=0-99'}}); eq(r.status, 206); eq(r.headers.get('x-hifz-offline'), '1', 'servi par l’appareil, pas par le réseau'); eq((await r.arrayBuffer()).byteLength, 100); ok(/^bytes 0-99\/\d+$/.test(r.headers.get('content-range')));
+    }
+    E("cfg.audCap = 0.2; audioUI.plan = null"); E("go('settings')"); $q('#aud-cap') && 0; clickAct('aud-est'); for (let i = 0; i < 100 && !E('audioUI.plan'); i++) await wait(100);
+    ok(E('audioUI.plan.take.length') === 0 && /Plafond atteint/.test(appText()), 'plafond trop petit : rien à télécharger'); ok($q('[data-act="aud-dl"]').disabled);
+    E("cfg.audCap = 50"); E("go('settings')"); clickAct('aud-del', '1'); for (let i = 0; i < 50 && E("audioSet('ar.alafasy')[1]"); i++) await wait(100); await wait(200);
+    eq((await cache.keys()).length, 0, 'suppression : cache vidé'); eq(E("Object.keys(audioSet('ar.alafasy')).length"), 0); ok(E("audioUrl({s: 1, a: 1})").includes('islamic.network'), 'retour à la lecture en ligne');
+    E("audioOff = {}; store.set('hifz.audio', {})");
+  });
   test('Makhārij et ṣifāt : aucune clé de traduction manquante (en, ar)', async () => {
     for (const L of ['en', 'ar']){
       reset(`setLang('${L}'); cfg.n = 3; hfs = {'mk:ظ': [1, 2], 'sf:qalqala': [3, 0]}`); E("go('train')");
@@ -376,6 +397,12 @@
         for (const k of kinds){ E(`cfg.${key} = '${k}'; ses = null`); E("start()"); ok($q('.opt'), L + k); click($q('.opt')); eq(E('[...missingKeys]'), [], `${L} ${mode} ${k}`); E("home()"); }
       }
       E("go('progress')"); eq(E('[...missingKeys]'), [], L);
+    }
+  });
+  test('Audio hors ligne : aucune clé de traduction manquante (en, ar)', async () => {
+    for (const L of ['en', 'ar']){
+      reset(`setLang('${L}'); cfg.reciter = 'ar.alafasy'; audioOff = {'ar.alafasy': {1: 400000, 112: 120000}}; audioUI = {plan: {take: [1], skip: [2], used: 1e6, skipBytes: 2e6, items: []}, busy: false, ctl: null}`);
+      E("go('settings')"); ok($q('[data-act="aud-del"]'), L); eq(E('[...missingKeys]'), [], L); E("audioOff = {}; audioUI = {plan: null, busy: false, ctl: null}; store.set('hifz.audio', {})");
     }
   });
   test('Tajwīd : aucune clé de traduction manquante (en, ar)', async () => {

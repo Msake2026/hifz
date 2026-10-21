@@ -344,3 +344,21 @@ test('madd : type déduit du texte coïncide avec la marque de la source (n, p, 
   }
   assert.deepEqual(Object.keys(seen).sort(), ['arid', 'lazim', 'munfasil', 'muttasil', 'tabii']);
 });
+
+test('audio hors ligne : adresses, estimation, plafond et plages d\'octets du service worker', () => {
+  const html = read('index.html'), au = html.slice(html.indexOf('/* AU:begin'), html.indexOf('/* AU:end */'));
+  const { AU_EA, auUrl, auPad, auChars, auEstimate, auPlan, auMo } = new Function(au + '; return {AU_EA, auUrl, auPad, auChars, auEstimate, auPlan, auMo};')();
+  const ids = [...html.matchAll(/\['(ar\.[a-z]+)', '[^']+', \d+\]/g)].map(m => m[1]); assert.equal(ids.length, 8);
+  for (const id of ids) assert.ok(AU_EA[id] && /_64kbps$/.test(AU_EA[id]), 'dossier everyayah pour ' + id);
+  assert.equal(auUrl('ar.alafasy', 1, 1), 'https://everyayah.com/data/Alafasy_64kbps/001001.mp3'); assert.equal(auUrl('ar.husary', 114, 6), 'https://everyayah.com/data/Husary_64kbps/114006.mp3'); assert.equal(auPad(7), '007');
+  assert.equal(auChars('بِسْمِ ٱللَّهِ'), 7);
+  const est = auEstimate([{ bytes: 1000, chars: 100 }, { bytes: 3000, chars: 200 }], 1000); assert.equal(est, Math.round(4000 / 300 * 1000 * 1.15)); assert.equal(auEstimate([], 500), 0);
+  const P = auPlan([{ s: 1, bytes: 40 }, { s: 2, bytes: 70 }, { s: 3, bytes: 50 }, { s: 4, bytes: 10 }], 100);
+  assert.deepEqual(P.take, [1, 3, 4]); assert.deepEqual(P.skip, [2]); assert.equal(P.used, 100); assert.deepEqual(auPlan([{ s: 1, bytes: 500 }], 100).take, []);
+  assert.equal(auMo(40e6), '40 Mo'); assert.equal(auMo(1.5e9), '1.5 Go'); assert.equal(auMo(10), '1 Mo');
+  // service worker : les caches ne sont pas effacés, plages d'octets
+  const sw = read('sw.js'); assert.match(sw, /\[SHELL, RUNTIME, AUDIO\]/); assert.match(sw, /hostname === 'everyayah\.com'/);
+  const rangeOf = new Function(sw.slice(sw.indexOf('function rangeOf'), sw.indexOf('async function audioResponse')) + '; return rangeOf;')();
+  assert.deepEqual(rangeOf('bytes=0-99', 1000), [0, 99]); assert.deepEqual(rangeOf('bytes=900-', 1000), [900, 999]); assert.deepEqual(rangeOf('bytes=-100', 1000), [900, 999]); assert.deepEqual(rangeOf('bytes=0-5000', 1000), [0, 999]);
+  assert.equal(rangeOf('bytes=1000-', 1000), null); assert.equal(rangeOf('bytes=5-2', 1000), null); assert.equal(rangeOf('abc', 1000), null); assert.equal(rangeOf('bytes=-', 1000), null); assert.equal(rangeOf(null, 10), null);
+});
