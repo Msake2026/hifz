@@ -119,6 +119,15 @@ body.has-nav main{padding-bottom:96px}
 :root{--tjc-h:#AAAAAA;--tjc-s:#AAAAAA;--tjc-l:#AAAAAA;--tjc-n:#537FFF;--tjc-p:#4050FF;--tjc-m:#000EBC;--tjc-o:#2144C1;--tjc-q:#DD0008;--tjc-c:#D500B7;--tjc-f:#9400A8;--tjc-w:#58B800;--tjc-i:#26BFFD;--tjc-a:#169777;--tjc-u:#169200;--tjc-d:#A1A1A1;--tjc-b:#A1A1A1;--tjc-g:#FF7E1E}   /* couleurs officielles de la légende ; remplacées par une version plus contrastée en mode « contraste renforcé » */
 .tj-h{color:var(--tjc-h)}.tj-s{color:var(--tjc-s)}.tj-l{color:var(--tjc-l)}.tj-n{color:var(--tjc-n)}.tj-p{color:var(--tjc-p)}.tj-m{color:var(--tjc-m)}.tj-o{color:var(--tjc-o)}.tj-q{color:var(--tjc-q)}.tj-c{color:var(--tjc-c)}.tj-f{color:var(--tjc-f)}
 .tj-w{color:var(--tjc-w)}.tj-i{color:var(--tjc-i)}.tj-a{color:var(--tjc-a)}.tj-u{color:var(--tjc-u)}.tj-d{color:var(--tjc-d)}.tj-b{color:var(--tjc-b)}.tj-g{color:var(--tjc-g)}
+/* Motifs : un trait distinct par règle, en plus de la couleur (réglage Accessibilité). Chaque règle a une combinaison unique de position (au-dessus, en dessous, les deux) et de style (plein, tirets, points, double, ondulé, hachuré). */
+.tjp [class^="tj-"]{border-radius:0;padding-bottom:.04em}
+.tjp .tj-n{border-top:2px solid currentColor}.tjp .tj-p{border-top:2px dashed currentColor}.tjp .tj-m{border-top:3px double currentColor}.tjp .tj-o{border-top:2px dotted currentColor}
+.tjp .tj-u{border-bottom:2px solid currentColor}.tjp .tj-l,.tjp .tj-s{border-bottom:2px dashed currentColor}.tjp .tj-h{border-bottom:2px dotted currentColor}.tjp .tj-f{border-bottom:3px double currentColor}
+.tjp .tj-q{border-top:2px solid currentColor;border-bottom:2px solid currentColor}.tjp .tj-c{border-top:2px dashed currentColor;border-bottom:2px dashed currentColor}.tjp .tj-w{border-top:2px dotted currentColor;border-bottom:2px dotted currentColor}
+.tjp .tj-g{border-top:3px double currentColor;border-bottom:3px double currentColor}
+.tjp .tj-a{border-bottom:5px solid currentColor}.tjp .tj-i{text-decoration:underline wavy currentColor;text-underline-offset:.18em}
+.tjp .tj-d,.tjp .tj-b{background:repeating-linear-gradient(135deg,currentColor 0 2px,transparent 2px 5px) bottom/100% 5px no-repeat}
+.tjkey .tjpat{display:none;font-family:"Amiri Quran",serif;font-size:1.1rem;padding:0 4px}.tjp .tjkey .tjpat{display:inline}
 .rvb{margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--line)}.rvb .rd{margin:0}
 .rtr{margin:4px 0 0;font-size:.95rem;line-height:1.55;text-align:start}.rtf{margin:6px 0 0;font-size:1rem;line-height:1.9;direction:rtl;text-align:right;color:var(--muted,inherit);font-family:"Amiri Quran","Traditional Arabic",serif}
 .tjkey{display:inline-flex;align-items:center;gap:6px;margin:2px 10px 2px 0;font-size:.85rem}.tjkey i{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid #0002}
@@ -979,7 +988,7 @@ function tabTrain(){
         <select id="smkk">${MKKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.mkKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
       ${o.sf ? `<div><label class="f" for="ssfk">${tr('Type de question de ṣifāt')}</label>
         <select id="ssfk">${SFKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.sfKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
-      ${o.tj ? `${cfg.tjKind === 'read' ? `<p class="ref" style="flex:1 1 100%;margin:0">${tr("Ce type de question repose sur les couleurs : choisis un autre type si tu distingues mal les couleurs.")}</p>` : ''}<div><label class="f" for="stjk">${tr('Type de question de tajwīd')}</label>
+      ${o.tj ? `${cfg.tjKind === 'read' ? `<p class="ref" style="flex:1 1 100%;margin:0">${tr("Ce type de question repose sur les couleurs : choisis un autre type si tu distingues mal les couleurs, ou active les motifs (Réglages, Accessibilité) : ils s'affichent aussi dans la légende.")}</p>` : ''}<div><label class="f" for="stjk">${tr('Type de question de tajwīd')}</label>
         <select id="stjk">${TJKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.tjKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
       ${o.level ? `<div><label class="f">${tr('Mots cachés (mots manquants)')}</label>
         <select id="slevel">${[20, 40, 60, 80].map(n => `<option value="${n}" ${n === cfg.level ? 'selected' : ''}>${n} %</option>`).join('')}</select></div>` : ''}
@@ -1064,6 +1073,7 @@ function tabSettings(){
   <div class="card"><h2>${tr('Accessibilité')}</h2>
     <label class="f" for="shc">${tr('Contraste renforcé des couleurs du tajwīd')}</label>
     <select id="shc"><option value="auto" ${cfg.hc === undefined ? 'selected' : ''}>${tr('Automatique (préférence du système)')}</option><option value="on" ${cfg.hc === true ? 'selected' : ''}>${tr('Oui')}</option><option value="off" ${cfg.hc === false ? 'selected' : ''}>${tr('Non')}</option></select>
+    <label class="consent"><input type="checkbox" id="tjp" ${cfg.tjp ? 'checked' : ''}><span>${tr('Ajouter un motif (trait, pointillé…) à chaque règle du tajwīd, en plus de la couleur')}</span></label>
     <p class="ref" style="margin:6px 0 0">${tr("Les couleurs officielles du tajwīd ont un faible contraste sur fond clair (10 règles sur 15 ont une couleur sous la recommandation 4,5:1). Ce réglage les fonce, en gardant la même teinte.")}</p></div>
 
   ${audioCard()}
@@ -1960,7 +1970,8 @@ function a11yDarken(hex, bg, min = 4.5){ // même teinte, plus sombre, jusqu'à 
 /* A11Y:end */
 const TJ_PAGE = '#fbf6e8';                                          // fond clair des textes colorés (.rd.tj)
 const tjHcStyle = () => `:root{${TJLEG.map(([c, col]) => `--tjc-${c}:${a11yDarken(col, TJ_PAGE)}`).join(';')};--tjc-s:${a11yDarken('#AAAAAA', TJ_PAGE)};--tjc-b:${a11yDarken('#A1A1A1', TJ_PAGE)}}`;
-function applyA11y(){ // contraste renforcé des couleurs du tajwīd (réglage, ou préférence du système « plus de contraste »)
+function applyA11y(){ // contraste renforcé des couleurs du tajwīd (réglage, ou préférence du système « plus de contraste »), motifs en plus des couleurs
+  document.documentElement.classList.toggle('tjp', !!cfg.tjp);
   const on = cfg.hc !== undefined ? !!cfg.hc : !!(window.matchMedia && matchMedia('(prefers-contrast: more)').matches);
   let st = document.getElementById('tjhc'); if (on){ if (!st){ st = document.createElement('style'); st.id = 'tjhc'; document.head.appendChild(st); } st.textContent = tjHcStyle(); } else if (st) st.remove();
 }
@@ -2384,7 +2395,7 @@ const TJLEG = [['h', '#AAAAAA', 'Hamzat al-waṣl'], ['l', '#AAAAAA', 'Lām sola
   ['w', '#58B800', 'Idghām shafawī'], ['i', '#26BFFD', 'Iqlāb'], ['a', '#169777', 'Idghām avec ghunna'], ['u', '#169200', 'Idghām sans ghunna'], ['d', '#A1A1A1', 'Idghām mutajānisayn / mutaqāribayn'], ['g', '#FF7E1E', 'Ghunna (2 temps)']];
 const TJNAME = Object.fromEntries(TJLEG.map(([c, , n]) => [c, n]));   // famille de règle -> nom (légende officielle)
 const TRSRC = {fr: 'Hamidullah', en: 'Saheeh International'};
-const tjLegendHtml = () => `<p style="margin:6px 0 0">${TJLEG.map(([c, col, n]) => `<span class="tjkey"><i style="background:var(--tjc-${c},${col})"></i>${esc(tr(n))}</span>`).join('')}</p>`;
+const tjLegendHtml = () => `<p style="margin:6px 0 0">${TJLEG.map(([c, col, n]) => `<span class="tjkey"><i style="background:var(--tjc-${c},${col})"></i><span class="tjpat rd tj" lang="ar"><span class="tj-${c}">ـبـ</span></span>${esc(tr(n))}</span>`).join('')}</p>`;
 function rdSources(){
   const L = [], a = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
   if (cfg.rdTaj) L.push(`<p class="ref" style="margin:8px 0 0">${tr("Couleurs du tajwīd : annotation automatique d'Islamic Network (api.alquran.cloud), non relue par un enseignant. Vérifie avec ton professeur ; elle suit une écriture légèrement différente du texte des exercices.")} ${a('https://1x.ax/islamic-network/alquran/tools/~files/master/docs/tajweed.md', tr('Légende officielle'))}.
@@ -2568,7 +2579,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v36';
+const APP_VERSION = '21 oct. 2026 · v37';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2770,7 +2781,8 @@ function renderAccount(){
 }
 let msgTimer = null;
 function clearMsg(){ acc.msg = ''; acc.auto = false; const m = $('acc-msg'); if (m) m.remove(); }
-$app.addEventListener('change', e => { if (e.target.id === 'rem-two') $('rem-time2').disabled = !e.target.checked; if (e.target.id === 'aud-auto'){ cfg.audAuto = e.target.checked; saveCfg(); if (cfg.audAuto) maybeAutoAudio(); } });
+$app.addEventListener('change', e => { if (e.target.id === 'rem-two') $('rem-time2').disabled = !e.target.checked; if (e.target.id === 'tjp'){ cfg.tjp = e.target.checked; saveCfg(); applyA11y(); }
+  if (e.target.id === 'aud-auto'){ cfg.audAuto = e.target.checked; saveCfg(); if (cfg.audAuto) maybeAutoAudio(); } });
 $app.addEventListener('input', () => { if (screen === 'account' && acc.msg && acc.ok) clearMsg(); }); // un message de confirmation s'efface dès qu'on tape
 const EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const EYE_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.5 10.5 0 0 1 12 5c6.4 0 10 7 10 7a17.5 17.5 0 0 1-3.2 4.1M6.5 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7a9.8 9.8 0 0 0 4.4-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';

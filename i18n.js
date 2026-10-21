@@ -803,10 +803,11 @@ window.I18N = {
 "Contraste renforcé des couleurs du tajwīd": "Higher contrast for tajweed colours",
 "Automatique (préférence du système)": "Automatic (system preference)",
 "Les couleurs officielles du tajwīd ont un faible contraste sur fond clair (10 règles sur 15 ont une couleur sous la recommandation 4,5:1). Ce réglage les fonce, en gardant la même teinte.": "The official tajweed colours have low contrast on a light background (10 of the 15 rules have a colour below the recommended 4.5:1). This setting darkens them while keeping the same hue.",
-"Ce type de question repose sur les couleurs : choisis un autre type si tu distingues mal les couleurs.": "This question type relies on colours: choose another type if you have trouble telling colours apart.",
+"Ce type de question repose sur les couleurs : choisis un autre type si tu distingues mal les couleurs, ou active les motifs (Réglages, Accessibilité) : ils s'affichent aussi dans la légende.": "This question type relies on colours: choose another type if you have trouble telling colours apart, or turn on patterns (Settings, Accessibility): they also appear in the legend.",
 "Question {i} sur {n}": "Question {i} of {n}",
 "Lecteur": "Reader",
-"Mot manquant {n}": "Missing word {n}"
+"Mot manquant {n}": "Missing word {n}",
+"Ajouter un motif (trait, pointillé…) à chaque règle du tajwīd, en plus de la couleur": "Add a pattern (line, dots…) to each tajweed rule, in addition to the colour"
 },
 "ar": {
 "(partie {a}/{b})": "(الجزء {a}/{b})",
@@ -1611,9 +1612,10 @@ window.I18N = {
 "Contraste renforcé des couleurs du tajwīd": "تباين أعلى لألوان التجويد",
 "Automatique (préférence du système)": "تلقائي (تفضيل النظام)",
 "Les couleurs officielles du tajwīd ont un faible contraste sur fond clair (10 règles sur 15 ont une couleur sous la recommandation 4,5:1). Ce réglage les fonce, en gardant la même teinte.": "ألوان التجويد الرسمية ضعيفة التباين على خلفية فاتحة (لـ10 أحكام من 15 لون دون النسبة الموصى بها 4.5:1). يُعتّمها هذا الخيار مع إبقاء اللون نفسه.",
-"Ce type de question repose sur les couleurs : choisis un autre type si tu distingues mal les couleurs.": "يعتمد هذا النوع من الأسئلة على الألوان: اختر نوعاً آخر إن كان تمييز الألوان صعباً عليك.",
+"Ce type de question repose sur les couleurs : choisis un autre type si tu distingues mal les couleurs, ou active les motifs (Réglages, Accessibilité) : ils s'affichent aussi dans la légende.": "يعتمد هذا النوع من الأسئلة على الألوان: اختر نوعاً آخر إن كان تمييز الألوان صعباً عليك، أو فعّل الأنماط (الإعدادات، إمكانية الوصول): وتظهر أيضاً في الدليل.",
 "Question {i} sur {n}": "السؤال {i} من {n}",
 "Lecteur": "القارئ",
-"Mot manquant {n}": "الكلمة الناقصة {n}"
+"Mot manquant {n}": "الكلمة الناقصة {n}",
+"Ajouter un motif (trait, pointillé…) à chaque règle du tajwīd, en plus de la couleur": "أضف نمطاً (خط، نقاط…) لكل حكم من أحكام التجويد، إضافة إلى اللون"
 }
 };

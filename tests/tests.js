@@ -230,13 +230,29 @@
     E("go('settings')"); $q('#shc').value = 'auto'; $q('#shc').dispatchEvent(new W.Event('change')); eq(E('cfg.hc'), undefined, 'automatique : suit le système'); noErr('contraste');
     for (const L of ['en', 'ar']){ E(`setLang('${L}'); go('settings')`); eq(E('[...missingKeys]'), [], L); } E("setLang('fr')");
   });
+  test('Accessibilité : motifs (traits, pointillés…) en plus des couleurs du tajwīd — une combinaison unique par règle', async () => {
+    reset(); E("go('settings')"); const box = $q('#tjp'); ok(box && !box.checked, 'case « motifs » (désactivée par défaut)');
+    // sans le réglage : aucun trait
+    const host = D.createElement('div'); host.className = 'rd tj'; D.body.appendChild(host); const codes = 'hlnpmoqcfwiaudg'.split('');
+    host.innerHTML = codes.map(c => `<span class="tj-${c}">ب</span>`).join('') + '<span class="tj-s">ب</span><span class="tj-b">ب</span>';
+    const sig = e => { const c = W.getComputedStyle(e), bg = c.backgroundImage !== 'none'; return [c.borderTopStyle !== 'none' ? c.borderTopStyle + c.borderTopWidth : '-', c.borderBottomStyle !== 'none' ? c.borderBottomStyle + c.borderBottomWidth : '-', c.textDecorationLine.includes('underline') ? 'ondulé:' + c.textDecorationStyle : '-', bg ? 'hachuré' : '-'].join('|'); };
+    ok([...host.children].every(e => sig(e) === '-|-|-|-'), 'sans motifs : aucun trait');
+    box.checked = true; box.dispatchEvent(new W.Event('change', {bubbles: true})); eq(E('cfg.tjp'), true); ok(D.documentElement.classList.contains('tjp'), 'classe tjp');
+    const sigs = codes.map(c => sig(host.querySelector('.tj-' + c))); eq(new Set(sigs).size, 15, 'les 15 règles ont chacune un motif différent : ' + sigs.join(' ; ')); ok(sigs.every(x => x !== '-|-|-|-'), 'toutes ont un motif');
+    eq(sig(host.querySelector('.tj-s')), sig(host.querySelector('.tj-l')), 'lettre muette = même règle que le lām solaire'); eq(sig(host.querySelector('.tj-b')), sig(host.querySelector('.tj-d')), 'mutaqāribayn = mutajānisayn');
+    // légende : un échantillon de motif à côté de chaque couleur
+    E("cfg.rdTaj = true; openReader('q:1')"); for (let i = 0; i < 40 && !$q('.tjkey'); i++) await wait(100); ok($$q('.tjkey .tjpat').length === 15 && $$q('.tjkey .tjpat').every(e => W.getComputedStyle(e).display !== 'none'), 'légende : 15 échantillons de motifs');
+    ok($$q('#rbody [class^="tj-"]').length > 0 && $$q('#rbody [class^="tj-"]').some(e => sig(e) !== '-|-|-|-'), 'le lecteur affiche les motifs'); noErr('motifs');
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); go('settings')`); eq(E('[...missingKeys]'), [], L); } E("setLang('fr')");
+    box.checked = false; E("cfg.tjp = false; cfg.rdTaj = false; applyA11y()"); ok(!D.documentElement.classList.contains('tjp')); host.remove();
+  });
   test('Accessibilité : audit axe-core (WCAG 2.2 AA) des écrans principaux, sans violation', async () => {
     const src = await fetch('https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js').then(r => r.ok ? r.text() : '').catch(() => '');
     if (!src) return;                                            // pas d'accès au CDN : test ignoré
     W.eval(src); const st = D.createElement('style'); st.textContent = '.cta,#nav{position:static!important}'; D.head.appendChild(st);   // barres collantes : elles masquent des champs selon la hauteur de l'écran (le décalage du focus est traité par scroll-padding) ; on mesure ici la taille des cibles
     const opts = {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']}}, bad = [];
     const audit = async name => { await wait(300); const r = await W.axe.run(D, opts); r.violations.forEach(v => bad.push(`${name} : ${v.id} (${v.nodes.length}) ${v.nodes[0].target.join(' ')} — ${((v.nodes[0].any[0] || v.nodes[0].none[0] || {}).message || v.nodes[0].failureSummary || '').slice(0, 260)}`)); };
-    reset("cfg.hc = true; cfg.reciter = 'ar.alafasy'; plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 2, mptr: 0, done: {}, log: []}; applyA11y(); errors = [{t: Date.now(), k: '2:5', m: 'cloze', sc: 0}]; stats = {'2:5': [1, 3]}; cfg.scope = {type: 'surah', from: 1, to: 3};");
+    reset("cfg.hc = true; cfg.tjp = true; cfg.reciter = 'ar.alafasy'; plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 2, mptr: 0, done: {}, log: []}; applyA11y(); errors = [{t: Date.now(), k: '2:5', m: 'cloze', sc: 0}]; stats = {'2:5': [1, 3]}; cfg.scope = {type: 'surah', from: 1, to: 3};");
     for (const t of ['home', 'plan', 'train', 'progress', 'errors', 'settings']){ E(`go('${t}')`); await audit('onglet ' + t); }
     E("go('train')"); E("cfg.mode = 'tajweed'"); E("go('train')"); await audit('réviser (tajwīd)'); E("cfg.mode = 'mix'");
     E("cfg.mode = 'mcq'; start()"); await audit('question QCM'); E("home()");
@@ -246,7 +262,7 @@
     E("cfg.rdTaj = true; openReader('q:1')"); for (let i = 0; i < 40 && !$q('.tj-n'); i++) await wait(100); await audit('lecteur (tajwīd en couleurs)'); E("cfg.rdTaj = false; home()");
     E("renderLegal()"); await audit('confidentialité'); E("CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; sb = {}; me = null; renderAccount()"); await audit('connexion'); E("CLOUD.url = ''; CLOUD.anonKey = ''; sb = null");
     eq(bad, [], 'violations axe-core');
-    st.remove(); E("cfg.hc = undefined; delete cfg.hc; applyA11y()");
+    st.remove(); E("cfg.hc = undefined; delete cfg.hc; cfg.tjp = false; applyA11y()");
   });
   test('Plan : le manzil ajoute une portion fragile sans décaler la rotation', async () => {
     reset(); const now = Date.now(), old = E("dayKey(addDays(new Date(), -10))");
