@@ -217,6 +217,7 @@ input[type=email],input[type=password],input[type=time]{direction:ltr;text-align
 </head>
 <body>
 <script src="quran.js"></script>
+<script src="huruf.js"></script>
 <script src="moutoun.js"></script>
 <script src="mutashabihat.js"></script>
 <script src="config.js"></script>
@@ -345,7 +346,7 @@ async function loadQuran(){
 
 /* ---------- état persistant ---------- */
 const DEF = {mode: 'mix', scope: {type: 'surah', from: 78, to: 114}, n: 10, input: 'recite', level: 40,
-  corr: 'standard', tjKind: 'rule', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
+  corr: 'standard', tjKind: 'rule', mkKind: 'zone', sfKind: 'pair', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
   lang: ['fr', 'en', 'ar'].includes((navigator.language || '').slice(0, 2)) ? navigator.language.slice(0, 2) : 'fr'};
 const stored = store.get('hifz.cfg', {});
 let cfg = Object.assign({}, DEF, stored);
@@ -357,6 +358,7 @@ let errors = store.get('hifz.errors', []); // journal : {t, k, m, sc, ans?, bad?
 let plan = store.get('hifz.plan', null);   // plan de mémorisation (voir plus bas)
 const savePlan = () => store.set('hifz.plan', plan);
 let sched = store.get('hifz.sched', {}); // "s:a" -> {iv: jours, due: timestamp}
+let hfs = store.get('hifz.hf', {});       // makhārij / ṣifāt : « mk:ظ » ou « sf:qalqala » -> [réussies, ratées]
 let tjs = store.get('hifz.tj', {});       // règle de tajwīd -> [réussies, ratées] (entraînement, séparé de la mémorisation)
 let days = store.get('hifz.days', {});   // "AAAA-MM-JJ" -> nb de réponses
 const saveCfg = () => store.set('hifz.cfg', cfg);
@@ -490,6 +492,8 @@ const MODES = [
   ['end',    'Fin de sourate',     'Récite les derniers versets', 'q'],
   ['link',   'Fin + début suivant','Enchaîne la fin d\'une sourate et le début de la suivante', 'q'],
   ['tajweed','Tajwīd (entraînement)','Plusieurs types de questions : règle, couleurs, vrai ou faux', 'q'],
+  ['makharij','Makhārij (points de sortie)','Reconnais d\'où sortent les lettres'],
+  ['sifat',  'Ṣifāt (qualités des lettres)','Reconnais les qualités des lettres'],
   ['cont',   'Récitation continue','Un passage entier d\'une traite'],
   ['half',   'Demi-vers',          'Complète la 2e moitié', 'm'],
   ['phrase', 'Phrase suivante',    'Prose : complète la phrase suivante', 'm']
@@ -591,6 +595,8 @@ function syncCfg(){
   if ($('sn')) cfg.n = +v('sn');
   if ($('slevel')) cfg.level = +v('slevel');
   if ($('stjk')) cfg.tjKind = v('stjk');
+  if ($('smkk')) cfg.mkKind = v('smkk');
+  if ($('ssfk')) cfg.sfKind = v('ssfk');
   if ($('scont')) cfg.contLen = +v('scont');
   if ($('send')) cfg.endLen = +v('send');
   if ($('sbeg')) cfg.begLen = +v('sbeg');
@@ -642,7 +648,7 @@ function tabHome(){
 
   <div class="card"><h2>${tr('Ma série')}</h2>
     <div class="sumline"><span>${cfg.scope.type === 'matn' ? '📜 ' + tr('Moutoun') : '📖 ' + tr('Coran')}</span><span>${esc(scopeLabel(cfg.scope))}</span>
-      <span>${esc(modeTitle(cfg.mode))}</span>${cfg.mode === 'tajweed' ? `<span>${tr((TJKINDS.find(k => k[0] === cfg.tjKind) || TJKINDS[0])[1])}</span>` : ''}<span>${trp(cfg.n, '{n} question|{n} questions')}</span>${(MODE_OPTS[cfg.mode] || {}).input ? `<span>${tr(INPUTS[cfg.input] || '')}</span>` : ''}</div>
+      <span>${esc(modeTitle(cfg.mode))}</span>${cfg.mode === 'tajweed' ? `<span>${tr((TJKINDS.find(k => k[0] === cfg.tjKind) || TJKINDS[0])[1])}</span>` : cfg.mode === 'makharij' ? `<span>${tr((MKKINDS.find(k => k[0] === cfg.mkKind) || MKKINDS[0])[1])}</span>` : cfg.mode === 'sifat' ? `<span>${tr((SFKINDS.find(k => k[0] === cfg.sfKind) || SFKINDS[0])[1])}</span>` : ''}<span>${trp(cfg.n, '{n} question|{n} questions')}</span>${(MODE_OPTS[cfg.mode] || {}).input ? `<span>${tr(INPUTS[cfg.input] || '')}</span>` : ''}</div>
     <button class="pri big" data-act="start">${tr('Commencer')}</button>
     <div class="row" style="margin-top:8px"><button data-act="tab" data-v="train">${tr('Modifier')}</button><button data-act="lsopen">🎧 ${tr('Écouter')}</button></div>
   </div>
@@ -804,9 +810,11 @@ function tabPlan(){
 /* options utiles pour chaque exercice (n = nombre de questions : toujours) ; q = Coran seulement */
 const MODE_OPTS = {
   mix: {level: 1, end: 'q', beg: 'q', input: 1}, next: {input: 1}, cloze: {level: 1, input: 1}, which: {}, mcq: {}, mutash: {}, start: {input: 1},
-  order: {}, tajweed: {tj: 1}, end: {end: 'q', input: 1}, link: {end: 'q', beg: 'q', input: 1}, cont: {cont: 1, input: 1}, half: {input: 1}, phrase: {input: 1}
+  order: {}, tajweed: {tj: 1}, makharij: {mk: 1}, sifat: {sf: 1}, end: {end: 'q', input: 1}, link: {end: 'q', beg: 'q', input: 1}, cont: {cont: 1, input: 1}, half: {input: 1}, phrase: {input: 1}
 };
 const modeHelp = {
+  makharij: "Choisis le type de question : zone de sortie, lettres du même point, intruse, partie de la gorge, vrai ou faux. Cet exercice ne dépend pas de la portée choisie.",
+  sifat: "Choisis le type de question : qualité d'une lettre, lettre d'une qualité, mots mnémotechniques du matn, vrai ou faux. Cet exercice ne dépend pas de la portée choisie.",
   tajweed: 'Plusieurs types de questions de tajwīd au choix : reconnaître la règle d\'une partie surlignée, trouver la partie d\'une règle, vrai ou faux (entraînement : annotation automatique non relue par un enseignant).',
   mix: 'Un mélange de tous les exercices.', next: 'On te donne un verset, tu donnes la suite.', cloze: 'Des mots du verset sont cachés : retrouve-les.',
   which: 'Tu identifies la sourate (ou le matn) d\'un verset en touchant la bonne réponse.', mcq: 'Tu touches le bon verset suivant parmi quatre.',
@@ -879,6 +887,10 @@ function tabTrain(){
     <div class="row">
       <div><label class="f">${tr('Nombre de questions')}</label>
         <select id="sn">${[5, 10, 20, 30].map(n => `<option ${n === cfg.n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      ${o.mk ? `<div><label class="f" for="smkk">${tr('Type de question de makhārij')}</label>
+        <select id="smkk">${MKKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.mkKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
+      ${o.sf ? `<div><label class="f" for="ssfk">${tr('Type de question de ṣifāt')}</label>
+        <select id="ssfk">${SFKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.sfKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
       ${o.tj ? `<div><label class="f" for="stjk">${tr('Type de question de tajwīd')}</label>
         <select id="stjk">${TJKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.tjKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
       ${o.level ? `<div><label class="f">${tr('Mots cachés (mots manquants)')}</label>
@@ -919,6 +931,8 @@ function tabProgress(){
   <div class="card"><h2>${tr('Cette semaine')}</h2>${weekHtml()}</div>
   <div class="card"><h2>${tr('Carte de progression')}</h2>${mapHtml()}</div>
   ${weak.length ? `<div class="card">${weakHtml(weak)}</div>` : ''}
+  ${Object.keys(hfs).length ? `<div class="card"><h2>${tr('Mes makhārij et ṣifāt')}</h2>${Object.entries(hfs).map(([k, [o, e]]) => [k, o, e, o / Math.max(1, o + e)]).sort((a, b) => a[3] - b[3]).slice(0, 8)
+    .map(([k, o, e, r]) => `<div class="weak"><span>${hfKeyLabel(k)}</span><span>${Math.round(100 * r)} % · ${o + e}</span></div>`).join('')}${HFNOTE()}</div>` : ''}
   ${Object.keys(tjs).length ? `<div class="card"><h2>${tr('Mes règles de tajwīd')}</h2>${Object.entries(tjs).filter(([c]) => TJNAME[c]).map(([c, [o, k]]) => [c, o, k, o / Math.max(1, o + k)]).sort((a, b) => a[3] - b[3])
     .map(([c, o, k, r]) => `<div class="weak"><span>${esc(tr(TJNAME[c]))}</span><span>${Math.round(100 * r)} % · ${o + k}</span></div>`).join('')}${TJNOTE()}</div>` : ''}`;
 }
@@ -985,13 +999,14 @@ const weakHtml = weak => weak.length ? `<h2 style="margin-top:14px">${tr('À ret
 
 /* ---------- séance ---------- */
 let ses = null, cur = null, ls = null;
+const HFMODES = ['makharij', 'sifat'];
 function start(fixed){
   if (cfg.mode === 'tajweed' && !fixed && !(window.QX && window.QX.tajweed)){ // les annotations se chargent (et se contrôlent) à la première utilisation
     $app.innerHTML = `<p class="sub" style="margin-top:40vh;text-align:center">${tr('Chargement…')}</p>`;
     loadX('tajweed').then(() => start(fixed), e => { alert(tr('Impossible de charger ce contenu ({e}). Vérifie ta connexion puis réessaie.', {e: e.message})); home(); });
     return;
   }
-  const pool = fixed || buildPool(cfg.scope);
+  const pool = fixed || (HFMODES.includes(cfg.mode) ? [{s: 1, a: 1}] : buildPool(cfg.scope));   // makhārij / ṣifāt : indépendants de la portée
   if (!pool.length) return alert(tr('Aucun verset dans cette portée.'));
   ses = {pool, fixed: !!fixed, i: 0, score: 0, missed: [], used: new Set(), total: fixed ? fixed.length : cfg.n};
   nextQ();
@@ -1025,7 +1040,11 @@ function nextQ(){
   }
   const hasQ = ses.pool.some(r => isQ(r.s)), hasM = ses.pool.some(r => !isQ(r.s));
   let m = cfg.mode;
-  if (m === 'tajweed' && (ses.fixed || !hasQ)) m = 'mix';   // révisions guidées (plan, versets dus…) : pas d'exercice de tajwīd
+  if (m === 'tajweed' && (ses.fixed || !hasQ)) m = 'mix';
+  if (HFMODES.includes(m)){
+    if (!ses.fixed){ cur = {m, r: null, done: false, audio: [], hf: true, label: tr(m === 'makharij' ? 'Makhārij' : 'Ṣifāt')}; return m === 'makharij' ? qMakharij() : qSifat(); }
+    m = 'mix';                            // révisions guidées : pas d'exercice de makhārij / ṣifāt
+  }   // révisions guidées (plan, versets dus…) : pas d'exercice de tajwīd
   if (m === 'mix'){
     const L = ['next', 'cloze', 'which', 'mcq'];
     if (hasQ) L.push('mutash', 'start', 'order', 'end', 'link');
@@ -1064,7 +1083,7 @@ function logError(r, score, info = {}){
 }
 function finish(score, extra = ''){
   if (cur.done) return; cur.done = true;
-  if (cur.m === 'tajweed'){ days[today()] = (days[today()] || 0) + 1; store.set('hifz.days', days); }   // l'entraînement au tajwīd compte pour l'objectif du jour mais ne touche ni la révision espacée ni l'historique d'erreurs
+  if (cur.m === 'tajweed' || cur.hf){ days[today()] = (days[today()] || 0) + 1; store.set('hifz.days', days); }   // l'entraînement au tajwīd compte pour l'objectif du jour mais ne touche ni la révision espacée ni l'historique d'erreurs
   else if (cur.perRef) cur.perRef.forEach(([x, sc], v) => { if (x.bas) return; record(x, sc); if (sc < 1){ ses.missed.push(x); logError(x, sc, {bad: cur.badV && cur.badV[v]}); } });
   else { record(cur.r, score); if (score < 1){ ses.missed.push(cur.r); logError(cur.r, score, cur.info); } }
   ses.score += score;
@@ -1285,7 +1304,7 @@ function tjMulti(segs, picks){ // morceaux {t, c, k} : k = numéro (1…) de la 
   return out.filter(x => x.t);
 }
 function tjParts(pieces, o = {}){ // HTML : parties surlignées (<mark>), numéros facultatifs, couleurs facultatives
-  const seg = p => o.colors && p.c ? `<span class="tj-${p.c}">${esc(p.t)}</span>` : esc(p.t);
+  const seg = p => o.colorFam && p.k ? `<span class="tj-${o.colorFam}">${esc(p.t)}</span>` : o.colors && p.c ? `<span class="tj-${p.c}">${esc(p.t)}</span>` : esc(p.t);
   let out = '', i = 0;
   while (i < pieces.length){
     const p = pieces[i];
@@ -1313,14 +1332,111 @@ function tjOptions(fam, names, shuf){ // 4 propositions : la bonne, 2 de la mêm
   return shuf([fam, ...same.slice(0, 2), ...other, ...same.slice(2)].slice(0, 4));
 }
 /* TJ:end */
+/* HF:begin — makhārij et ṣifāt al-ḥurūf : constructeurs de questions (fonctions pures, testées dans tests/node.test.mjs ; données : huruf.js) */
+const HF_AMBIG = ['و', 'ي'];   // un point différent selon qu'ils sont consonnes ou lettres de madd : jamais interrogés seuls
+const hfPick = (a, rnd) => a[rnd(a.length)];
+const hfPointOf = (H, c) => H.points.find(p => p.area !== 'jawf' && p.letters.includes(c));
+const hfSafe = (p) => !p.letters.some(c => HF_AMBIG.includes(c));
+function mkBuild(kind, H, rnd, shuf){
+  const pts = H.points.filter(p => p.area !== 'jawf' && p.letters.length), askable = H.letters.filter(c => !HF_AMBIG.includes(c));
+  if (kind === 'zone'){
+    const c = hfPick(askable, rnd), a = hfPointOf(H, c).area;
+    return {kind, letter: c, correct: a, options: shuf([a, ...shuf(['halq', 'lisan', 'shafatan', 'khayshum', 'jawf'].filter(x => x !== a)).slice(0, 3)]).map(v => ({t: 'area', v}))};
+  }
+  if (kind === 'same'){
+    const multi = pts.filter(p => p.letters.length >= 2), c = hfPick(multi.flatMap(p => p.letters.filter(x => !HF_AMBIG.includes(x))), rnd), p = hfPointOf(H, c);
+    return {kind, letter: c, correct: p.id, point: p, options: shuf([p, ...shuf(multi.filter(q => q !== p)).slice(0, 3)]).map(q => ({t: 'group', v: q.id, letters: q.letters}))};
+  }
+  if (kind === 'odd'){
+    const safe = pts.filter(hfSafe), p = hfPick(safe.filter(q => q.letters.length >= 2), rnd), q = hfPick(safe.filter(x => x !== p), rnd), x = hfPick(q.letters, rnd);
+    const shown = shuf([...shuf(p.letters).slice(0, 2), x]);
+    return {kind, shown, correct: x, point: p, other: q, options: shown.map(v => ({t: 'letter', v}))};
+  }
+  if (kind === 'halq'){
+    const th = H.points.filter(p => p.area === 'halq'), p = hfPick(th, rnd), c = hfPick(p.letters, rnd);
+    return {kind, letter: c, correct: p.id, point: p, options: th.map(q => ({t: 'throat', v: q.id, ar: q.ar}))};
+  }
+  const truth = rnd(2) === 0, safe = pts.filter(hfSafe), A = hfPick(safe.filter(q => q.letters.length >= 2), rnd);   // tf
+  const a = hfPick(A.letters, rnd), b = truth ? hfPick(A.letters.filter(x => x !== a), rnd) : hfPick(hfPick(safe.filter(q => q !== A && (q.area === A.area || rnd(3) === 0)).concat(safe.filter(q => q !== A)), rnd).letters, rnd);
+  return {kind: 'tf', a, b, same: truth, correct: truth ? 't' : 'f', point: A, options: [{t: 'tf', v: 't'}, {t: 'tf', v: 'f'}]};
+}
+const HF_SETS = ['hams', 'shidda', 'tawassut', 'istila', 'itbaq', 'idhlaq', 'safir', 'qalqala', 'inhiraf', 'takrir', 'tafashshi', 'istitala'];
+function sfBuild(kind, H, rnd, shuf){
+  const L = H.letters, per = H.per;
+  if (kind === 'pair'){
+    const c = hfPick(L, rnd), fam = hfPick(['p1', 'p2', 'p3', 'p4', 'p5'], rnd), members = H.attrs.filter(a => a.pair === fam), ok = members.find(a => per[c].includes(a.id));
+    return {kind, letter: c, correct: ok.id, options: members.map(a => ({t: 'attr', v: a.id}))};
+  }
+  if (kind === 'which'){
+    const id = hfPick(HF_SETS, rnd), set = H.sets[id], c = hfPick(set, rnd);
+    return {kind, attr: id, correct: c, options: shuf([c, ...shuf(L.filter(x => !set.includes(x))).slice(0, 3)]).map(v => ({t: 'letter', v}))};
+  }
+  if (kind === 'mnemo'){
+    const m = hfPick(H.mnemonics, rnd);
+    return {kind, word: m.ar, attr: m.attr, correct: m.attr, options: shuf([m, ...shuf(H.mnemonics.filter(x => x.attr !== m.attr)).slice(0, 3)]).map(x => ({t: 'attr', v: x.attr}))};
+  }
+  const c = hfPick(L, rnd), truth = rnd(2) === 0, ids = H.attrs.map(a => a.id), mine = per[c];     // tf
+  const fam = hfPick(mine, rnd), same = H.attrs.find(a => a.id === fam).pair, notMine = ids.filter(x => !mine.includes(x));
+  const falseOnes = notMine.filter(x => same && H.attrs.find(a => a.id === x).pair === same), attr = truth ? fam : hfPick(falseOnes.length ? falseOnes : notMine, rnd);
+  return {kind: 'tf', letter: c, attr, correct: truth ? 't' : 'f', options: [{t: 'tf', v: 't'}, {t: 'tf', v: 'f'}]};
+}
+/* HF:end */
+const MKKINDS = [['zone', 'Zone de sortie (gorge, langue, lèvres…)'], ['same', 'Lettres du même point'], ['odd', "Trouver l'intruse"], ['halq', 'Partie de la gorge'], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
+const SFKINDS = [['pair', "Qualité d'une lettre"], ['which', "Trouver la lettre d'une qualité"], ['mnemo', 'Mots mnémotechniques du matn'], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
+const AREAGLOSS = {halq: 'gorge', lisan: 'langue', shafatan: 'lèvres', khayshum: 'cavité nasale', jawf: 'cavité buccale (voyelles longues)'};
+const hfAttr = id => window.HURUF.attrs.find(a => a.id === id);
+const hfAttrL = id => `${hfAttr(id).ar} · ${hfAttr(id).tr}`;
+const hfLet = c => `<span class="ar" style="font-size:1.25em">${c}</span>`;
+const hfGroup = a => a.map(hfLet).join(' ');
+function hfKeyLabel(k){ const [t, v] = k.split(':'); return t === 'mk' ? `${tr('Makhārij')} · ${hfLet(v)}` : `${tr('Ṣifāt')} · ${esc(hfAttrL(v))}`; }
+function hfStat(key, ok){ const x = hfs[key] || [0, 0]; hfs[key] = [x[0] + (ok ? 1 : 0), x[1] + (ok ? 0 : 1)]; store.set('hifz.hf', hfs);
+  const y = ((ses.hf ||= {})[key] ||= [0, 0]); y[ok ? 0 : 1]++; }
+const HFNOTE = () => { const S = window.HURUF.sources, a = (x, t) => `<a href="${x.url}" target="_blank" rel="noopener">${t}</a>`;
+  return `<p class="ref" style="margin:8px 0 0">${tr("Sources : le texte d'Ibn al-Jazarī (« al-Jazariyya ») et deux articles de Wikipédia arabe, dont les listes de lettres concordent. Les 28 lettres de ء à ي sont traitées (l'alif est exclu).")} ${a(S[0], 'Wikisource')} · ${a(S[1], 'Wikipédia (makhārij)')} · ${a(S[2], 'Wikipédia (ṣifāt)')}</p>`; };
+function hfOpt(o){
+  const H = window.HURUF;
+  if (o.t === 'area') return `<b>${H.areas[o.v]}</b> · ${esc(tr(AREAGLOSS[o.v]))}`;
+  if (o.t === 'group') return `<span class="ar" style="font-size:1.4rem">${o.letters.join(' ')}</span>`;
+  if (o.t === 'letter') return `<span class="ar" style="font-size:1.6rem">${o.v}</span>`;
+  if (o.t === 'throat') return `<span class="ar" style="font-size:1.25rem">${o.ar}</span>`;
+  if (o.t === 'attr') return esc(hfAttrL(o.v));
+  return o.v === 't' ? tr('Vrai') : tr('Faux');
+}
+function hfShow(q, stem, bigHtml, explain, stat){
+  cur.correct = q.correct; cur.stat = stat; cur.explain = explain + HFNOTE();
+  shell(`<p class="ref">${stem}</p>${bigHtml ? `<div class="ar" style="text-align:center;font-size:2.6rem;line-height:1.6">${bigHtml}</div>` : ''}
+    ${q.options.map(o => `<button class="opt" data-act="opt" data-v="${o.v}">${hfOpt(o)}</button>`).join('')}<div id="fb"></div>`);
+}
+function qMakharij(){
+  const H = window.HURUF, kinds = ['zone', 'same', 'odd', 'halq', 'tf'];
+  const q = mkBuild(cfg.mkKind === 'mix' ? kinds[rnd(kinds.length)] : cfg.mkKind || 'zone', H, rnd, shuffle);
+  const grp = p => `${hfGroup(p.letters)} (${esc(p.ar)})`;
+  if (q.kind === 'zone') return hfShow(q, tr('De quelle zone sort la lettre ci-dessous ?'), q.letter, `${hfLet(q.letter)} → <b>${H.areas[q.correct]}</b> (${esc(tr(AREAGLOSS[q.correct]))}) · ${tr('même point :')} ${hfGroup(hfPointOf(H, q.letter).letters)}`, 'mk:' + q.letter);
+  if (q.kind === 'same') return hfShow(q, tr('Avec quelles lettres cette lettre partage-t-elle son point de sortie ?'), q.letter, `${tr('Même point :')} ${grp(q.point)}`, 'mk:' + q.letter);
+  if (q.kind === 'odd') return hfShow(q, tr("Deux de ces lettres sortent du même point. Laquelle sort d'un autre point ?"), q.shown.join(' '), `${tr('Même point :')} ${hfGroup(q.point.letters)} · ${hfLet(q.correct)} ${tr('sort de')} ${hfGroup(q.other.letters)}`, 'mk:' + q.correct);
+  if (q.kind === 'halq') return hfShow(q, tr('De quelle partie de la gorge sort la lettre ci-dessous ?'), q.letter, `${hfLet(q.letter)} → <b>${esc(q.point.ar)}</b> (${hfGroup(q.point.letters)})`, 'mk:' + q.letter);
+  const real = hfPointOf(H, q.b), same = real === q.point;
+  hfShow(q, tr('Vrai ou faux : ces deux lettres sortent du même point.'), `${q.a} · ${q.b}`, same ? `${tr('Vrai :')} ${hfGroup(q.point.letters)}` : `${tr('Faux :')} ${hfLet(q.a)} ${tr('sort de')} ${hfGroup(q.point.letters)}, ${hfLet(q.b)} ${tr('sort de')} ${hfGroup(real.letters)}`, 'mk:' + q.a);
+}
+function qSifat(){
+  const H = window.HURUF, kinds = ['pair', 'which', 'mnemo', 'tf'];
+  const q = sfBuild(cfg.sfKind === 'mix' ? kinds[rnd(kinds.length)] : cfg.sfKind || 'pair', H, rnd, shuffle), per = c => H.per[c].map(hfAttrL).join(' · ');
+  if (q.kind === 'pair') return hfShow(q, tr('Quelle qualité a la lettre ci-dessous ?'), q.letter, `${hfLet(q.letter)} : ${esc(per(q.letter))}`, 'sf:' + q.correct);
+  if (q.kind === 'which') return hfShow(q, tr('Quelle lettre a la qualité « {a} » ?', {a: esc(hfAttrL(q.attr))}), '', `${esc(hfAttrL(q.attr))} : ${hfGroup(H.sets[q.attr])}`, 'sf:' + q.attr);
+  if (q.kind === 'mnemo') return hfShow(q, tr("Quelle qualité rassemblent les lettres de ce mot du matn d'Ibn al-Jazarī ?"), q.word, `${q.word} = ${esc(hfAttrL(q.attr))} : ${hfGroup(H.sets[q.attr])}`, 'sf:' + q.attr);
+  const has = H.per[q.letter].includes(q.attr);
+  hfShow(q, tr('Vrai ou faux : la lettre ci-dessous a la qualité « {a} ».', {a: esc(hfAttrL(q.attr))}), q.letter, `${has ? tr('Vrai :') : tr('Faux :')} ${hfLet(q.letter)} : ${esc(per(q.letter))}`, 'sf:' + q.attr);
+}
+
 function tjStat(code, ok){ const x = tjs[code] || [0, 0]; tjs[code] = [x[0] + (ok ? 1 : 0), x[1] + (ok ? 0 : 1)]; store.set('hifz.tj', tjs); (ses.tj ||= {})[code] = [((ses.tj[code] || [0, 0])[0]) + (ok ? 1 : 0), ((ses.tj[code] || [0, 0])[1]) + (ok ? 0 : 1)]; }
 const TJNOTE = () => `<p class="ref" style="margin:8px 0 0">${tr("Entraînement : les règles viennent d'une annotation automatique (Islamic Network), non relue par un enseignant. En cas de doute, fie-toi à ton professeur.")}</p>`;
-const TJKINDS = [['rule', 'Reconnaître la règle'], ['color', 'Reconnaître la règle (avec les couleurs, plus facile)'], ['find', "Trouver la partie d'une règle"], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
+const TJUNIQ = 'npmoqcfwiaug';   // familles dont la couleur est unique dans la légende (h/l et d/b partagent un gris)
+const TJKINDS = [['rule', 'Reconnaître la règle'], ['color', 'Reconnaître la règle (avec les couleurs, plus facile)'], ['find', "Trouver la partie d'une règle"], ['tf', 'Vrai ou faux ?'], ['read', 'Lire la couleur (retrouver la règle avec la légende)'], ['mix', 'Mélange des types']];
 function qTajweed(){
   const {r} = cur, raw = window.QX.tajweed.s[r.s - 1][r.a - 1], segs = tjSegs(raw);
   const fams = [...new Set(segs.filter(x => x.c).map(x => x.c))];
   if (!fams.length){ cur.m = 'cloze'; return qCloze(); }
-  let kind = cfg.tjKind === 'mix' ? ['rule', 'color', 'find', 'tf'][rnd(4)] : cfg.tjKind || 'rule';
+  let kind = cfg.tjKind === 'mix' ? ['rule', 'color', 'find', 'tf', 'read'][rnd(5)] : cfg.tjKind || 'rule';
   const fam = fams[rnd(fams.length)], idx = segs.map((x, i) => x.c === fam ? i : -1).filter(i => i >= 0), pick = idx[rnd(idx.length)];
   cur.raw = raw; cur.segs = segs; cur.audio = [r]; cur.stat = fam;
   const nm = c => esc(tr(TJNAME[c])), body = (q, view, answers) => shell(`<p class="ref">${q}</p><div class="rd tj" id="tjv" style="font-size:${cfg.rdSize}rem">${view}</div>${qref(r)}${answers}<div id="fb"></div>${TJNOTE()}`);
@@ -1338,6 +1454,16 @@ function qTajweed(){
     cur.tjk = 'tf'; cur.pieces = tjMulti(segs, [pick]); cur.correct = truth ? 't' : 'f';
     return body(tr('Cette partie suit-elle la règle « {r} » ?', {r: `<b>${nm(shown)}</b>`}), tjParts(cur.pieces),
       `<button class="opt" data-act="opt" data-v="t">${tr('Vrai')}</button><button class="opt" data-act="opt" data-v="f">${tr('Faux')}</button>`);
+  }
+  if (kind === 'read'){                    // seule la partie surlignée est colorée : on retrouve la règle avec la légende (familles à couleur unique)
+    const uniq = fams.filter(c => TJUNIQ.includes(c));
+    if (uniq.length){
+      const f = uniq[rnd(uniq.length)], ix = segs.map((x, i) => x.c === f ? i : -1).filter(i => i >= 0), pk0 = ix[rnd(ix.length)];
+      cur.tjk = 'read'; cur.stat = f; cur.pieces = tjMulti(segs, [pk0]); cur.correct = f; cur.opts = tjOptions(f, TJNAME, shuffle);
+      return body(tr('Quelle règle correspond à la couleur de la partie surlignée ? Aide-toi de la légende.'), tjParts(cur.pieces, {colorFam: f}),
+        cur.opts.map(c => `<button class="opt" data-act="opt" data-v="${c}">${nm(c)}</button>`).join('') + `<details open style="margin-top:8px"><summary class="ref">${tr('Légende des couleurs')}</summary>${tjLegendHtml()}</details>`);
+    }
+    kind = 'rule';
   }
   cur.tjk = kind; cur.pieces = tjMulti(segs, [pick]); cur.correct = fam; cur.opts = tjOptions(fam, TJNAME, shuffle);
   body(tr('Quelle est la règle de tajwīd de la partie surlignée ?'), tjParts(cur.pieces, {colors: kind === 'color'}),
@@ -1358,6 +1484,12 @@ function onOpt(el){
   if (cur.done) return;
   const btns = [...document.querySelectorAll('.opt')];
   let ok, extra = '';
+  if (cur.hf){ // makhārij / ṣifāt
+    ok = el.dataset.v === cur.correct;
+    btns.forEach(b => { const c = b.dataset.v === cur.correct ? 'c' : b === el ? 'w' : ''; if (c) b.classList.add(c); });
+    cur.info = {ans: el.textContent}; hfStat(cur.stat, ok);
+    finish(ok ? 1 : 0, `<br>${cur.explain}`); return;
+  }
   if (cur.m === 'tajweed'){
     ok = el.dataset.v === cur.correct;
     btns.forEach(b => { const c = b.dataset.v === cur.correct ? 'c' : b === el ? 'w' : ''; if (c) b.classList.add(c); });
@@ -1847,7 +1979,7 @@ const onClick = e => {
     case 'opt': onOpt(el); break;
     case 'retry': start(ses.missed.slice()); break;
     case 'again': start(); break;
-    case 'reset': if (confirm(tr("Effacer toutes tes statistiques et ton historique d'erreurs ?"))){ stats = {}; sched = {}; days = {}; errors = []; tjs = {}; store.set('hifz.tj', tjs); store.set('hifz.errors', errors); store.set('hifz.stats', stats); store.set('hifz.sched', sched); store.set('hifz.days', days); home(); } break;
+    case 'reset': if (confirm(tr("Effacer toutes tes statistiques et ton historique d'erreurs ?"))){ stats = {}; sched = {}; days = {}; errors = []; tjs = {}; hfs = {}; store.set('hifz.tj', tjs); store.set('hifz.hf', hfs); store.set('hifz.errors', errors); store.set('hifz.stats', stats); store.set('hifz.sched', sched); store.set('hifz.days', days); home(); } break;
   }
 };
 $app.addEventListener('click', onClick);
@@ -1890,10 +2022,11 @@ const TJLEG = [['h', '#AAAAAA', 'Hamzat al-waṣl'], ['l', '#AAAAAA', 'Lām sola
   ['w', '#58B800', 'Idghām shafawī'], ['i', '#26BFFD', 'Iqlāb'], ['a', '#169777', 'Idghām avec ghunna'], ['u', '#169200', 'Idghām sans ghunna'], ['d', '#A1A1A1', 'Idghām mutajānisayn / mutaqāribayn'], ['g', '#FF7E1E', 'Ghunna (2 temps)']];
 const TJNAME = Object.fromEntries(TJLEG.map(([c, , n]) => [c, n]));   // famille de règle -> nom (légende officielle)
 const TRSRC = {fr: 'Hamidullah', en: 'Saheeh International'};
+const tjLegendHtml = () => `<p style="margin:6px 0 0">${TJLEG.map(([c, col, n]) => `<span class="tjkey"><i style="background:${col}"></i>${esc(tr(n))}</span>`).join('')}</p>`;
 function rdSources(){
   const L = [], a = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
   if (cfg.rdTaj) L.push(`<p class="ref" style="margin:8px 0 0">${tr("Couleurs du tajwīd : annotation automatique d'Islamic Network (api.alquran.cloud), non relue par un enseignant. Vérifie avec ton professeur ; elle suit une écriture légèrement différente du texte des exercices.")} ${a('https://1x.ax/islamic-network/alquran/tools/~files/master/docs/tajweed.md', tr('Légende officielle'))}.
-    <details><summary>${tr('Légende des couleurs')}</summary><p style="margin:6px 0 0">${TJLEG.map(([c, col, n]) => `<span class="tjkey"><i style="background:${col}"></i>${esc(tr(n))}</span>`).join('')}</p></details></p>`);
+    <details><summary>${tr('Légende des couleurs')}</summary>${tjLegendHtml()}</details></p>`);
   if (cfg.rdTr) L.push(`<p class="ref" style="margin:8px 0 0">${tr('Traduction : {n} (texte de Tanzil, usage non commercial). Elle rend le sens approché, ce n\'est pas le Coran lui-même.', {n: TRSRC[cfg.rdTr]})} ${a('https://tanzil.net/trans/', 'tanzil.net/trans')}.</p>`);
   if (cfg.rdTf) L.push(`<p class="ref" style="margin:8px 0 0">${tr("Tafsir : at-Tafsir al-Muyassar, Complexe du Roi Fahd (texte arabe, via api.alquran.cloud).")} ${a('https://alquran.cloud/', 'alquran.cloud')}.</p>`);
   return L.join('');
@@ -2060,6 +2193,7 @@ function results(){
   <h1>${tr('Résultat')}</h1>
   <div class="card"><div class="big-score">${pct} %</div>
     <p class="sub" style="text-align:center">${ses.score % 1 ? ses.score.toFixed(1) : ses.score} / ${ses.total} · ${msg}</p></div>
+  ${ses.hf ? `<div class="card"><h2>${tr('Résumé de la série')}</h2>${Object.entries(ses.hf).sort((a, b) => b[1][1] - a[1][1]).map(([k, [o, e]]) => `<div class="weak"><span>${hfKeyLabel(k)}</span><span>${o} ✓ · ${e} ✗</span></div>`).join('')}${HFNOTE()}</div>` : ''}
   ${ses.tj ? `<div class="card"><h2>${tr('Règles de cette série')}</h2>${Object.entries(ses.tj).sort((a, b) => b[1][1] - a[1][1]).map(([c, [o, k]]) => `<div class="weak"><span>${esc(tr(TJNAME[c]))}</span><span>${o} ✓ · ${k} ✗</span></div>`).join('')}${TJNOTE()}</div>` : ''}
   ${missed.length ? `<div class="card"><h2>${tr('À revoir ({n})', {n: missed.length})}</h2>
     ${missed.map(r => `<p class="ref" style="margin:10px 0 0">${rlabel(r)}</p><div class="ar" style="font-size:1.5rem">${esc(verse(r))}</div>`).join('')}</div>` : ''}
@@ -2071,7 +2205,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v24';
+const APP_VERSION = '21 oct. 2026 · v26';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2087,7 +2221,7 @@ const cloudOn = () => !!(CLOUD.url && CLOUD.anonKey);
 let sb = null, me = null, screen = 'tab', loadingMe = false;
 let acc = {mode: 'login', msg: '', ok: false, busy: false, resend: '', resendAt: 0, last: '', syncErr: '', d: {email: '', pass: '', pass2: '', consent: false}}; // d : brouillon du formulaire (gardé en mémoire seulement)
 let adm = {users: null, q: '', detail: null, msg: ''};
-const SYNC_KEYS = ['hifz.cfg', 'hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan', 'hifz.tj'];
+const SYNC_KEYS = ['hifz.cfg', 'hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan', 'hifz.tj', 'hifz.hf'];
 let syncPause = false, pushTimer = null;
 const cmeta = () => store.get('hifz.cloud', {});
 const isAdmin = () => !!(me && me.profile && me.profile.role === 'admin');
@@ -2161,8 +2295,8 @@ async function loadMe(sess){
 }
 
 /* synchronisation : un document JSON par utilisateur */
-function snap(){ const c = {...cfg}; delete c.tab; return {v: 1, cfg: c, stats, sched, days, errors, custom, plan, tj: tjs}; }
-const hasLocal = () => Object.keys(stats).length > 0 || errors.length > 0 || custom.length > 0 || !!plan || Object.keys(tjs).length > 0;
+function snap(){ const c = {...cfg}; delete c.tab; return {v: 1, cfg: c, stats, sched, days, errors, custom, plan, tj: tjs, hf: hfs}; }
+const hasLocal = () => Object.keys(stats).length > 0 || errors.length > 0 || custom.length > 0 || !!plan || Object.keys(tjs).length > 0 || Object.keys(hfs).length > 0;
 function applyRemote(d){
   syncPause = true;
   try {
@@ -2170,7 +2304,7 @@ function applyRemote(d){
     custom.forEach(t => { delete MT[t.id]; }); custom = d.custom || []; custom.forEach(t => { MT[t.id] = t; });
     if (d.cfg){ const keep = cfg.tab; Object.assign(cfg, d.cfg); cfg.tab = keep; }
     store.set('hifz.stats', stats); store.set('hifz.sched', sched); store.set('hifz.days', days);
-    plan = d.plan || null; store.set('hifz.plan', plan); tjs = d.tj || {}; store.set('hifz.tj', tjs);
+    plan = d.plan || null; store.set('hifz.plan', plan); tjs = d.tj || {}; store.set('hifz.tj', tjs); hfs = d.hf || {}; store.set('hifz.hf', hfs);
     store.set('hifz.errors', errors); store.set('hifz.custom', custom); saveCfg();
   } finally { syncPause = false; }
 }
@@ -2186,7 +2320,8 @@ function mergeData(a, b){ // a = cet appareil, b = compte : on ne perd rien
   let pl = b.plan || a.plan || null; // plan : on garde celui du compte et on y ajoute les portions apprises ailleurs
   if (b.plan && a.plan){ const seenC = new Set((b.plan.log || []).map(c => [c.d, c.s, c.a, c.b].join())); pl = {...b.plan, log: [...(b.plan.log || []), ...(a.plan.log || []).filter(c => !seenC.has([c.d, c.s, c.a, c.b].join()))]}; }
   const tj = {...(b.tj || {})}; for (const [k, [o, e]] of Object.entries(a.tj || {})){ const x = tj[k] || [0, 0]; tj[k] = [Math.max(o, x[0]), Math.max(e, x[1])]; }
-  return {...b, cfg: a.cfg || b.cfg, stats: st, sched: sc, days: dy, errors: er, custom: [...cu.values()], plan: pl, tj};
+  const hf = {...(b.hf || {})}; for (const [k, [o, e]] of Object.entries(a.hf || {})){ const x = hf[k] || [0, 0]; hf[k] = [Math.max(o, x[0]), Math.max(e, x[1])]; }
+  return {...b, cfg: a.cfg || b.cfg, stats: st, sched: sc, days: dy, errors: er, custom: [...cu.values()], plan: pl, tj, hf};
 }
 async function cloudPush(){
   if (!me || !sb) return;
@@ -2323,8 +2458,8 @@ const doLogout = async () => {
   if (remState().on) await pushDrop();
   if (acc.syncErr && !confirm(tr('La dernière synchronisation a échoué : te déconnecter perdra les changements non envoyés. Continuer ?'))) return;
   await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.me'); } catch {}
-  syncPause = true; stats = {}; sched = {}; days = {}; errors = []; plan = null; tjs = {}; custom.forEach(t => { delete MT[t.id]; }); custom = [];
-  ['hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan', 'hifz.tj', 'hifz.cloud'].forEach(k => { try { localStorage.removeItem(k); } catch {} });
+  syncPause = true; stats = {}; sched = {}; days = {}; errors = []; plan = null; tjs = {}; hfs = {}; custom.forEach(t => { delete MT[t.id]; }); custom = [];
+  ['hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan', 'hifz.tj', 'hifz.hf', 'hifz.cloud'].forEach(k => { try { localStorage.removeItem(k); } catch {} });
   syncPause = false; acc.msg = tr('Déconnecté.'); acc.ok = true; acc.auto = true; acc.mode = 'login'; renderAccount();
 };
 const doDeleteMe = () => busy(async () => {

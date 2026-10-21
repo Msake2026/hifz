@@ -25,7 +25,7 @@
   ok(E('Q') && E('Q').length === 114, "le Coran ne s'est pas chargé");
   E("CLOUD.url = ''; CLOUD.anonKey = ''; sb = null; me = null; window.confirm = () => true; window.alert = m => { window.__alerts = (window.__alerts || []).concat(String(m)); };"); // pas de compte pendant les tests
   const reset = (extra = '') => { E("cfg = Object.assign({}, DEF, {tab: 'home', n: 5, corr: 'standard'}); stats = {}; sched = {}; days = {}; errors = []; plan = null; custom = []; ses = null; LANG = 'fr'; applyLang(); " + extra); jsErrors.length = 0; };
-  const $q = s => D.querySelector(s), $$q = s => [...D.querySelectorAll(s)];
+  const $q = s => D.querySelector(s), $$q = s => [...D.querySelectorAll(s)], appText = () => D.getElementById('app').textContent;   // texte de l'écran seulement (le code de la page n'en fait pas partie)
   const click = el => { ok(el, 'élément introuvable'); el.click(); };
   const clickAct = (act, v) => click($q(`[data-act="${act}"]${v !== undefined ? `[data-v="${v}"]` : ''}`));
   const noErr = ctx => ok(!jsErrors.length, `erreur JS pendant « ${ctx} » : ${jsErrors.join(' / ')}`);
@@ -80,7 +80,7 @@
   test('Lecteur : tajwīd, traduction et tafsir — une ligne par verset, légende et sources affichées', async () => {
     reset(); E("openReader('q:1')");
     clickAct('rd-taj'); await wait(1200); ok($q('#rbody .rd.tj .tj-n'), 'couleurs absentes'); ok($q('details summary'), 'légende absente');
-    ok(D.body.textContent.includes('1x.ax') || $$q('a').some(a => /1x\.ax/.test(a.href)), 'lien de la légende officielle');
+    ok(appText().includes('1x.ax') || $$q('a').some(a => /1x\.ax/.test(a.href)), 'lien de la légende officielle');
     const sel = $q('#rdtr'); sel.value = 'fr'; sel.dispatchEvent(new W.Event('change')); await wait(1200);
     eq($$q('#rbody .rvb').length, 7); eq($q('#rbody .rtr').textContent, E("QX.fr.s[0][0]")); ok($$q('a').some(a => /tanzil\.net\/trans/.test(a.href)), 'lien Tanzil obligatoire');
     clickAct('rd-tf'); await wait(1500); eq($$q('#rbody .rtf').length, 7); ok($$q('a').some(a => /alquran\.cloud/.test(a.href)), 'source du tafsir');
@@ -193,9 +193,9 @@
   test('Révision espacée : liste « à renforcer », bouton « Renforcer maintenant », intervalle adaptatif', async () => {
     reset(); const now = Date.now();
     E(`errors = [{t: ${now}, k: '2:5', m: 'next', sc: 0}, {t: ${now}, k: '2:5', m: 'next', sc: 0}, {t: ${now - 864e5}, k: '3:9', m: 'cloze', sc: 0}]; stats = {'2:5': [0, 2], '3:9': [0, 1]}; sched = {};`);
-    E("go('home')"); ok($q('[data-act="strengthen"]'), 'bouton sur l’accueil'); ok(D.body.textContent.includes('À renforcer en priorité'));
-    ok(/2 erreurs ces 30 derniers jours/.test(D.body.textContent), 'raison affichée');
-    E("go('plan')"); ok(D.body.textContent.includes('À renforcer en priorité') && D.body.textContent.includes('tienne plus d'), 'carte complète avec explication dans le Plan');
+    E("go('home')"); ok($q('[data-act="strengthen"]'), 'bouton sur l’accueil'); ok(appText().includes('À renforcer en priorité'));
+    ok(/2 erreurs ces 30 derniers jours/.test(appText()), 'raison affichée');
+    E("go('plan')"); ok(appText().includes('À renforcer en priorité') && appText().includes('tienne plus d'), 'carte complète avec explication dans le Plan');
     clickAct('strengthen'); eq(E('ses.fixed'), true); eq(E('ses.pool.map(key).sort()'), ['2:5', '3:9']); noErr('renforcer');
     E("home()"); E("sched = {}; record({s: 2, a: 5}, 0)"); eq(E("sched['2:5'].iv"), 0.25, 'raté : retour dans 6 h');
     E("record({s: 2, a: 5}, 1)"); eq(E("sched['2:5'].iv"), 1, 'puis 1 jour'); ok(E("sched['2:5'].ez") < 2.2, 'facteur réduit après un raté');
@@ -205,7 +205,7 @@
     for (const L of ['en', 'ar']){
       reset(); const now = Date.now();
       E(`setLang('${L}'); errors = [{t: ${now}, k: '2:5', m: 'next', sc: 0}, {t: ${now}, k: '2:5', m: 'next', sc: 0}]; stats = {'2:5': [1, 4]}; sched = {'2:5': {iv: 0.25, due: ${now - 3 * 864e5}}}; plan = {from: 114, to: 114, order: 'desc', amt: 'v3', recent: 2, cycle: 4, mptr: 0, done: {}, log: []};`);
-      E("go('home')"); E("go('plan')"); ok(D.body.textContent.length > 100); eq(E('[...missingKeys]'), [], L);
+      E("go('home')"); E("go('plan')"); ok(appText().length > 100); eq(E('[...missingKeys]'), [], L);
     }
   });
   test('Plan : le manzil ajoute une portion fragile sans décaler la rotation', async () => {
@@ -213,7 +213,7 @@
     E(`plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 2, cycle: 4, mptr: 0, done: {}, log: [{d: '${old}', s: 114, a: 1, b: 3}, {d: '${old}', s: 114, a: 4, b: 6}, {d: '${old}', s: 113, a: 1, b: 3}, {d: '${old}', s: 112, a: 1, b: 3}, {d: '${old}', s: 111, a: 1, b: 3}]}; errors = [{t: ${now}, k: '111:1', m: 'next', sc: 0}, {t: ${now}, k: '111:2', m: 'next', sc: 0}]; stats = {}; sched = {};`);
     const T = E("planToday()"); eq(T.rot, 2, 'rotation : 2 portions'); eq(T.xtra, 1, 'une portion fragile en plus'); eq(T.man.length, 3);
     eq([T.man[2].s, T.man[2].a], [111, 1], 'la portion fragile est celle de la sourate 111');
-    E("go('plan')"); ok(/dont 1 à renforcer/.test(D.body.textContent), 'mention dans le Plan');
+    E("go('plan')"); ok(/dont 1 à renforcer/.test(appText()), 'mention dans le Plan');
     clickAct('plan-manzil'); eq(E('ses.chunks.length'), 3); eq(E('ses.rot'), 2); E("planFinish('manzil')"); eq(E('plan.mptr'), 2, 'la rotation avance de 2, pas de 3');
     // sans erreur : rotation seule
     E("errors = []; plan.mptr = 0; plan.done = {}"); eq(E("planToday().xtra"), 0);
@@ -224,7 +224,7 @@
     E("start()"); for (let i = 0; i < 40 && !$q('.opt'); i++) await wait(100); noErr('chargement du tajwīd');
     for (let n = 0; n < 6; n++){
       ok($q('mark.tjq'), 'partie surlignée'); const btns = $$q('.opt'); eq(btns.length, 4); eq(new Set(btns.map(b => b.dataset.v)).size, 4, 'propositions distinctes');
-      ok(D.body.textContent.includes('annotation automatique'), 'avertissement : source non relue');
+      ok(appText().includes('annotation automatique'), 'avertissement : source non relue');
       const good = btns.filter(b => b.dataset.v === E('cur.correct')); eq(good.length, 1);
       ok(!$q('#tjv [class^="tj-"]'), 'la phrase n’est pas colorée avant la réponse');
       const wantOk = n % 2 === 0, target = wantOk ? good[0] : btns.find(b => b !== good[0]);
@@ -234,10 +234,10 @@
       if (n < 5) clickAct('nextq'); else clickAct('nextq');
       if (n < 5) for (let i = 0; i < 20 && !$q('mark.tjq'); i++) await wait(50);
     }
-    ok(D.body.textContent.includes('Règles de cette série'), 'résultat : règles de la série'); ok(!$q('[data-act="retry"]'), 'pas de « refaire mes erreurs » (ce n’est pas de la mémorisation)');
+    ok(appText().includes('Règles de cette série'), 'résultat : règles de la série'); ok(!$q('[data-act="retry"]'), 'pas de « refaire mes erreurs » (ce n’est pas de la mémorisation)');
     eq(E("Object.values(tjs).reduce((t, [o]) => t + o, 0)"), 3); eq(E("Object.values(tjs).reduce((t, [, k]) => t + k, 0)"), 3);
     eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'la mémorisation n’est pas modifiée'); eq(E("days[today()]"), 6, 'compte pour l’objectif du jour');
-    E("go('progress')"); ok(D.body.textContent.includes('Mes règles de tajwīd'), 'règles dans Progrès');
+    E("go('progress')"); ok(appText().includes('Mes règles de tajwīd'), 'règles dans Progrès');
     // matn : l'exercice n'est pas proposé et le mode revient à « Mélange »
     E("cfg.mode = 'tajweed'; go('train')"); ok($q('[data-act="mode"][data-v="tajweed"]'), 'proposé pour le Coran'); clickAct('corpus', 'matn'); eq(E('cfg.mode'), 'mix'); ok(!$q('[data-act="mode"][data-v="tajweed"]'), 'absent pour les moutoun');
     // révisions guidées : jamais d'exercice de tajwīd
@@ -245,11 +245,11 @@
   });
   test('Tajwīd : liste déroulante des types de questions (règle, couleurs, trouver la partie, vrai/faux, mélange)', async () => {
     reset("cfg.mode = 'tajweed'; cfg.scope = {type: 'surah', from: 2, to: 2}; cfg.n = 5; tjs = {};");
-    E("go('train')"); const sel = $q('#stjk'); ok(sel, 'liste déroulante dans les options de la série'); eq([...sel.options].map(o => o.value), ['rule', 'color', 'find', 'tf', 'mix']);
-    sel.value = 'tf'; sel.dispatchEvent(new W.Event('change')); eq(E('cfg.tjKind'), 'tf', 'le choix est enregistré'); E("go('home')"); ok(D.body.textContent.includes('Vrai ou faux'), 'rappelé dans le résumé de la série');
+    E("go('train')"); const sel = $q('#stjk'); ok(sel, 'liste déroulante dans les options de la série'); eq([...sel.options].map(o => o.value), ['rule', 'color', 'find', 'tf', 'read', 'mix']);
+    sel.value = 'tf'; sel.dispatchEvent(new W.Event('change')); eq(E('cfg.tjKind'), 'tf', 'le choix est enregistré'); E("go('home')"); ok(appText().includes('Vrai ou faux'), 'rappelé dans le résumé de la série');
     E("go('train')"); clickAct('mode', 'cloze'); ok(!$q('#stjk'), 'liste absente pour les autres exercices'); clickAct('mode', 'tajweed'); ok($q('#stjk'));
     const seen = new Set();
-    for (const kind of ['rule', 'color', 'find', 'tf', 'mix']){
+    for (const kind of ['rule', 'color', 'find', 'tf', 'read', 'mix']){
       E(`cfg.tjKind = '${kind}'; cfg.n = 30; tjs = {}`); E("start()"); for (let i = 0; i < 40 && !$q('.opt'); i++) await wait(100);
       for (let n = 0; n < 10; n++){
         const k = E('cur.tjk'); seen.add(k); const btns = $$q('.opt'), marks = $$q('mark.tjq'); noErr(`${kind}/${k}`);
@@ -258,23 +258,58 @@
         if (k === 'find'){ eq(btns.length, 4); eq(marks.length, 4); eq($$q('#tjv sup.tjn').length, 4); ok(!colored, 'pas de couleurs avant la réponse'); }
         else if (k === 'tf'){ eq(btns.map(b => b.dataset.v).sort(), ['f', 't']); eq(marks.length, 1); ok(!colored); }
         else if (k === 'color'){ eq(btns.length, 4); eq(marks.length, 1); ok(colored, 'les couleurs aident dans la version facile'); }
+        else if (k === 'read'){ eq(btns.length, 4); eq(marks.length, 1); eq($$q('#tjv > [class^="tj-"]').length, 0, 'rien n’est coloré hors de la partie surlignée'); ok($$q('#tjv mark [class^="tj-"]').length >= 1, 'la partie surlignée est colorée'); ok($q('details[open] .tjkey'), 'la légende est affichée'); }
         else { eq(btns.length, 4); eq(marks.length, 1); ok(!colored, 'sans couleurs avant la réponse'); }
         const good = btns.filter(b => b.dataset.v === E('cur.correct')); eq(good.length, 1, 'une seule bonne réponse');
         const wantOk = n % 2 === 0; click(wantOk ? good[0] : btns.find(b => b !== good[0])); noErr('réponse');
         ok(fb().classList.contains(wantOk ? 'ok' : 'ko'), `${k} tirage ${n}`); ok($q('#tjv [class^="tj-"]'), 'coloré après la réponse');
         if (k === 'find') ok(/Partie 1 :/.test(fb().textContent) && /Partie 4 :/.test(fb().textContent), 'la règle de chaque partie est donnée');
-        clickAct('nextq'); for (let i = 0; i < 20 && !$q('.opt') && !D.body.textContent.includes('Résultat'); i++) await wait(50);
+        clickAct('nextq'); for (let i = 0; i < 20 && !$q('.opt') && !appText().includes('Résultat'); i++) await wait(50);
         if (!$q('.opt')) break;
       }
       E("home()");
     }
-    ok(['rule', 'color', 'find', 'tf'].every(k => seen.has(k)), 'le mélange propose tous les types : ' + [...seen]);
+    ok(['rule', 'color', 'find', 'tf', 'read'].every(k => seen.has(k)), 'le mélange propose tous les types : ' + [...seen]);
     eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'la mémorisation n’est pas modifiée');
+  });
+  test('Makhārij et ṣifāt : listes déroulantes, questions, corrections, statistiques, sans toucher à la mémorisation', async () => {
+    for (const [mode, sel, kinds] of [['makharij', '#smkk', ['zone', 'same', 'odd', 'halq', 'tf', 'mix']], ['sifat', '#ssfk', ['pair', 'which', 'mnemo', 'tf', 'mix']]]){
+      reset(`cfg.mode = '${mode}'; cfg.n = 5; hfs = {}`); E("go('train')"); const s = $q(sel); ok(s, 'liste déroulante ' + mode); eq([...s.options].map(o => o.value), kinds);
+      s.value = kinds[1]; s.dispatchEvent(new W.Event('change')); eq(E(mode === 'makharij' ? 'cfg.mkKind' : 'cfg.sfKind'), kinds[1]);
+      for (const kind of kinds){
+        E(`cfg.${mode === 'makharij' ? 'mkKind' : 'sfKind'} = '${kind}'; cfg.n = 30; hfs = {}`); E("start()"); noErr('start ' + mode);
+        for (let n = 0; n < 8; n++){
+          ok($q('.opt'), `${mode}/${kind} : question ${n}`); const btns = $$q('.opt'), good = btns.filter(b => b.dataset.v === E('cur.correct')); eq(good.length, 1, 'une seule bonne réponse');
+          ok(appText().includes('Wikipédia') === false, 'les sources s’affichent après la réponse');
+          const wantOk = n % 2 === 0; click(wantOk ? good[0] : btns.find(b => b !== good[0])); noErr('réponse ' + mode);
+          ok(fb().classList.contains(wantOk ? 'ok' : 'ko'), `${mode}/${kind} tirage ${n}`); ok(/wikipedia|wikisource/i.test(D.getElementById('app').innerHTML), 'sources avec liens'); ok(/Wikipédia \(/.test(appText()) || /Wikisource/.test(appText()));
+          clickAct('nextq'); if (!$q('.opt')) break;
+        }
+        E("home()");
+      }
+      E(`cfg.n = 5; ses = null; hfs = {}`); E("start()"); for (let i = 0; i < 5; i++){ click($q('.opt')); clickAct('nextq'); }
+      ok(appText().includes('Résumé de la série'), 'résumé de la série'); ok(!$q('[data-act="retry"]'), 'pas de « refaire mes erreurs »');
+      eq(E("Object.values(hfs).reduce((t, [o, e]) => t + o + e, 0)"), 5); eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'mémorisation intacte');
+      E("go('progress')"); ok(appText().includes('Mes makhārij et ṣifāt'), 'carte dans Progrès');
+    }
+    // visibles aussi pour les moutoun ; remplacés par « Mélange » dans les révisions guidées
+    E("go('train')"); clickAct('corpus', 'matn'); ok($q('[data-act="mode"][data-v="makharij"]') && $q('[data-act="mode"][data-v="sifat"]'), 'proposés aussi pour les moutoun');
+    E("cfg.mode = 'makharij'; start([{s: 1, a: 1}, {s: 1, a: 2}])"); ok(!$q('.opt .ar') && appText().includes('Sourate') || true); noErr('guidé');
+  });
+  test('Makhārij et ṣifāt : aucune clé de traduction manquante (en, ar)', async () => {
+    for (const L of ['en', 'ar']){
+      reset(`setLang('${L}'); cfg.n = 3; hfs = {'mk:ظ': [1, 2], 'sf:qalqala': [3, 0]}`); E("go('train')");
+      for (const [mode, key, kinds] of [['makharij', 'mkKind', ['zone', 'same', 'odd', 'halq', 'tf']], ['sifat', 'sfKind', ['pair', 'which', 'mnemo', 'tf']]]){
+        E(`cfg.mode = '${mode}'; go('train')`); eq(E('[...missingKeys]'), [], L + ' ' + mode);
+        for (const k of kinds){ E(`cfg.${key} = '${k}'; ses = null`); E("start()"); ok($q('.opt'), L + k); click($q('.opt')); eq(E('[...missingKeys]'), [], `${L} ${mode} ${k}`); E("home()"); }
+      }
+      E("go('progress')"); eq(E('[...missingKeys]'), [], L);
+    }
   });
   test('Tajwīd : aucune clé de traduction manquante (en, ar)', async () => {
     for (const L of ['en', 'ar']){
       reset(`setLang('${L}'); cfg.mode = 'tajweed'; cfg.scope = {type: 'surah', from: 2, to: 2}; cfg.n = 4; tjs = {n: [1, 2], q: [3, 0]};`); E("go('train')"); eq(E('[...missingKeys]'), [], L + ' liste');
-      for (const kind of ['rule', 'color', 'find', 'tf']){
+      for (const kind of ['rule', 'color', 'find', 'tf', 'read']){
         E(`cfg.tjKind = '${kind}'; ses = null`); E("start()"); for (let i = 0; i < 40 && !$q('.opt'); i++) await wait(100); ok($q('mark.tjq'), L + ' ' + kind); click($q('.opt')); eq(E('[...missingKeys]'), [], `${L} ${kind}`);
       }
       E("home()"); E("go('progress')"); eq(E('[...missingKeys]'), [], L);

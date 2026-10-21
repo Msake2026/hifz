@@ -210,3 +210,44 @@ test('data/tajweed.js : les 15 familles de règles existent et chaque verset est
   assert.deepEqual([...fam].sort(), [...'acdfghilmnopqu'.split(''), 'w'].sort());
   assert.ok(spans > 50000, 'beaucoup de parties annotées : ' + spans);
 });
+
+test('huruf.js : 17 points de sortie, 28 lettres, qualités cohérentes, sources renseignées', () => {
+  const w = {}; new Function('window', read('huruf.js'))(w); const H = w.HURUF;
+  assert.equal(H.letters.length, 28); assert.equal(H.points.length, 17); assert.equal(H.sources.length, 3);
+  assert.ok(H.sources.every(x => /^https:\/\/ar\.wiki(source|pedia)\.org\/w\/index\.php\?oldid=\d+$/.test(x.url)), 'versions précises des sources');
+  const all = H.points.filter(p => p.area !== 'jawf').flatMap(p => p.letters); assert.deepEqual([...all].sort(), [...H.letters].sort(), 'chaque lettre a un seul point');
+  assert.deepEqual(H.points.find(p => p.id === 'jawf').letters, ['ا', 'و', 'ي']);
+  assert.deepEqual(H.points.filter(p => p.area === 'halq').map(p => p.letters.join('')), ['ءه', 'عح', 'غخ']);
+  const n = Object.fromEntries(Object.entries(H.sets).map(([k, v]) => [k, v.length]));
+  assert.deepEqual(n, { hams: 10, shidda: 8, tawassut: 5, istila: 7, itbaq: 4, idhlaq: 6, safir: 3, qalqala: 5, lin: 2, inhiraf: 2, takrir: 1, tafashshi: 1, istitala: 1 });
+  for (const c of H.letters) {
+    const a = H.per[c]; assert.equal(a.filter(x => ['jahr', 'hams'].includes(x)).length, 1, c); assert.equal(a.filter(x => ['shidda', 'tawassut', 'rakhawa'].includes(x)).length, 1, c);
+    assert.equal(a.filter(x => ['istila', 'istifal'].includes(x)).length, 1, c); assert.equal(a.filter(x => ['itbaq', 'infitah'].includes(x)).length, 1, c); assert.equal(a.filter(x => ['idhlaq', 'ismat'].includes(x)).length, 1, c);
+  }
+  // quelques lettres connues (contrôle de bon sens sur le calcul)
+  assert.deepEqual(H.per['ل'], ['jahr', 'tawassut', 'istifal', 'infitah', 'idhlaq', 'inhiraf']);
+  assert.deepEqual(H.per['ض'], ['jahr', 'rakhawa', 'istila', 'itbaq', 'ismat', 'istitala']);
+  assert.ok(H.per['م'].includes('idhlaq') && !H.per['م'].includes('inhiraf'));
+  assert.equal(H.mnemonics.length, 8); assert.ok(H.mnemonics.every(m => m.ar && H.sets[m.attr]));
+});
+
+test('exercices makhārij / ṣifāt : questions toujours valides (milliers de tirages)', () => {
+  const html = read('index.html'); const code = html.slice(html.indexOf('/* HF:begin'), html.indexOf('/* HF:end */'));
+  const { mkBuild, sfBuild, hfPointOf, HF_AMBIG } = new Function(code + '; return {mkBuild, sfBuild, hfPointOf, HF_AMBIG};')();
+  const w = {}; new Function('window', read('huruf.js'))(w); const H = w.HURUF;
+  let seed = 11; const rnd = n => (seed = (seed * 16807) % 2147483647) % n, shuf = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const distinct = q => new Set(q.options.map(o => o.v)).size === q.options.length && q.options.some(o => o.v === q.correct);
+  for (let i = 0; i < 400; i++) {
+    let q = mkBuild('zone', H, rnd, shuf); assert.ok(distinct(q) && q.options.length === 4); assert.equal(q.correct, hfPointOf(H, q.letter).area); assert.ok(!HF_AMBIG.includes(q.letter));
+    q = mkBuild('same', H, rnd, shuf); assert.ok(distinct(q) && q.options.length === 4); assert.equal(q.options.find(o => o.v === q.correct).letters.includes(q.letter), true); assert.ok(q.point.letters.length >= 2);
+    assert.equal(q.options.filter(o => o.letters.includes(q.letter)).length, 1, 'une seule proposition contient la lettre');
+    q = mkBuild('odd', H, rnd, shuf); assert.equal(q.shown.length, 3); const pts = q.shown.map(c => hfPointOf(H, c).id); assert.equal(new Set(pts).size, 2, 'deux points distincts');
+    assert.equal(pts.filter(x => x === hfPointOf(H, q.correct).id).length, 1, 'une seule intruse'); assert.ok(distinct(q));
+    q = mkBuild('halq', H, rnd, shuf); assert.equal(q.options.length, 3); assert.ok(q.point.letters.includes(q.letter)); assert.equal(q.correct, hfPointOf(H, q.letter).id);
+    q = mkBuild('tf', H, rnd, shuf); assert.equal(q.same, hfPointOf(H, q.a) === hfPointOf(H, q.b)); assert.equal(q.correct, q.same ? 't' : 'f'); assert.notEqual(q.a, q.b);
+    q = sfBuild('pair', H, rnd, shuf); assert.ok(distinct(q)); assert.equal(q.options.filter(o => H.per[q.letter].includes(o.v)).length, 1, 'une seule bonne qualité'); assert.ok(q.options.length >= 2);
+    q = sfBuild('which', H, rnd, shuf); assert.ok(distinct(q) && q.options.length === 4); assert.equal(q.options.filter(o => H.sets[q.attr].includes(o.v)).length, 1, 'une seule bonne lettre');
+    q = sfBuild('mnemo', H, rnd, shuf); assert.ok(distinct(q) && q.options.length === 4); assert.ok(H.mnemonics.some(m => m.ar === q.word && m.attr === q.correct));
+    q = sfBuild('tf', H, rnd, shuf); assert.equal(q.correct, H.per[q.letter].includes(q.attr) ? 't' : 'f');
+  }
+});
