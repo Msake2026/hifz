@@ -91,10 +91,11 @@ begin
   perform t.as_user(b); assert (select count(*) from public.access_log_mine()) = 0 and (select count(*) from public.teacher_access_log) = 0;
   perform t.as_user(f1); assert (select count(*) from public.teacher_access_log) = 0, 'l''enseignant ne lit pas le journal';
 
-  -- 6. retrait : par l'élève, l'accès disparaît tout de suite
+  -- 6. retrait : seul l'enseignant met fin au suivi (l'élève ne le peut pas), l'accès disparaît tout de suite
   perform t.as_user(f2); perform public.link_revoke(a); perform t.as_user(f1); assert (select count(*) from public.teacher_students()) = 1, 'un tiers ne peut pas retirer un lien';
-  perform t.as_user(a); perform public.link_revoke(f1);
-  perform t.as_user(f1); perform t.fails('select public.teacher_student_data(''' || a || ''')', '42501'); assert (select count(*) from public.teacher_students()) = 0;
+  perform t.as_user(a); perform public.link_revoke(f1); perform t.as_user(f1); assert (select count(*) from public.teacher_students()) = 1, 'l''élève ne peut pas retirer son enseignant';
+  perform public.link_revoke(a);
+  perform t.fails('select public.teacher_student_data(''' || a || ''')', '42501'); assert (select count(*) from public.teacher_students()) = 0;
   -- retrait par l'enseignant (nouveau lien)
   perform t.as_user(b); select i.code into code2 from public.invite_create() i; perform t.as_user(f1); perform public.invite_accept(code2);
   assert (select count(*) from public.teacher_students()) = 1; perform public.link_revoke(b); assert (select count(*) from public.teacher_students()) = 0, 'l''enseignant peut se retirer';
@@ -146,7 +147,8 @@ begin
   perform t.as_user(f1); perform public.goal_delete((select id from public.goals_for(b) limit 1)); assert (select count(*) from public.goals_for(b)) = 4, 'l''enseignant supprime un objectif';
   perform t.as_super(); update public.teacher_goals set due = current_date - 31 where id = (select min(id) from public.teacher_goals);
   perform t.as_user(f1); assert (select count(*) from public.goals_for(b)) = 3, 'un objectif échu depuis plus de 30 jours disparaît';
-  perform t.as_user(b); perform public.link_revoke(f1); assert (select count(*) from public.messages_mine()) = 0 and (select count(*) from public.goals_for()) = 0, 'lien coupé : messages et objectifs ne s''affichent plus';
+  perform t.as_user(b); perform public.link_revoke(f1); assert (select count(*) from public.links_mine() where as_role = 'teacher') = 1, 'toujours lié après une tentative de l''élève';
+  perform t.as_user(f1); perform public.link_revoke(b); perform t.as_user(b); assert (select count(*) from public.messages_mine()) = 0 and (select count(*) from public.goals_for()) = 0, 'lien coupé : messages et objectifs ne s''affichent plus';
   perform t.as_user(f1); perform t.fails('select public.teacher_message_send(''' || b || ''', ''après'')', '42501');
   -- groupe de classe
   perform t.as_user(f1); select c.code into code2 from public.class_create() c; assert length(code2) = 8 and (select count(*) from public.class_mine()) = 1;
@@ -184,7 +186,7 @@ begin
   perform t.fails('select * from public.teacher_thread(''' || a || ''')', '42501'); perform t.as_user(c1); perform t.fails('select * from public.teacher_thread(''' || b || ''')', '42501'); assert (select count(*) from public.teacher_unread()) = 0;
   perform t.as_user(b); for i in 1..9 loop perform public.student_message_send(f1, 'r' || i); end loop; perform t.fails('select public.student_message_send(''' || f1 || ''', ''trop'')', 'P0001');
   perform t.as_user(c1); perform t.fails('select public.student_message_send(''' || f1 || ''', ''hors lien'')', '42501');
-  perform t.as_user(b); perform public.link_revoke(f1); perform t.fails('select public.student_message_send(''' || f1 || ''', ''après'')', '42501');
+  perform t.as_user(f1); perform public.link_revoke(b); perform t.as_user(b); perform t.fails('select public.student_message_send(''' || f1 || ''', ''après'')', '42501');
   perform t.as_user(ad); perform t.fails('select public.invite_create()', 'P0001'); perform t.fails('select public.class_join(''ZZZZZZZZ'')', 'P0001'); perform t.fails('select public.teacher_request()'); perform t.fails('select public.admin_set_role(''' || ad || ''', ''teacher'')');
   perform t.fails('select public.student_message_send(''' || f1 || ''', ''x'')', '42501');
   perform t.as_super(); delete from public.teacher_messages; delete from public.teacher_links where teacher_id = f1;

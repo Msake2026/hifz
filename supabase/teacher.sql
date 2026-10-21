@@ -1,8 +1,8 @@
 -- Hifz : rôle « enseignant » (à lancer APRÈS schema.sql, dans Supabase → SQL Editor). Peut être relancé sans risque.
 --
--- Principe : l'ÉLÈVE décide. Il crée un code d'invitation (valable 7 jours, à usage unique) et le donne à son enseignant ; l'enseignant
--- (compte auquel un admin a donné le rôle « teacher ») saisit le code : le lien existe alors, jusqu'à ce que l'élève (ou l'enseignant)
--- le retire. L'enseignant ne lit JAMAIS les tables : il passe par des fonctions qui vérifient le lien à chaque appel et ne renvoient
+-- Principe : l'élève crée un code d'invitation (valable 7 jours, à usage unique) et le donne à son enseignant ; l'enseignant
+-- (compte auquel un admin a donné le rôle « teacher ») saisit le code : le lien existe alors, jusqu'à ce que l'enseignant
+-- y mette fin (l'élève peut aussi supprimer son compte). L'enseignant ne lit JAMAIS les tables : il passe par des fonctions qui vérifient le lien à chaque appel et ne renvoient
 -- qu'un résumé (statistiques, jours d'activité, erreurs sans les réponses tapées). Chaque consultation d'un détail est journalisée et
 -- visible par l'élève. Aucune règle d'accès direct n'est donnée à l'enseignant : tout passe par ces fonctions.
 
@@ -73,7 +73,7 @@ create policy "journal : lecture par l'élève" on public.teacher_access_log for
 revoke all on public.teacher_invites, public.teacher_links, public.teacher_access_log from anon, authenticated;
 grant select on public.teacher_invites, public.teacher_links, public.teacher_access_log to authenticated;
 
--- 3. Élève : inviter, annuler, retirer l'accès, voir qui a consulté
+-- 3. Élève : inviter, annuler, voir qui a consulté (seul l'enseignant met fin au suivi)
 create or replace function public.invite_create() returns table (code text, expires_at timestamptz)
 language plpgsql security definer set search_path = public as $$
 declare alpha constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; v text; c text := ''; i int;
@@ -96,8 +96,7 @@ $$;
 
 create or replace function public.link_revoke(other uuid) returns void
 language sql security definer set search_path = public as $$
-  delete from public.teacher_links
-  where (teacher_id = auth.uid() and student_id = other) or (student_id = auth.uid() and teacher_id = other)
+  delete from public.teacher_links where teacher_id = auth.uid() and student_id = other      -- seul l'enseignant met fin au suivi
 $$;
 
 create or replace function public.links_mine() returns table (as_role text, other_id uuid, email text, since timestamptz)
@@ -320,7 +319,7 @@ begin
   end if;
 end $$;
 
--- groupe de classe : un code réutilisable (jusqu'à 40 élèves, 30 jours) ; chaque élève le saisit lui-même, ce qui crée son lien (il peut le retirer quand il veut)
+-- groupe de classe : un code réutilisable (jusqu'à 40 élèves, 30 jours) ; chaque élève le saisit lui-même, ce qui crée son lien (seul l'enseignant y met fin)
 create or replace function public.class_create() returns table (code text, expires_at timestamptz)
 language plpgsql security definer set search_path = public as $$
 declare alpha constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; v text; c text := ''; i int;

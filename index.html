@@ -2325,7 +2325,6 @@ const onClick = e => {
     case 'tch-del': tchDrop(v); break;
     case 'tch-invite': tchInvite(); break;
     case 'tch-cancel': tchCancel(v); break;
-    case 'tch-revoke': tchRevoke(v); break;
     case 'tch-copy': tchCopy(); break;
     case 'tch-msg-del': tchMsgDel(v); break;
     case 'tch-reply-send': tchReply(); break;
@@ -2614,7 +2613,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v41';
+const APP_VERSION = '21 oct. 2026 · v42';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -3065,8 +3064,8 @@ function renderLegal(){
     ${sec('Quelles données ?', [tr("Compte : ton adresse e-mail, ton mot de passe (transmis au service d'authentification Supabase, qui le stocke de façon sécurisée ; ce site ne le conserve pas), la date d'inscription, ta dernière activité et ton rôle."),
       tr("Progression : tes statistiques, ton historique d'erreurs (y compris les réponses que tu saisis), ton plan de mémorisation, tes réglages et les textes que tu ajoutes toi-même."),
       tr("Rappels (facultatif) : si tu actives les notifications, l'adresse technique de ton appareil pour les notifications (fournie par Apple, Google ou Mozilla), l'heure choisie, ton fuseau horaire et ta langue sont enregistrés pour t'envoyer le rappel, qui transite par le service de notifications de ton système. Tu peux les désactiver à tout moment dans Réglages."),
-      tr("Enseignant (facultatif) : si tu invites un enseignant, il voit ton e-mail, ton total de réponses, ta progression par sourate, tes jours d'activité et tes erreurs (sans les réponses que tu as tapées, sans tes réglages ni les textes que tu ajoutes). Tu génères un code d'invitation valable 7 jours et à usage unique ; tu peux retirer l'accès à tout moment ; chaque consultation d'un détail est enregistrée et visible dans ton compte. Seul un compte auquel l'administrateur a donné le rôle enseignant peut utiliser un code."),
-      tr("Messages, objectifs et classe (facultatif) : un enseignant que tu as invité (ou dont tu as saisi le code de classe) peut t'envoyer des messages de 280 caractères au plus et te fixer des objectifs (sourate, date limite) ; tu peux supprimer les messages. En quittant l'enseignant (Retirer l'accès), tu ne les vois plus."),
+      tr("Enseignant (facultatif) : si tu invites un enseignant, il voit ton e-mail, ton total de réponses, ta progression par sourate, tes jours d'activité et tes erreurs (sans les réponses que tu as tapées, sans tes réglages ni les textes que tu ajoutes). Tu génères un code d'invitation valable 7 jours et à usage unique ; seul ton enseignant peut mettre fin au suivi (tu peux aussi supprimer ton compte à tout moment) ; chaque consultation d'un détail est enregistrée et visible dans ton compte. Seul un compte auquel l'administrateur a donné le rôle enseignant peut utiliser un code."),
+      tr("Messages, objectifs et classe (facultatif) : un enseignant que tu as invité (ou dont tu as saisi le code de classe) peut t'envoyer des messages de 280 caractères au plus et te fixer des objectifs (sourate, date limite) ; tu peux supprimer les messages. Si ton enseignant met fin au suivi, tu ne les vois plus."),
       tr("Résumé hebdomadaire (facultatif) : si tu l'actives, ton e-mail, ta langue et le jour du dernier envoi sont utilisés pour t'envoyer chaque dimanche, via Gmail (Google), le nombre de tes réponses et de tes jours actifs de la semaine."),
       tr("Données techniques : comme sur tout site, les hébergeurs et services utilisés peuvent enregistrer des informations de connexion, par exemple l'adresse IP.")])}
     ${sec('Pourquoi ?', [tr("Pour créer ton compte, te connecter et synchroniser ta progression entre tes appareils. L'administrateur peut consulter la liste des comptes et la progression pour gérer le service. Les données ne sont ni vendues ni utilisées pour de la publicité.")])}
@@ -3160,9 +3159,12 @@ async function tchLoadStudent(){ // ce que l'élève voit : ses invitations, ses
   if (screen === 'tab' && cfg.tab === 'student'){ home(); if (unseen){ sb.rpc('messages_mark_read').then(() => { tch.msgs.forEach(m => { if (!m.from_student && !m.read_at) m.read_at = new Date().toISOString(); }); if (screen === 'tab') setNav(true); }); } }
   else if (screen === 'tab') setNav(true);       // simple mise à jour des pastilles du menu
   else if (screen === 'account') renderAccount();
+  tchFlash();
 }
 // refait l'écran courant après une action (onglets Élève et Enseignant, ou Compte)
-const tchRefresh = () => { if (screen === 'tab' && (cfg.tab === 'student' || cfg.tab === 'teacher')) home(); else if (screen === 'account') renderAccount(); };
+// un message de réussite disparaît seul au bout de 3 s (les erreurs restent affichées)
+const tchFlash = () => { clearTimeout(tch.t); if (tch.msg && tch.ok) tch.t = setTimeout(() => { if (tch.ok){ tch.msg = ''; document.querySelectorAll('.tch-flash').forEach(e => e.remove()); } }, 3000); };
+const tchRefresh = () => { if (screen === 'tab' && (cfg.tab === 'student' || cfg.tab === 'teacher')) home(); else if (screen === 'account') renderAccount(); tchFlash(); };
 // à l'ouverture d'un onglet : chargement des données (une seule fois par visite)
 function tchEnter(){
   if (!me || !sb) return;
@@ -3177,26 +3179,26 @@ function wkCard(){
   if (!me) return '';
   return `<div class="card"><h2>${tr('Résumé de la semaine')}</h2>
     <label class="consent"><input type="checkbox" id="wk-on" ${tch.wk ? 'checked' : ''}><span>${tr("Recevoir chaque dimanche, par e-mail, un résumé de ma semaine (réponses, jours actifs). Je peux le désactiver à tout moment.")}</span></label>
-    ${tch.msg && screen === 'account' ? `<p class="fb ${tch.ok ? 'ok' : 'ko'}" style="margin:8px 0 0">${esc(tch.msg)}</p>` : ''}</div>`;
+    ${tch.msg && screen === 'account' ? `<p class="fb tch-flash ${tch.ok ? 'ok' : 'ko'}" style="margin:8px 0 0">${esc(tch.msg)}</p>` : ''}</div>`;
 }
-async function wkToggle(on){ try { const {error} = await sb.rpc('weekly_set', {p_on: on, p_lang: LANG}); if (error) throw error; tch.wk = on; tch.ok = true; tch.msg = on ? tr('Résumé hebdomadaire activé.') : tr('Résumé hebdomadaire désactivé.'); } catch (e){ tchErr(e); const c = $('wk-on'); if (c) c.checked = tch.wk; } if (screen === 'account') renderAccount(); }
+async function wkToggle(on){ try { const {error} = await sb.rpc('weekly_set', {p_on: on, p_lang: LANG}); if (error) throw error; tch.wk = on; tch.ok = true; tch.msg = on ? tr('Résumé hebdomadaire activé.') : tr('Résumé hebdomadaire désactivé.'); } catch (e){ tchErr(e); const c = $('wk-on'); if (c) c.checked = tch.wk; } if (screen === 'account') renderAccount(); tchFlash(); }
 function tchStudentCard(){
   if (!me) return '';
   const L = tch.links, I = tch.invites, G = tch.log, fd = t => new Date(t).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short', year: 'numeric'});
   return `<div class="card"><h2>${tr('Mon enseignant')}</h2>
-    <p class="ref" style="margin:0 0 8px">${tr("Tu peux inviter un enseignant à suivre ta progression. Il verra ton e-mail, ton total de réponses, tes statistiques par sourate, tes jours d'activité et tes erreurs (sans les réponses que tu as tapées). Il ne voit ni tes réglages, ni les textes que tu ajoutes. Tu génères un code, tu le lui donnes, et tu peux retirer l'accès à tout moment.")}</p>
+    <p class="ref" style="margin:0 0 8px">${tr("Tu peux inviter un enseignant à suivre ta progression. Il verra ton e-mail, ton total de réponses, tes statistiques par sourate, tes jours d'activité et tes erreurs (sans les réponses que tu as tapées). Il ne voit ni tes réglages, ni les textes que tu ajoutes. Tu génères un code, tu le lui donnes ; seul ton enseignant peut mettre fin au suivi (tu peux aussi supprimer ton compte à tout moment).")}</p>
     <button data-act="tch-invite" ${tch.busy ? 'disabled' : ''}>✉ ${tr('Inviter un enseignant')}</button>
     ${tch.code ? `<div class="fb ok" style="margin-top:8px"><b style="font-size:1.4rem;letter-spacing:.15em" id="tch-code-new">${esc(tch.code.code)}</b><br><span class="ref">${tr('Valable jusqu\'au {d}. Donne ce code à ton enseignant : il ne sert qu\'une fois.', {d: fd(tch.code.expires_at)})}</span>
       <br><button class="link" data-act="tch-copy">${tr('Copier le code')}</button></div>` : ''}
-    ${tch.msg && (cfg.tab === 'student' || screen === 'account') ? `<p class="fb ${tch.ok ? 'ok' : 'ko'}" style="margin:8px 0 0">${esc(tch.msg)}</p>` : ''}
+    ${tch.msg && (cfg.tab === 'student' || screen === 'account') ? `<p class="fb tch-flash ${tch.ok ? 'ok' : 'ko'}" style="margin:8px 0 0">${esc(tch.msg)}</p>` : ''}
     ${I && I.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Invitations en attente')}</h3>${I.map(x => `<div class="weak"><span><b>${esc(x.code)}</b> · ${tr("jusqu'au {d}", {d: fd(x.expires_at)})}</span><button class="link" data-act="tch-cancel" data-v="${esc(x.code)}">${tr('Annuler')}</button></div>`).join('')}` : ''}
-    ${L && L.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Mes enseignants')}</h3>${L.map(x => `<div class="weak"><span>${esc(x.email)} · ${tr('depuis le {d}', {d: fd(x.since)})}</span><button class="link" style="color:var(--ko)" data-act="tch-revoke" data-v="${x.other_id}">${tr("Retirer l'accès")}</button></div>`).join('')}` : ''}
+    ${L && L.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Mes enseignants')}</h3>${L.map(x => `<div class="weak"><span>${esc(x.email)} · ${tr('depuis le {d}', {d: fd(x.since)})}</span></div>`).join('')}` : ''}
     ${G && G.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Consultations récentes de mes données')}</h3>${G.slice(0, 8).map(x => `<p class="ref" style="margin:0">${fdate(Date.parse(x.at))} · ${esc(x.teacher_email)}</p>`).join('')}` : ''}
     ${tch.goals && tch.goals.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Objectifs fixés par mes enseignants')}</h3>${tch.goals.map(g => { const x = tcGoal(stats, g.surah, slen(g.surah)); return `<div class="weak"><span><b>${esc(SN(g.surah))}</b> · ${tr('pour le {d}', {d: fd(g.due)})} · ${x.seen}/${x.total} ${tr('versets travaillés')} (${x.pct} %)${g.note ? ` · ${esc(g.note)}` : ''}</span></div>`; }).join('')}` : ''}
     ${tch.msgs && tch.msgs.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Messages de mes enseignants')}</h3>${tch.msgs.slice(0, 10).map(m => `<div class="weak"><span>${m.from_student ? `<b>${tr('Moi')}</b>` : `${m.read_at ? '' : '● '}${esc(m.teacher_email)}`} · ${fdate(Date.parse(m.created_at))}${m.from_student ? ` · ${m.read_at ? '✓✓ ' + tr('lu') : '✓ ' + tr('envoyé')}` : ''}<br>${esc(m.body)}</span><button class="link" data-act="tch-msg-del" data-v="${m.id}" aria-label="${tr('Supprimer le message')}">✕</button></div>`).join('')}
       ${(() => { const T = [...new Map(tch.msgs.filter(m => !m.from_student).map(m => [m.teacher_id, m.teacher_email]))]; return T.length ? `<div class="row" style="margin-top:6px">${T.length > 1 ? `<select id="tch-reply-to" aria-label="${tr('Répondre à')}">${T.map(([id, e]) => `<option value="${id}">${esc(e)}</option>`).join('')}</select>` : `<input type="hidden" id="tch-reply-to" value="${T[0][0]}">`}<textarea id="tch-reply" maxlength="280" rows="2" aria-label="${tr('Ta réponse')}" placeholder="${tr('Ta réponse (280 caractères)')}"></textarea></div><button data-act="tch-reply-send">${tr('Répondre')}</button>` : ''; })()}` : ''}
     <h3 style="margin:12px 0 4px;font-size:1rem">${tr('Rejoindre une classe')}</h3>
-    <p class="ref" style="margin:0 0 6px">${tr("Ton enseignant peut te donner un code de classe : en le saisissant, tu lui donnes accès à ta progression (comme avec une invitation). Tu peux retirer l'accès quand tu veux.")}</p>
+    <p class="ref" style="margin:0 0 6px">${tr("Ton enseignant peut te donner un code de classe : en le saisissant, tu lui donnes accès à ta progression (comme avec une invitation).")}</p>
     <div class="row"><input type="text" id="tch-join" aria-label="${tr('Code de classe')}" autocomplete="off" autocapitalize="characters" maxlength="12" style="text-transform:uppercase" data-enter="tch-join-go"><button class="pri" data-act="tch-join-go" id="tch-join-go" style="flex:0 0 auto">${tr('Rejoindre')}</button></div>
     ${me.profile && me.profile.role === 'user' ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Devenir enseignant')}</h3>${tch.req
       ? `<p class="ref" style="margin:0 0 6px">${tr("Demande envoyée : l'administrateur doit la valider.")}</p><button class="link" data-act="tch-req-cancel">${tr('Annuler ma demande')}</button>`
@@ -3216,7 +3218,6 @@ async function tchJoin(){
 }
 const tchInvite = () => tchAct(async () => { const {data, error} = await sb.rpc('invite_create'); if (error) throw error; tch.code = Array.isArray(data) ? data[0] : data; }, '');
 const tchCancel = code => tchAct(() => sb.rpc('invite_cancel', {p_code: code}), tr('Invitation annulée.'));
-const tchRevoke = id => { if (confirm(tr("Retirer l'accès de cet enseignant à ta progression ?"))) tchAct(() => sb.rpc('link_revoke', {other: id}), tr('Accès retiré.')); };
 async function tchCopy(){ try { await navigator.clipboard.writeText(tch.code.code); tch.ok = true; tch.msg = tr('Code copié.'); } catch { tch.ok = false; tch.msg = tr('Copie impossible : recopie le code à la main.'); } tchRefresh(); }
 /* espace enseignant */
 async function tchLoadClasses(){ try { const {data, error} = await sb.rpc('class_mine'); tch.classes = error ? [] : (data || []); } catch { tch.classes = []; } tchRefresh(); }
@@ -3244,12 +3245,12 @@ async function tchLoadThread(id){ try { const {data, error} = await sb.rpc('teac
 async function tchReply(){
   const t = ($('tch-reply') ? $('tch-reply').value : '').trim(), to = $('tch-reply-to') ? $('tch-reply-to').value : '';
   if (!t){ tch.ok = false; tch.msg = tr('Écris un message.'); return tchRefresh(); }
-  try { const {error} = await sb.rpc('student_message_send', {p_teacher: to, p_body: t}); if (error) throw error; tch.ok = true; tch.msg = tr('Message envoyé.'); } catch (e){ tchErr(e); }
+  try { const {error} = await sb.rpc('student_message_send', {p_teacher: to, p_body: t}); if (error) throw error; tch.ok = true; tch.msg = ''; } catch (e){ tchErr(e); }
   tch.loaded = false; await tchLoadStudent();
 }
 async function tchSend(id){
   const t = ($('tch-msg') ? $('tch-msg').value : '').trim(); if (!t){ tch.ok = false; tch.msg = tr('Écris un message.'); return renderTeacher(); }
-  try { const {error} = await sb.rpc('teacher_message_send', {target: id, p_body: t}); if (error) throw error; tch.ok = true; tch.msg = tr('Message envoyé.'); await tchLoadThread(id); } catch (e){ tchErr(e); }
+  try { const {error} = await sb.rpc('teacher_message_send', {target: id, p_body: t}); if (error) throw error; tch.ok = true; tch.msg = ''; await tchLoadThread(id); } catch (e){ tchErr(e); }
   renderTeacher();
 }
 async function tchGoalAdd(id){
@@ -3294,7 +3295,7 @@ function tabTeacher(){
       ${open ? (tch.detail.data ? tchDetailHtml(tch.detail.data) + tchActionsHtml(u.id) : '') : ''}</div>`; };
   return `<h1 style="margin-top:8px">${tr('Espace enseignant')}</h1>
     <p class="sub">${S ? trp(S.length, '{n} élève|{n} élèves') : tr('Chargement…')}</p>
-    ${tch.msg ? `<div class="fb ${tch.ok ? 'ok' : 'ko'}">${esc(tch.msg)}</div>` : ''}
+    ${tch.msg ? `<div class="fb tch-flash ${tch.ok ? 'ok' : 'ko'}">${esc(tch.msg)}</div>` : ''}
     <div class="card"><h2>${tr('Ajouter un élève')}</h2><p class="ref" style="margin:0 0 6px">${tr("L'élève génère un code dans son onglet Élève → Inviter un enseignant. Saisis-le ici : tu ne vois que les élèves qui t'ont invité, tant qu'ils le souhaitent.")}</p>
       <label class="f" for="tch-code">${tr("Code d'invitation")}</label><div class="row"><input type="text" id="tch-code" autocomplete="off" autocapitalize="characters" maxlength="12" style="text-transform:uppercase" data-enter="tch-go"><button id="tch-go" class="pri" data-act="tch-add" style="flex:0 0 auto">${tr('Ajouter')}</button></div></div>
     <div class="card"><h2>${tr('Groupe de classe')}</h2><p class="ref" style="margin:0 0 6px">${tr("Un code réutilisable (40 élèves, 30 jours) à donner à toute la classe. Chaque élève le saisit lui-même : il t'ouvre ainsi l'accès à sa progression.")}</p>

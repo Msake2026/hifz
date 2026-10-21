@@ -533,7 +533,7 @@
     ok(/sans les réponses que tu as tapées/.test(t), 'le consentement dit ce qui est vu'); noErr('carte élève');
     clickAct('tch-invite'); for (let i = 0; i < 40 && !$q('#tch-code-new'); i++) await wait(50); eq($q('#tch-code-new').textContent, 'ABCD2345'); ok(calls.includes('invite_create {}'), 'invite_create'); ok(appText().includes('une fois'), 'code à usage unique');
     clickAct('tch-cancel', 'OLDCODE2'); await wait(300); ok(calls.some(c => c === 'invite_cancel {"p_code":"OLDCODE2"}'), 'annulation'); ok(!appText().includes('OLDCODE2'));
-    clickAct('tch-revoke', 't1'); await wait(300); ok(calls.some(c => c === 'link_revoke {"other":"t1"}'), 'retrait de l’accès'); ok(!appText().includes('prof@x.fr · depuis') && !appText().includes('Mes enseignants'), 'enseignant retiré de la liste');
+    ok(!$q('[data-act="tch-revoke"]') && appText().includes('Mes enseignants') && appText().includes('prof@x.fr'), 'l’élève ne peut pas retirer son enseignant : aucun bouton, le lien reste');
     ok(appText().includes('Devenir enseignant') && $q('[data-act="tch-req"]'), 'un simple utilisateur peut demander le rôle');
     clickAct('tch-req'); for (let i = 0; i < 40 && !$q('[data-act="tch-req-cancel"]'); i++) await wait(50); ok(calls.includes('teacher_request {}') && appText().includes('Demande envoyée'), 'demande envoyée, en attente');
     clickAct('tch-req-cancel'); for (let i = 0; i < 40 && !$q('[data-act="tch-req"]'); i++) await wait(50); ok(calls.includes('teacher_request_cancel {}'), 'demande annulée');
@@ -585,6 +585,7 @@
     ok(calls.includes('messages_mark_read {}'), 'les messages reçus sont marqués lus à l’ouverture');
     $q('#tch-reply').value = 'Merci !'; clickAct('tch-reply-send'); await wait(300); ok(calls.includes('student_message_send {"p_teacher":"t1","p_body":"Merci !"}'), 'l’élève répond à son enseignant');
     clickAct('tch-msg-del', '7'); await wait(300); ok(calls.some(c => c === 'message_delete {"p_id":7}') && !appText().includes('Courage pour'), 'message supprimé par l’élève');
+    ok(appText().includes('Message supprimé.'), 'confirmation affichée'); await wait(3300); ok(!appText().includes('Message supprimé.'), 'la confirmation disparaît seule au bout de 3 s');
     $q('#tch-join').value = 'badcode1'; clickAct('tch-join-go'); await wait(300); ok(appText().includes('Code invalide ou expiré.'), 'code de classe refusé');
     $q('#tch-join').value = 'classe22'; clickAct('tch-join-go'); await wait(300); ok(calls.includes('class_join {"p_code":"classe22"}') && appText().includes('Classe rejointe : prof@x.fr'), 'classe rejointe');
     E("openAccount()"); await wait(400); ok($q('#wk-on') && !$q('#wk-on').checked, 'résumé hebdomadaire : case décochée par défaut'); $q('#wk-on').checked = true; $q('#wk-on').dispatchEvent(new W.Event('change', {bubbles: true})); await wait(300);
@@ -601,7 +602,7 @@
     clickAct('tch-goal-del', '11'); await wait(300); ok(calls.includes('goal_delete {"p_id":11}') && !appText().includes('relire'), 'objectif supprimé');
     ok(appText().includes('Merci prof') && appText().includes('✓✓'), 'conversation : réponse de l’élève et accusé « lu »');
     clickAct('tch-send', 's1'); await wait(200); ok(appText().includes('Écris un message.'), 'message vide refusé');
-    $q('#tch-msg').value = 'Bravo !'; clickAct('tch-send', 's1'); await wait(300); ok(calls.includes('teacher_message_send {"target":"s1","p_body":"Bravo !"}') && appText().includes('Message envoyé.'), 'message envoyé');
+    $q('#tch-msg').value = 'Bravo !'; clickAct('tch-send', 's1'); await wait(300); ok(calls.includes('teacher_message_send {"target":"s1","p_body":"Bravo !"}') && !appText().includes('Message envoyé.'), 'message envoyé, sans confirmation qui reste affichée');
     for (const L of ['en', 'ar']){ E(`setLang('${L}'); tch.detail = {id: 's1', data: {stats: {}, days: {}, errors: []}, goals: [{id: 1, surah: 2, due: '${day(3)}', note: 'x'}], thread: [{id: 1, body: 'b', created_at: new Date().toISOString(), from_student: false, read_at: null}]}; tch.uid = 't1'; tch.students = window.__S ? [] : []; cfg.tab = 'teacher'; home()`); await wait(300); E("tch.loaded = true; tch.msgs = [{id: 1, teacher_id: 't', teacher_email: 'p@x.fr', body: 'b', created_at: new Date().toISOString(), from_student: false, read_at: null}, {id: 2, teacher_id: 't', teacher_email: 'p@x.fr', body: 'r', created_at: new Date().toISOString(), from_student: true, read_at: null}]; cfg.tab = 'student'; home()"); eq(E('[...missingKeys]'), [], L); }
     E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; stats = {}; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: ''}");
   });
