@@ -1626,6 +1626,7 @@ const onClick = e => {
     case 'acc-back': go('settings'); break;
     case 'acc-mode': keepEmail(); acc.d.pass = acc.d.pass2 = ''; acc.mode = v; acc.msg = ''; acc.auto = false; renderAccount(); break;
     case 'acc-login': doLogin(); break;
+    case 'acc-resend': doResend(); break;
     case 'acc-signup': doSignup(); break;
     case 'acc-reset': doReset(); break;
     case 'acc-newpass': doNewPass(); break;
@@ -1906,7 +1907,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v18';
+const APP_VERSION = '21 oct. 2026 · v19';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -1920,7 +1921,7 @@ async function forceUpdate(el){
 const CLOUD = window.HIFZ_CLOUD || {};
 const cloudOn = () => !!(CLOUD.url && CLOUD.anonKey);
 let sb = null, me = null, screen = 'tab', loadingMe = false;
-let acc = {mode: 'login', msg: '', ok: false, busy: false, last: '', syncErr: '', d: {email: '', pass: '', pass2: '', consent: false}}; // d : brouillon du formulaire (gardé en mémoire seulement)
+let acc = {mode: 'login', msg: '', ok: false, busy: false, resend: '', resendAt: 0, last: '', syncErr: '', d: {email: '', pass: '', pass2: '', consent: false}}; // d : brouillon du formulaire (gardé en mémoire seulement)
 let adm = {users: null, q: '', detail: null, msg: ''};
 const SYNC_KEYS = ['hifz.cfg', 'hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan'];
 let syncPause = false, pushTimer = null;
@@ -1938,6 +1939,9 @@ function friendly(e){
   if (/Invalid login credentials/i.test(m)) return tr('E-mail ou mot de passe incorrect.');
   if (/Email not confirmed/i.test(m)) return tr("Confirme d'abord ton e-mail : clique le lien reçu par mail.");
   if (/already registered|already been registered/i.test(m)) return tr('Un compte existe déjà avec cet e-mail : connecte-toi.');
+  if (/email rate limit|over_email_send_rate_limit/i.test(m)) return tr("Le site a atteint sa limite d'e-mails pour le moment : réessaie dans une heure, ou préviens l'administrateur.");
+  if (/not authorized/i.test(m) && /email/i.test(m)) return tr("L'envoi d'e-mails n'est pas encore ouvert à tout le monde sur ce site : l'administrateur doit brancher un service d'envoi (voir supabase/README.md).");
+  if (/sending (confirmation|recovery|magic link|email)|error sending/i.test(m)) return tr("L'e-mail n'a pas pu être envoyé : réessaie plus tard ou préviens l'administrateur.");
   if (/rate limit|too many|security purposes/i.test(m)) return tr('Trop de tentatives : réessaie dans quelques minutes.');
   if (/Password should|weak password/i.test(m)) return tr('Mot de passe trop faible (8 caractères minimum).');
   if (/does not exist|schema cache|Could not find/i.test(m)) return tr("La base n'est pas prête : exécute supabase/schema.sql dans Supabase.");
@@ -2095,7 +2099,8 @@ function renderAccount(){
   const langBar = `<div class="langs">${Object.entries(LANGS).map(([k, n]) => `<button class="${LANG === k ? 'sel' : ''}" data-act="lang" data-v="${k}" lang="${k}">${n}</button>`).join('')}</div>`;
   $app.innerHTML = `${gate ? langBar : `<div class="top"><button class="link" data-act="acc-back">${tr('← Retour')}</button><span>${tr('Compte')}</span></div>`}
     ${gate ? `<div class="hero" style="margin-top:8px"><div class="logo">حفظ</div><div><h1>Hifz</h1><p>${tr("Crée un compte ou connecte-toi pour accéder à l'application.")}</p></div></div>` : `<h1 style="margin-top:8px">${tr('Mon compte')}</h1>`}
-    ${acc.msg && cloudOn() && sb ? `<div id="acc-msg" class="fb ${acc.ok ? 'ok' : 'ko'}">${esc(acc.msg)}</div>` : ''}${body}`;
+    ${acc.msg && cloudOn() && sb ? `<div id="acc-msg" class="fb ${acc.ok ? 'ok' : 'ko'}">${esc(acc.msg)}</div>` : ''}
+    ${acc.resend && !me && sb && !acc.mode.startsWith('newp') ? `<p style="margin:0 0 10px;text-align:center"><button class="link" data-act="acc-resend">✉ ${tr("Renvoyer l'e-mail de confirmation")}</button></p>` : ''}${body}`;
   clearTimeout(msgTimer);
   if (acc.msg && acc.auto) msgTimer = setTimeout(clearMsg, 3500); // « Déconnecté. », « Synchronisé. »… disparaissent seuls
 }
@@ -2112,7 +2117,9 @@ const keepEmail = () => { acc.d = {email: val('ac-email') || acc.d.email, pass: 
 const doLogin = () => busy(async () => {
   keepEmail(); const email = val('ac-email'), password = $('ac-pass').value;
   if (!okEmail(email) || !password) throw new Error(tr('Indique ton e-mail et ton mot de passe.'));
-  const {data, error} = await sb.auth.signInWithPassword({email, password}); if (error) throw error;
+  const {data, error} = await sb.auth.signInWithPassword({email, password});
+  if (error){ if (/not confirmed/i.test(error.message || '')) acc.resend = email; throw error; }
+  acc.resend = '';
   await loadMe(data.session);
 });
 const doSignup = () => busy(async () => {
@@ -2124,7 +2131,15 @@ const doSignup = () => busy(async () => {
   const {data, error} = await sb.auth.signUp({email, password: pw, options: {emailRedirectTo: REDIRECT()}}); if (error) throw error;
   if (data.user && data.user.identities && data.user.identities.length === 0) throw new Error(tr('Un compte existe déjà avec cet e-mail : connecte-toi.'));
   if (data.session){ await loadMe(data.session); acc.msg = tr('Compte créé.'); acc.ok = true; return; }
-  acc.mode = 'login'; acc.ok = true; acc.msg = tr('Compte créé. Un e-mail de confirmation a été envoyé à {email} : clique le lien, puis connecte-toi.', {email});
+  acc.mode = 'login'; acc.ok = true; acc.resend = email;
+  acc.msg = tr('Compte créé. Un e-mail de confirmation a été envoyé à {email} : clique le lien, puis connecte-toi.', {email}) + ' ' + tr('Regarde aussi dans les courriers indésirables.');
+});
+const doResend = () => busy(async () => {
+  const wait = Math.ceil((acc.resendAt + 60000 - Date.now()) / 1000);
+  if (wait > 0) throw new Error(tr('Patiente {s} secondes avant de redemander un e-mail.', {s: wait}));
+  if (!okEmail(acc.resend)) throw new Error(tr('Adresse e-mail invalide.'));
+  const {error} = await sb.auth.resend({type: 'signup', email: acc.resend, options: {emailRedirectTo: REDIRECT()}}); if (error) throw error;
+  acc.resendAt = Date.now(); acc.ok = true; acc.msg = tr('E-mail de confirmation renvoyé à {email}. Regarde aussi dans les courriers indésirables.', {email: acc.resend});
 });
 const doReset = () => busy(async () => {
   keepEmail(); const email = val('ac-email'); if (!okEmail(email)) throw new Error(tr('Adresse e-mail invalide.'));

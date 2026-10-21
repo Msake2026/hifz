@@ -592,7 +592,14 @@ window.I18N = {
 "Idghām mutajānisayn / mutaqāribayn": "Idghām mutajānisayn / mutaqāribayn",
 "Ghunna (2 temps)": "Ghunna (2 counts)",
 "Traduction : {n} (texte de Tanzil, usage non commercial). Elle rend le sens approché, ce n'est pas le Coran lui-même.": "Translation: {n} (text from Tanzil, non-commercial use). It conveys the approximate meaning; it is not the Quran itself.",
-"Tafsir : at-Tafsir al-Muyassar, Complexe du Roi Fahd (texte arabe, via api.alquran.cloud).": "Tafsir: at-Tafsir al-Muyassar, King Fahd Complex (Arabic text, via api.alquran.cloud)."
+"Tafsir : at-Tafsir al-Muyassar, Complexe du Roi Fahd (texte arabe, via api.alquran.cloud).": "Tafsir: at-Tafsir al-Muyassar, King Fahd Complex (Arabic text, via api.alquran.cloud).",
+"Le site a atteint sa limite d'e-mails pour le moment : réessaie dans une heure, ou préviens l'administrateur.": "The site has reached its email limit for now: try again in an hour, or tell the administrator.",
+"L'envoi d'e-mails n'est pas encore ouvert à tout le monde sur ce site : l'administrateur doit brancher un service d'envoi (voir supabase/README.md).": "Email sending is not yet open to everyone on this site: the administrator must connect a mail service (see supabase/README.md).",
+"L'e-mail n'a pas pu être envoyé : réessaie plus tard ou préviens l'administrateur.": "The email could not be sent: try again later or tell the administrator.",
+"Regarde aussi dans les courriers indésirables.": "Also check your spam folder.",
+"Patiente {s} secondes avant de redemander un e-mail.": "Please wait {s} seconds before requesting another email.",
+"E-mail de confirmation renvoyé à {email}. Regarde aussi dans les courriers indésirables.": "Confirmation email sent again to {email}. Also check your spam folder.",
+"Renvoyer l'e-mail de confirmation": "Resend the confirmation email"
 },
 "ar": {
 "(partie {a}/{b})": "(الجزء {a}/{b})",
@@ -1186,6 +1193,13 @@ window.I18N = {
 "Idghām mutajānisayn / mutaqāribayn": "إدغام متجانسين / متقاربين",
 "Ghunna (2 temps)": "غنّة (حركتان)",
 "Traduction : {n} (texte de Tanzil, usage non commercial). Elle rend le sens approché, ce n'est pas le Coran lui-même.": "الترجمة: {n} (نص من تنزيل، للاستعمال غير التجاري). تنقل المعنى تقريباً وليست القرآن نفسه.",
-"Tafsir : at-Tafsir al-Muyassar, Complexe du Roi Fahd (texte arabe, via api.alquran.cloud).": "التفسير: التفسير الميسر، مجمع الملك فهد (نص عربي عبر api.alquran.cloud)."
+"Tafsir : at-Tafsir al-Muyassar, Complexe du Roi Fahd (texte arabe, via api.alquran.cloud).": "التفسير: التفسير الميسر، مجمع الملك فهد (نص عربي عبر api.alquran.cloud).",
+"Le site a atteint sa limite d'e-mails pour le moment : réessaie dans une heure, ou préviens l'administrateur.": "بلغ الموقع حدّ الرسائل الإلكترونية حالياً: أعد المحاولة بعد ساعة أو أبلغ المشرف.",
+"L'envoi d'e-mails n'est pas encore ouvert à tout le monde sur ce site : l'administrateur doit brancher un service d'envoi (voir supabase/README.md).": "إرسال الرسائل الإلكترونية غير مفتوح للجميع بعد في هذا الموقع: على المشرف ربط خدمة إرسال (انظر supabase/README.md).",
+"L'e-mail n'a pas pu être envoyé : réessaie plus tard ou préviens l'administrateur.": "تعذّر إرسال الرسالة: أعد المحاولة لاحقاً أو أبلغ المشرف.",
+"Regarde aussi dans les courriers indésirables.": "تحقّق أيضاً من مجلد الرسائل غير المرغوبة.",
+"Patiente {s} secondes avant de redemander un e-mail.": "انتظر {s} ثانية قبل طلب رسالة أخرى.",
+"E-mail de confirmation renvoyé à {email}. Regarde aussi dans les courriers indésirables.": "أُعيد إرسال رسالة التأكيد إلى {email}. تحقّق أيضاً من مجلد الرسائل غير المرغوبة.",
+"Renvoyer l'e-mail de confirmation": "إعادة إرسال رسالة التأكيد"
 }
 };

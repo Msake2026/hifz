@@ -39,3 +39,20 @@ Restaurer : `gpg -d hifz-backup-….tar.gz.gpg | tar xz`, puis, dans un projet n
 
 GitHub désactive les tâches planifiées d'un dépôt sans activité pendant 60 jours : un commit ou un lancement manuel les réactive.
 
+## E-mails de confirmation fiables (service d'envoi)
+
+Sans réglage, Supabase envoie les e-mails (confirmation, mot de passe oublié) avec son serveur d'essai : d'après sa documentation, **2 messages par heure** seulement, **uniquement vers les membres de l'équipe du projet** (les autres reçoivent « Email address not authorized »), sans garantie de livraison. Pour inviter du monde, il faut brancher un vrai service d'envoi (SMTP).
+
+Avec **Resend** (recommandé par Supabase ; plan gratuit : 3 000 e-mails/mois et 100/jour d'après resend.com/pricing). Il faut un **nom de domaine à toi** : Resend envoie depuis un domaine vérifié, jamais depuis une adresse Gmail. Mieux vaut un sous-domaine (ex. `mail.ton-domaine.fr`) pour isoler la réputation d'envoi.
+1. resend.com → créer le compte → **Domains → Add Domain** → ajouter les enregistrements DNS demandés chez ton registraire, puis **Verify**.
+2. Resend → **API Keys → Create API Key** (accès « Sending access ») : copie la clé (elle commence par `re_`).
+3. Supabase → **Authentication → Emails → SMTP Settings** (le menu peut s'appeler « Auth → SMTP ») → activer **Custom SMTP** :
+   - Sender email : une adresse de ton domaine, ex. `noreply@mail.ton-domaine.fr` · Sender name : `Hifz`
+   - Host : `smtp.resend.com` · Port : `465` · Username : `resend` · Password : la clé API.
+4. Supabase → **Authentication → Rate Limits** : avec un SMTP personnalisé, la limite démarre à 30 e-mails/heure ; relève-la si besoin.
+5. **Authentication → URL Configuration** : *Site URL* = `https://msake2026.github.io/hifz/` ; ajoute la même adresse dans *Redirect URLs*.
+6. **Authentication → Email Templates** : colle le contenu de `supabase/emails/confirm-signup.html` (modèle « Confirm sign up », sujet : `Confirme ton e-mail · Hifz`) et de `supabase/emails/reset-password.html` (modèle « Reset password », sujet : `Réinitialise ton mot de passe · Hifz`). Ils sont en français, anglais et arabe.
+7. Test : crée un compte avec une adresse qui n'est pas dans l'équipe Supabase ; l'e-mail doit arriver (regarde les courriers indésirables). Dans l'application, le bouton « Renvoyer l'e-mail de confirmation » apparaît après l'inscription ou si la connexion est refusée parce que l'e-mail n'est pas confirmé (une relance toutes les 60 s au plus).
+
+Ne mets jamais la clé API dans le dépôt : elle ne va que dans le champ « Password » de Supabase.
+
