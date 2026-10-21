@@ -3,6 +3,7 @@
 // VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (mailto:…), CRON_SECRET. SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont fournis par Supabase.
 // Déployer avec « Verify JWT » désactivé : l'accès est protégé par CRON_SECRET.
 // Même passage toutes les 5 minutes : prévient les administrateurs (notification + e-mail) d'une nouvelle demande pour devenir enseignant.
+// Le dimanche en fin d'après-midi (UTC) : résumé de la semaine par e-mail aux personnes qui l'ont activé (Réglages → Compte).
 // L'e-mail est facultatif : il demande les secrets SMTP_USER (adresse Gmail d'envoi) et SMTP_PASS (mot de passe d'application Google) ; sans eux, seule la notification part.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
@@ -77,6 +78,45 @@ async function notifyRequests(db: ReturnType<typeof createClient>) {
   return done;
 }
 
+// WK:begin — résumé de la semaine (fonction pure, testée en Node)
+function weekSummary(days: Record<string, number>, now: Date) {
+  let total = 0, active = 0, streak = 0, run = true;
+  for (let i = 0; i < 7; i++) {
+    const n = days[new Date(now.getTime() - i * 864e5).toISOString().slice(0, 10)] ?? 0;
+    total += n; if (n > 0) active++;
+    if (run && n > 0) streak++; else if (i > 0) run = false;
+  }
+  return { total, active, streak };
+}
+const WK = {
+  fr: { subject: 'Hifz : ta semaine', body: (w: { total: number; active: number; streak: number }) => `Cette semaine : ${w.total} réponse${w.total > 1 ? 's' : ''}, ${w.active} jour${w.active > 1 ? 's' : ''} actif${w.active > 1 ? 's' : ''} sur 7.\n${w.active === 0 ? "Une petite révision aujourd'hui relancera la régularité." : 'Continue comme ça, la régularité fait la mémorisation.'}\n\nPour ne plus recevoir ce résumé : Hifz → Réglages → Compte.` },
+  en: { subject: 'Hifz: your week', body: (w: { total: number; active: number; streak: number }) => `This week: ${w.total} answer${w.total !== 1 ? 's' : ''}, ${w.active} active day${w.active !== 1 ? 's' : ''} out of 7.\n${w.active === 0 ? 'A short review today will restart your routine.' : 'Keep going: regularity builds memorisation.'}\n\nTo stop receiving this summary: Hifz → Settings → Account.` },
+  ar: { subject: 'حفظ: أسبوعك', body: (w: { total: number; active: number; streak: number }) => `هذا الأسبوع: ${w.total} إجابة، و${w.active} أيام نشطة من 7.\n${w.active === 0 ? 'مراجعة قصيرة اليوم تعيد لك انتظامك.' : 'واصل: الانتظام يصنع الحفظ.'}\n\nلإيقاف هذا الملخص: حفظ ← الإعدادات ← الحساب.` },
+};
+// WK:end
+
+async function sendWeekly(db: ReturnType<typeof createClient>, now: Date) {
+  const smtpUser = Deno.env.get('SMTP_USER'), smtpPass = Deno.env.get('SMTP_PASS');
+  if (!smtpUser || !smtpPass || now.getUTCDay() !== 0 || now.getUTCHours() < 16 || now.getUTCHours() > 18) return 0;
+  const today = now.toISOString().slice(0, 10);
+  const { data: prefs, error } = await db.from('mail_prefs').select('user_id, lang, last_sent').eq('weekly', true).limit(100);
+  if (error || !prefs?.length) return 0;
+  const client = new SMTPClient({ connection: { hostname: 'smtp.gmail.com', port: 465, tls: true, auth: { username: smtpUser, password: smtpPass } } });
+  let n = 0;
+  try {
+    for (const p of prefs as { user_id: string; lang: string; last_sent: string | null }[]) {
+      if (p.last_sent === today) continue;
+      const { data: prof } = await db.from('profiles').select('email, blocked').eq('id', p.user_id).maybeSingle();
+      if (!prof || prof.blocked) continue;
+      const { data: ud } = await db.from('user_data').select('data').eq('user_id', p.user_id).maybeSingle();
+      const m = WK[p.lang as keyof typeof WK] ?? WK.fr, w = weekSummary((ud?.data?.days ?? {}) as Record<string, number>, now);
+      try { await client.send({ from: smtpUser, to: prof.email, subject: m.subject, content: m.body(w) }); await db.from('mail_prefs').update({ last_sent: today }).eq('user_id', p.user_id); n++; }
+      catch (e) { console.error('mail hebdo', (e as Error).message); }
+    }
+  } finally { await client.close().catch(() => {}); }
+  return n;
+}
+
 Deno.serve(async (req) => {
   if (req.headers.get('Authorization') !== `Bearer ${Deno.env.get('CRON_SECRET')}`) return new Response('forbidden', { status: 403 });
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
@@ -84,6 +124,7 @@ Deno.serve(async (req) => {
   const now = new Date();
   const { data: subs, error } = await db.from('push_subs').select('*');
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  let weekly = 0; try { weekly = await sendWeekly(db, new Date()); } catch (e) { console.error('hebdo', (e as Error).message); }
   let notified = 0; try { notified = await notifyRequests(db); } catch (e) { console.error('demandes', (e as Error).message); }
   let sent = 0, skipped = 0, removed = 0;
   for (const s of (subs ?? []) as Sub[]) {
@@ -107,5 +148,5 @@ Deno.serve(async (req) => {
       else console.error('push', s.id, code, (e as Error).message);
     }
   }
-  return new Response(JSON.stringify({ sent, skipped, removed, notified }), { headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify({ sent, skipped, removed, notified, weekly }), { headers: { 'Content-Type': 'application/json' } });
 });

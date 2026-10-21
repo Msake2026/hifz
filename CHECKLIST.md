@@ -19,4 +19,6 @@
 
 GitHub désactive les tâches planifiées d'un dépôt sans activité pendant 60 jours : un envoi (`git push`) ou un lancement manuel les réactive (GitHub t'écrit avant de le faire).
 7. **Lecteur d'écran réel** : l'audit automatique (axe-core) ne remplace pas un essai avec VoiceOver (iPhone : Réglages → Accessibilité → VoiceOver) sur les écrans principaux et un exercice.
-
+8. **Administrateurs** : ne garde que deux comptes admin dont tu es sûr ; rétrograde ou supprime l'ancien compte admin (Espace admin → *Retirer admin* puis *Supprimer*). Fais-le en dernier, après avoir vérifié que le nouveau compte admin fonctionne.
+9. **Secrets des Edge Functions** (Supabase → Edge Functions → Secrets) : `VAPID_SUBJECT` (`mailto:` + ton adresse de contact) pour les rappels ; `SMTP_USER` et `SMTP_PASS` (mot de passe d'application Google) pour l'e-mail des demandes d'enseignant et le résumé de la semaine. Sans eux, ces e-mails ne partent pas (le reste fonctionne).
+10. **Enseignants** : un enseignant voit la progression d'élèves (parfois mineurs) : ne nomme que des personnes que tu connais. Pense à le dire dans la page de confidentialité si tu invites des enfants.

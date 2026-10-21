@@ -24,11 +24,15 @@
   --serif:"Cormorant Garamond","Amiri Quran",Georgia,serif;
 }
 @media (prefers-color-scheme:dark){
-  :root{--bg:#15110b; --card:#201a11; --ink:#f0e6cf; --muted:#b3a283; --line:#3b3022; --line-soft:#2f2619;
+  :root:not([data-theme="light"]){--bg:#15110b; --card:#201a11; --ink:#f0e6cf; --muted:#b3a283; --line:#3b3022; --line-soft:#2f2619;
   --accent:#4dbb92; --accent-ink:#0b241a; --gold:#d5b25a; --gold-soft:#5a4a24; --glow:rgba(213,178,90,.10);
   --ok:#74d3a1; --okbg:#173326; --ko:#ff9a8c; --kobg:#3d1f1a; --mid:#e8b95b; --midbg:#3a2c14;
   --pattern:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23d5b25a' stroke-opacity='.09'%3E%3Crect x='20' y='20' width='32' height='32'/%3E%3Crect x='20' y='20' width='32' height='32' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='4'/%3E%3C/g%3E%3C/svg%3E");}
 }
+:root[data-theme="dark"]{--bg:#15110b; --card:#201a11; --ink:#f0e6cf; --muted:#b3a283; --line:#3b3022; --line-soft:#2f2619;
+  --accent:#4dbb92; --accent-ink:#0b241a; --gold:#d5b25a; --gold-soft:#5a4a24; --glow:rgba(213,178,90,.10);
+  --ok:#74d3a1; --okbg:#173326; --ko:#ff9a8c; --kobg:#3d1f1a; --mid:#e8b95b; --midbg:#3a2c14;
+  --pattern:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23d5b25a' stroke-opacity='.09'%3E%3Crect x='20' y='20' width='32' height='32'/%3E%3Crect x='20' y='20' width='32' height='32' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='4'/%3E%3C/g%3E%3C/svg%3E");}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,"Noto Sans Arabic",system-ui,sans-serif}
@@ -640,6 +644,7 @@ function syncCfg(){
   if ($('sn')) cfg.n = +v('sn');
   if ($('slevel')) cfg.level = +v('slevel');
   if ($('stjk')) cfg.tjKind = v('stjk');
+  if ($('sth')){ const x = v('sth'); if (x === 'auto') delete cfg.theme; else cfg.theme = x; applyTheme(); }
   if ($('shc')){ const x = v('shc'); if (x === 'auto') delete cfg.hc; else cfg.hc = x === 'on'; applyA11y(); }
   if ($('smkk')) cfg.mkKind = v('smkk');
   if ($('sahk')) cfg.ahKind = v('sahk');
@@ -1071,6 +1076,8 @@ function tabSettings(){
   </div>
 
   <div class="card"><h2>${tr('Accessibilité')}</h2>
+    <label class="f" for="sth">${tr('Thème')}</label>
+    <select id="sth"><option value="auto" ${!cfg.theme ? 'selected' : ''}>${tr('Automatique (préférence du système)')}</option><option value="light" ${cfg.theme === 'light' ? 'selected' : ''}>${tr('Clair')}</option><option value="dark" ${cfg.theme === 'dark' ? 'selected' : ''}>${tr('Sombre')}</option></select>
     <label class="f" for="shc">${tr('Contraste renforcé des couleurs du tajwīd')}</label>
     <select id="shc"><option value="auto" ${cfg.hc === undefined ? 'selected' : ''}>${tr('Automatique (préférence du système)')}</option><option value="on" ${cfg.hc === true ? 'selected' : ''}>${tr('Oui')}</option><option value="off" ${cfg.hc === false ? 'selected' : ''}>${tr('Non')}</option></select>
     <label class="consent"><input type="checkbox" id="tjp" ${cfg.tjp ? 'checked' : ''}><span>${tr('Ajouter un motif (trait, pointillé…) à chaque règle du tajwīd, en plus de la couleur')}</span></label>
@@ -1970,6 +1977,7 @@ function a11yDarken(hex, bg, min = 4.5){ // même teinte, plus sombre, jusqu'à 
 /* A11Y:end */
 const TJ_PAGE = '#fbf6e8';                                          // fond clair des textes colorés (.rd.tj)
 const tjHcStyle = () => `:root{${TJLEG.map(([c, col]) => `--tjc-${c}:${a11yDarken(col, TJ_PAGE)}`).join(';')};--tjc-s:${a11yDarken('#AAAAAA', TJ_PAGE)};--tjc-b:${a11yDarken('#A1A1A1', TJ_PAGE)}}`;
+function applyTheme(){ const t = cfg.theme === 'dark' || cfg.theme === 'light' ? cfg.theme : ''; if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
 function applyA11y(){ // contraste renforcé des couleurs du tajwīd (réglage, ou préférence du système « plus de contraste »), motifs en plus des couleurs
   document.documentElement.classList.toggle('tjp', !!cfg.tjp);
   const on = cfg.hc !== undefined ? !!cfg.hc : !!(window.matchMedia && matchMedia('(prefers-contrast: more)').matches);
@@ -2007,7 +2015,8 @@ function exportCsv(kind){
 
 /* ---------- sauvegarde / restauration ---------- */
 function exportData(){
-  download('hifz-sauvegarde-' + today() + '.json', JSON.stringify({app: 'hifz', v: 1, cfg, stats, sched, days, custom, errors, plan}), 'application/json');
+  const compte = me ? {email: me.user.email, role: me.profile && me.profile.role, enseignants: tch.links, invitations: tch.invites, messages: tch.msgs, objectifs: tch.goals, consultations: tch.log, resume_hebdo: tch.wk} : undefined;   // données de compte enregistrées sur le serveur (droit d'accès)
+  download('hifz-sauvegarde-' + today() + '.json', JSON.stringify({app: 'hifz', v: 1, cfg, stats, sched, days, custom, errors, plan, compte}), 'application/json');
 }
 async function importFile(f){
   if (!f) return;
@@ -2599,7 +2608,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v39';
+const APP_VERSION = '21 oct. 2026 · v40';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2766,6 +2775,7 @@ function renderAccount(){
       <p class="ref" style="margin:0 0 8px">${isAdmin() ? tr('Rôle : administrateur') : tr('Rôle : utilisateur')} · ${tr('inscrit le {d}', {d: esc(new Date(me.profile.created_at).toLocaleDateString(LOCALE()))})}</p>
       <p class="ref" style="margin:0 0 10px">${acc.last ? tr('Dernière synchronisation :') + ' ' + fdate(Date.parse(acc.last)) : tr('Synchronisation automatique active')}${acc.syncErr ? ' · <span style="color:var(--ko)">' + esc(acc.syncErr) + '</span>' : ''}</p>
       <div class="row"><button class="pri" data-act="acc-sync">🔄 ${tr('Synchroniser maintenant')}</button>${isAdmin() ? `<button data-act="adm-open">🛡 ${tr('Espace admin')}</button>` : ''}${isTeacher() ? `<button data-act="tch-open">🎓 ${tr('Espace enseignant')}</button>` : ''}</div></div>
+      ${wkCard()}
       ${tchStudentCard()}
       <div class="card"><h2>${tr('Mot de passe')}</h2>${f('ac-pass', tr('Nouveau mot de passe (8 caractères minimum)'), 'password', 'new-password', 'data-enter="ac-go"')}
       <button id="ac-go" class="pri" style="margin-top:8px" data-act="acc-newpass">${tr('Changer le mot de passe')}</button></div>
@@ -2802,7 +2812,7 @@ function renderAccount(){
 }
 let msgTimer = null;
 function clearMsg(){ acc.msg = ''; acc.auto = false; const m = $('acc-msg'); if (m) m.remove(); }
-$app.addEventListener('change', e => { if (e.target.id === 'rem-two') $('rem-time2').disabled = !e.target.checked; if (e.target.id === 'tjp'){ cfg.tjp = e.target.checked; saveCfg(); applyA11y(); }
+$app.addEventListener('change', e => { if (e.target.id === 'wk-on') wkToggle(e.target.checked); if (e.target.id === 'rem-two') $('rem-time2').disabled = !e.target.checked; if (e.target.id === 'tjp'){ cfg.tjp = e.target.checked; saveCfg(); applyA11y(); }
   if (e.target.id === 'aud-auto'){ cfg.audAuto = e.target.checked; saveCfg(); if (cfg.audAuto) maybeAutoAudio(); } });
 $app.addEventListener('input', () => { if (screen === 'account' && acc.msg && acc.ok) clearMsg(); }); // un message de confirmation s'efface dès qu'on tape
 const EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -3051,6 +3061,8 @@ function renderLegal(){
       tr("Progression : tes statistiques, ton historique d'erreurs (y compris les réponses que tu saisis), ton plan de mémorisation, tes réglages et les textes que tu ajoutes toi-même."),
       tr("Rappels (facultatif) : si tu actives les notifications, l'adresse technique de ton appareil pour les notifications (fournie par Apple, Google ou Mozilla), l'heure choisie, ton fuseau horaire et ta langue sont enregistrés pour t'envoyer le rappel, qui transite par le service de notifications de ton système. Tu peux les désactiver à tout moment dans Réglages."),
       tr("Enseignant (facultatif) : si tu invites un enseignant, il voit ton e-mail, ton total de réponses, ta progression par sourate, tes jours d'activité et tes erreurs (sans les réponses que tu as tapées, sans tes réglages ni les textes que tu ajoutes). Tu génères un code d'invitation valable 7 jours et à usage unique ; tu peux retirer l'accès à tout moment ; chaque consultation d'un détail est enregistrée et visible dans ton compte. Seul un compte auquel l'administrateur a donné le rôle enseignant peut utiliser un code."),
+      tr("Messages, objectifs et classe (facultatif) : un enseignant que tu as invité (ou dont tu as saisi le code de classe) peut t'envoyer des messages de 280 caractères au plus et te fixer des objectifs (sourate, date limite) ; tu peux supprimer les messages. En quittant l'enseignant (Retirer l'accès), tu ne les vois plus."),
+      tr("Résumé hebdomadaire (facultatif) : si tu l'actives, ton e-mail, ta langue et le jour du dernier envoi sont utilisés pour t'envoyer chaque dimanche, via Gmail (Google), le nombre de tes réponses et de tes jours actifs de la semaine."),
       tr("Données techniques : comme sur tout site, les hébergeurs et services utilisés peuvent enregistrer des informations de connexion, par exemple l'adresse IP.")])}
     ${sec('Pourquoi ?', [tr("Pour créer ton compte, te connecter et synchroniser ta progression entre tes appareils. L'administrateur peut consulter la liste des comptes et la progression pour gérer le service. Les données ne sont ni vendues ni utilisées pour de la publicité.")])}
     ${sec('Sur quelle base ?', [tr("Ton consentement, donné en cochant la case à l'inscription. Tu peux le retirer à tout moment en supprimant ton compte.")])}
@@ -3123,7 +3135,7 @@ function tcGoal(stats, surah, total){ // avancement d'un objectif : versets déj
 }
 /* TC:end */
 const isTeacher = () => !!(me && me.profile && me.profile.role === 'teacher');
-let tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: ''};
+let tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: '', wk: false};
 const tchErr = e => { tch.msg = friendly(e); tch.ok = false; };
 async function tchLoadStudent(){ // ce que l'élève voit : ses invitations, ses enseignants, les consultations
   if (!me || !sb) return;
@@ -3132,11 +3144,18 @@ async function tchLoadStudent(){ // ce que l'élève voit : ses invitations, ses
     for (const r of [a, b, c]) if (r.error) throw r.error;
     const q = await sb.from('teacher_requests').select('created_at'); tch.req = !q.error && !!(q.data && q.data.length);
     const safe = async f => { try { const r = await f(); return r.error ? [] : (r.data || []); } catch { return []; } };   // messages et objectifs : absents tant que teacher.sql n'est pas relancé
+    try { const w = await sb.from('mail_prefs').select('weekly'); tch.wk = !w.error && !!(w.data && w.data[0] && w.data[0].weekly); } catch { tch.wk = false; }
     [tch.msgs, tch.goals] = await Promise.all([safe(() => sb.rpc('messages_mine')), safe(() => sb.rpc('goals_for'))]);
     tch.links = (a.data || []).filter(x => x.as_role === 'teacher'); tch.invites = b.data || []; tch.log = c.data || [];
   } catch (e){ tchErr(e); }
   tch.loaded = true; if (screen === 'account') renderAccount();
 }
+function wkCard(){
+  if (!me) return '';
+  return `<div class="card"><h2>${tr('Résumé de la semaine')}</h2>
+    <label class="consent"><input type="checkbox" id="wk-on" ${tch.wk ? 'checked' : ''}><span>${tr("Recevoir chaque dimanche, par e-mail, un résumé de ma semaine (réponses, jours actifs). Je peux le désactiver à tout moment.")}</span></label></div>`;
+}
+async function wkToggle(on){ try { const {error} = await sb.rpc('weekly_set', {p_on: on, p_lang: LANG}); if (error) throw error; tch.wk = on; tch.ok = true; tch.msg = on ? tr('Résumé hebdomadaire activé.') : tr('Résumé hebdomadaire désactivé.'); } catch (e){ tchErr(e); const c = $('wk-on'); if (c) c.checked = tch.wk; } if (screen === 'account') renderAccount(); }
 function tchStudentCard(){
   if (!me) return '';
   const L = tch.links, I = tch.invites, G = tch.log, fd = t => new Date(t).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short', year: 'numeric'});
@@ -3312,7 +3331,7 @@ function fixA11y(){
 if (window.MutationObserver) new MutationObserver(() => { clearTimeout(fixA11y.t); fixA11y.t = setTimeout(fixA11y, 30); }).observe($app, {childList: true, subtree: true});
 
 /* ---------- démarrage ---------- */
-applyA11y();
+applyA11y(); applyTheme();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 (async function init(){
   MT = Object.fromEntries((window.MOUTOUN?.texts || []).map(t => [t.id, t]));

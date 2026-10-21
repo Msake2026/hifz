@@ -466,3 +466,15 @@ test('rôle enseignant : le code du client n\'appelle que des fonctions SQL exis
   assert.match(sql, /revoke all on function[\s\S]*teacher_student_data\(uuid\)[\s\S]*from public, anon/); assert.match(read('supabase/teacher.sql'), /grant select on public\.teacher_invites, public\.teacher_links, public\.teacher_access_log to authenticated/);
   assert.doesNotMatch(read('supabase/teacher.sql'), /create policy[^;]*teacher[^;]*on public\.user_data/i, 'aucune règle ne donne accès direct à user_data');
 });
+
+test('résumé hebdomadaire : total, jours actifs et série sur 7 jours (send-reminders)', () => {
+  const ts = read('supabase/functions/send-reminders/index.ts');
+  const code = ts.slice(ts.indexOf('function weekSummary'), ts.indexOf('const WK'))
+    .replace('days: Record<string, number>, now: Date', 'days, now');
+  const { weekSummary } = new Function(code + '; return {weekSummary};')();
+  const now = new Date(Date.UTC(2026, 9, 25, 17, 0)), d = n => new Date(now.getTime() - n * 864e5).toISOString().slice(0, 10);
+  assert.deepEqual(weekSummary({}, now), { total: 0, active: 0, streak: 0 });
+  assert.deepEqual(weekSummary({ [d(0)]: 5, [d(1)]: 3, [d(3)]: 2, [d(9)]: 99 }, now), { total: 10, active: 3, streak: 2 });   // le 9e jour est hors fenêtre
+  assert.deepEqual(weekSummary({ [d(1)]: 4 }, now), { total: 4, active: 1, streak: 1 });   // aujourd'hui pas encore révisé : la série d'hier compte encore
+  assert.ok(ts.includes("getUTCDay() !== 0"), 'seulement le dimanche');
+});

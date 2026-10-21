@@ -361,3 +361,26 @@ revoke all on function public.teacher_has(uuid), public.teacher_message_send(uui
 grant execute on function public.teacher_has(uuid), public.teacher_message_send(uuid, text), public.messages_mine(), public.message_delete(bigint),
   public.teacher_goal_set(uuid, int, date, text), public.goal_delete(bigint), public.goals_for(uuid),
   public.class_create(), public.class_close(text), public.class_mine(), public.class_join(text) to authenticated;
+
+-- 11. Résumé de la semaine par e-mail (facultatif : chacun l'active pour lui-même ; envoyé par la fonction send-reminders le dimanche)
+create table if not exists public.mail_prefs (
+  user_id   uuid primary key references auth.users(id) on delete cascade,
+  weekly    boolean not null default false,
+  lang      text not null default 'fr' check (lang in ('fr', 'en', 'ar')),
+  last_sent date
+);
+alter table public.mail_prefs enable row level security;
+drop policy if exists "préférences e-mail : lecture" on public.mail_prefs;
+create policy "préférences e-mail : lecture" on public.mail_prefs for select to authenticated using (user_id = auth.uid());
+revoke all on public.mail_prefs from anon, authenticated;
+grant select on public.mail_prefs to authenticated;
+
+create or replace function public.weekly_set(p_on boolean, p_lang text default 'fr') returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null or not public.is_active() then raise exception 'accès refusé' using errcode = '42501'; end if;
+  insert into public.mail_prefs (user_id, weekly, lang) values (auth.uid(), coalesce(p_on, false), case when p_lang in ('fr', 'en', 'ar') then p_lang else 'fr' end)
+  on conflict (user_id) do update set weekly = excluded.weekly, lang = excluded.lang;
+end $$;
+revoke all on function public.weekly_set(boolean, text) from public, anon;
+grant execute on function public.weekly_set(boolean, text) to authenticated;

@@ -891,7 +891,16 @@ window.I18N = {
 "Un code réutilisable (40 élèves, 30 jours) à donner à toute la classe. Chaque élève le saisit lui-même : il t'ouvre ainsi l'accès à sa progression.": "A reusable code (40 students, 30 days) to give to the whole class. Each student enters it themselves, which opens access to their progress for you.",
 "élèves": "students",
 "Fermer": "Close",
-"Créer un code de classe": "Create a class code"
+"Créer un code de classe": "Create a class code",
+"Thème": "Theme",
+"Clair": "Light",
+"Sombre": "Dark",
+"Messages, objectifs et classe (facultatif) : un enseignant que tu as invité (ou dont tu as saisi le code de classe) peut t'envoyer des messages de 280 caractères au plus et te fixer des objectifs (sourate, date limite) ; tu peux supprimer les messages. En quittant l'enseignant (Retirer l'accès), tu ne les vois plus.": "Messages, goals and class (optional): a teacher you invited (or whose class code you entered) can send you messages of at most 280 characters and set goals for you (surah, due date); you can delete the messages. Once you remove the teacher's access, you no longer see them.",
+"Résumé hebdomadaire (facultatif) : si tu l'actives, ton e-mail, ta langue et le jour du dernier envoi sont utilisés pour t'envoyer chaque dimanche, via Gmail (Google), le nombre de tes réponses et de tes jours actifs de la semaine.": "Weekly summary (optional): if you turn it on, your e-mail, your language and the date of the last send are used to send you, every Sunday through Gmail (Google), the number of your answers and active days that week.",
+"Résumé de la semaine": "Weekly summary",
+"Recevoir chaque dimanche, par e-mail, un résumé de ma semaine (réponses, jours actifs). Je peux le désactiver à tout moment.": "Receive a summary of my week by e-mail every Sunday (answers, active days). I can turn it off at any time.",
+"Résumé hebdomadaire activé.": "Weekly summary turned on.",
+"Résumé hebdomadaire désactivé.": "Weekly summary turned off."
 },
 "ar": {
 "(partie {a}/{b})": "(الجزء {a}/{b})",
@@ -1784,6 +1793,15 @@ window.I18N = {
 "Un code réutilisable (40 élèves, 30 jours) à donner à toute la classe. Chaque élève le saisit lui-même : il t'ouvre ainsi l'accès à sa progression.": "رمز قابل لإعادة الاستخدام (٤٠ طالباً، ٣٠ يوماً) تعطيه لكل الفصل. يُدخله كل طالب بنفسه، فيفتح لك الاطّلاع على تقدّمه.",
 "élèves": "طلاب",
 "Fermer": "إغلاق",
-"Créer un code de classe": "إنشاء رمز فصل"
+"Créer un code de classe": "إنشاء رمز فصل",
+"Thème": "المظهر",
+"Clair": "فاتح",
+"Sombre": "داكن",
+"Messages, objectifs et classe (facultatif) : un enseignant que tu as invité (ou dont tu as saisi le code de classe) peut t'envoyer des messages de 280 caractères au plus et te fixer des objectifs (sourate, date limite) ; tu peux supprimer les messages. En quittant l'enseignant (Retirer l'accès), tu ne les vois plus.": "الرسائل والأهداف والفصل (اختياري): يمكن لمعلّم دعوته (أو أدخلت رمز فصله) أن يرسل إليك رسائل لا تتجاوز ٢٨٠ حرفاً وأن يحدّد لك أهدافاً (سورة، موعداً)؛ ويمكنك حذف الرسائل. عند سحب إذن المعلّم لا تعود تراها.",
+"Résumé hebdomadaire (facultatif) : si tu l'actives, ton e-mail, ta langue et le jour du dernier envoi sont utilisés pour t'envoyer chaque dimanche, via Gmail (Google), le nombre de tes réponses et de tes jours actifs de la semaine.": "الملخص الأسبوعي (اختياري): إن فعّلته فسيُستعمل بريدك ولغتك وتاريخ آخر إرسال لإرسال عدد إجاباتك وأيامك النشطة في الأسبوع إليك كل أحد عبر Gmail (غوغل).",
+"Résumé de la semaine": "ملخص الأسبوع",
+"Recevoir chaque dimanche, par e-mail, un résumé de ma semaine (réponses, jours actifs). Je peux le désactiver à tout moment.": "استلام ملخص أسبوعي بالبريد كل أحد (الإجابات، الأيام النشطة). يمكنني إيقافه في أي وقت.",
+"Résumé hebdomadaire activé.": "فُعّل الملخص الأسبوعي.",
+"Résumé hebdomadaire désactivé.": "أُوقف الملخص الأسبوعي."
 }
 };

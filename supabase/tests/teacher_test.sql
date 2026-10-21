@@ -162,6 +162,13 @@ begin
   perform t.as_user(f1); for i in 1..3 loop perform public.class_create(); end loop; perform t.fails('select public.class_create()', 'P0001');
   perform t.as_super(); delete from public.teacher_links where teacher_id = f1;
 
+  -- 7 quater. résumé hebdomadaire : chacun règle le sien, personne ne lit celui des autres
+  perform t.as_user(c1); perform public.weekly_set(true, 'en'); perform public.weekly_set(true, 'xx');
+  assert (select count(*) from public.mail_prefs) = 1 and (select lang from public.mail_prefs) = 'fr', 'langue inconnue : français';
+  perform t.as_user(b); assert (select count(*) from public.mail_prefs) = 0, 'préférences des autres invisibles'; perform t.fails('insert into public.mail_prefs (user_id, weekly) values (''' || b || ''', true)');
+  perform public.weekly_set(false); assert (select weekly from public.mail_prefs) = false;
+  perform t.as_super(); update public.profiles set blocked = true where id = c1; perform t.as_user(c1); perform t.fails('select public.weekly_set(true)', '42501'); perform t.as_super(); update public.profiles set blocked = false where id = c1;
+
   -- 8. suppression d'un compte élève : le lien et le journal partent avec lui
   perform t.as_super(); update public.profiles set blocked = false where id = f1; delete from auth.users where id = a;
   assert (select count(*) from public.teacher_access_log where student_id = a) = 0 and (select count(*) from public.teacher_links where student_id = a) = 0, 'cascade à la suppression';

@@ -583,6 +583,9 @@
     clickAct('tch-msg-del', '7'); await wait(300); ok(calls.some(c => c === 'message_delete {"p_id":7}') && !appText().includes('Courage pour'), 'message supprimé par l’élève');
     $q('#tch-join').value = 'badcode1'; clickAct('tch-join-go'); await wait(300); ok(appText().includes('Code invalide ou expiré.'), 'code de classe refusé');
     $q('#tch-join').value = 'classe22'; clickAct('tch-join-go'); await wait(300); ok(calls.includes('class_join {"p_code":"classe22"}') && appText().includes('Classe rejointe : prof@x.fr'), 'classe rejointe');
+    ok($q('#wk-on') && !$q('#wk-on').checked, 'résumé hebdomadaire : case décochée par défaut'); $q('#wk-on').checked = true; $q('#wk-on').dispatchEvent(new W.Event('change', {bubbles: true})); await wait(300);
+    ok(calls.some(c => c === 'weekly_set {"p_on":true,"p_lang":"fr"}') && appText().includes('Résumé hebdomadaire activé.'), 'résumé hebdomadaire activé');
+    E("cfg.theme = 'dark'; applyTheme()"); eq(D.documentElement.dataset.theme, 'dark', 'thème sombre forcé'); E("cfg.theme = 'light'; applyTheme()"); eq(D.documentElement.dataset.theme, 'light'); E("delete cfg.theme; applyTheme()"); ok(!D.documentElement.dataset.theme, 'thème automatique');
     // côté enseignant
     E("me = {user: {id: 't1', email: 'prof@x.fr'}, profile: {role: 'teacher'}}; openTeacher()"); for (let i = 0; i < 40 && !appText().includes('eleve@x.fr'); i++) await wait(50); await wait(200);
     t = appText(); ok(t.includes('Groupe de classe') && t.includes('CLASSE22') && t.includes('3/40'), 'code de classe affiché');
