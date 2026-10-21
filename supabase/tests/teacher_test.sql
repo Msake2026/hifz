@@ -114,7 +114,7 @@ begin
   perform t.as_user(f1); perform t.fails('select public.teacher_student_data(''' || b || ''')', '42501');
 
   -- 7 bis. demande pour devenir enseignant
-  perform t.as_super(); update public.profiles set blocked = false, role = 'user' where id = f1;
+  perform t.as_super(); update public.profiles set blocked = false, role = 'user' where id in (f1, c1);
   perform t.as_user(f1); perform public.teacher_request(); perform public.teacher_request(); assert (select count(*) from public.teacher_requests) = 1, 'une seule demande par personne, et visible par elle seule';
   perform t.as_user(c1); assert (select count(*) from public.teacher_requests) = 0, 'les demandes des autres sont invisibles'; perform public.teacher_request();
   perform t.fails('select count(*) from public.admin_teacher_requests()', '42501'); perform t.fails('select public.admin_teacher_decline(''' || f1 || ''')', '42501');

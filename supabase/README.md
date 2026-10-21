@@ -12,7 +12,7 @@ L'administrateur initial se change dans `schema.sql` (fonction `bootstrap_admin_
 ## Rôle enseignant (facultatif)
 
 1. Dans le SQL Editor, exécute `teacher.sql` (après `schema.sql` ; relançable sans risque).
-2. Espace admin → un compte → **Nommer enseignant**.
+2. Deux façons de nommer un enseignant : l'utilisateur clique **Compte → Devenir enseignant → Demander à devenir enseignant** et tu **Acceptes** ou **Refuses** dans l'Espace admin (carte « Demandes d'enseignant ») ; ou tu le fais toi-même : Espace admin → un compte → **Nommer enseignant**. (Après la mise à jour, relance `teacher.sql`.)
 3. L'élève ouvre **Réglages → Compte → Mon enseignant → Inviter un enseignant** et donne le code (8 caractères, valable 7 jours, usage unique). L'enseignant le saisit dans **Espace enseignant**.
 4. L'enseignant ne voit qu'un résumé (régularité, progression par sourate, erreurs fréquentes), jamais les réponses tapées ni les réglages ; chaque consultation est notée dans un journal que l'élève lit. L'élève ou l'enseignant peut rompre le lien à tout moment. Les règles sont testées sur un vrai PostgreSQL (`tests/` + workflow `sql-tests`).
 

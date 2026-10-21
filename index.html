@@ -2313,6 +2313,10 @@ const onClick = e => {
     case 'tch-cancel': tchCancel(v); break;
     case 'tch-revoke': tchRevoke(v); break;
     case 'tch-copy': tchCopy(); break;
+    case 'tch-req': tchAct(() => sb.rpc('teacher_request'), tr('Demande envoyée.')).then(tchLoadStudent); break;
+    case 'tch-req-cancel': tchAct(() => sb.rpc('teacher_request_cancel'), tr('Demande annulée.')).then(tchLoadStudent); break;
+    case 'adm-req-ok': adminAct(() => sb.rpc('admin_set_role', {target: v, new_role: 'teacher'})); break;
+    case 'adm-req-no': adminAct(() => sb.rpc('admin_teacher_decline', {target: v})); break;
     case 'adm-block': adminBlock(v); break;
     case 'adm-del': adminDelete(v); break;
     case 'rdopen': { const r = pk(v); openReader((isQ(r.s) ? 'q:' : 'm:') + r.s, r.a); break; }
@@ -2588,7 +2592,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v38';
+const APP_VERSION = '21 oct. 2026 · v39';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2603,7 +2607,7 @@ const CLOUD = window.HIFZ_CLOUD || {};
 const cloudOn = () => !!(CLOUD.url && CLOUD.anonKey);
 let sb = null, me = null, screen = 'tab', loadingMe = false;
 let acc = {mode: 'login', msg: '', ok: false, busy: false, resend: '', resendAt: 0, last: '', syncErr: '', d: {email: '', pass: '', pass2: '', consent: false}}; // d : brouillon du formulaire (gardé en mémoire seulement)
-let adm = {users: null, q: '', detail: null, msg: ''};
+let adm = {users: null, q: '', detail: null, msg: '', reqs: []};
 const SYNC_KEYS = ['hifz.cfg', 'hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan', 'hifz.tj', 'hifz.hf'];
 let syncPause = false, pushTimer = null;
 const cmeta = () => store.get('hifz.cloud', {});
@@ -3067,6 +3071,7 @@ async function openAdmin(){ if (!isAdmin()) return; adm.detail = null; adm.users
 async function adminLoad(){
   adm.msg = '';
   try { const {data, error} = await sb.rpc('admin_users'); if (error) throw error; adm.users = data; } catch (e){ adm.msg = friendly(e); }
+  try { const r = await sb.rpc('admin_teacher_requests'); adm.reqs = r.error ? [] : (r.data || []); } catch { adm.reqs = []; }
   renderAdmin();
 }
 /* WA:begin — surveillance des e-mails d'inscription (fonction pure, testée en Node). Seuils indicatifs : limite d'envoi de Supabase 30 e-mails/heure (valeur par défaut),
@@ -3107,13 +3112,14 @@ function tcFrequent(errors, n = 10){ // versets les plus souvent ratés
 }
 /* TC:end */
 const isTeacher = () => !!(me && me.profile && me.profile.role === 'teacher');
-let tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false};
+let tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false};
 const tchErr = e => { tch.msg = friendly(e); tch.ok = false; };
 async function tchLoadStudent(){ // ce que l'élève voit : ses invitations, ses enseignants, les consultations
   if (!me || !sb) return;
   try {
     const [a, b, c] = await Promise.all([sb.rpc('links_mine'), sb.from('teacher_invites').select('code, expires_at, used_by').is('used_by', null).gt('expires_at', new Date().toISOString()), sb.rpc('access_log_mine')]);
     for (const r of [a, b, c]) if (r.error) throw r.error;
+    const q = await sb.from('teacher_requests').select('created_at'); tch.req = !q.error && !!(q.data && q.data.length);
     tch.links = (a.data || []).filter(x => x.as_role === 'teacher'); tch.invites = b.data || []; tch.log = c.data || [];
   } catch (e){ tchErr(e); }
   tch.loaded = true; if (screen === 'account') renderAccount();
@@ -3129,7 +3135,10 @@ function tchStudentCard(){
     ${tch.msg && screen === 'account' ? `<p class="fb ${tch.ok ? 'ok' : 'ko'}" style="margin:8px 0 0">${esc(tch.msg)}</p>` : ''}
     ${I && I.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Invitations en attente')}</h3>${I.map(x => `<div class="weak"><span><b>${esc(x.code)}</b> · ${tr("jusqu'au {d}", {d: fd(x.expires_at)})}</span><button class="link" data-act="tch-cancel" data-v="${esc(x.code)}">${tr('Annuler')}</button></div>`).join('')}` : ''}
     ${L && L.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Mes enseignants')}</h3>${L.map(x => `<div class="weak"><span>${esc(x.email)} · ${tr('depuis le {d}', {d: fd(x.since)})}</span><button class="link" style="color:var(--ko)" data-act="tch-revoke" data-v="${x.other_id}">${tr("Retirer l'accès")}</button></div>`).join('')}` : ''}
-    ${G && G.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Consultations récentes de mes données')}</h3>${G.slice(0, 8).map(x => `<p class="ref" style="margin:0">${fdate(Date.parse(x.at))} · ${esc(x.teacher_email)}</p>`).join('')}` : ''}</div>`;
+    ${G && G.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Consultations récentes de mes données')}</h3>${G.slice(0, 8).map(x => `<p class="ref" style="margin:0">${fdate(Date.parse(x.at))} · ${esc(x.teacher_email)}</p>`).join('')}` : ''}
+    ${me.profile && me.profile.role === 'user' ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Devenir enseignant')}</h3>${tch.req
+      ? `<p class="ref" style="margin:0 0 6px">${tr("Demande envoyée : l'administrateur doit la valider.")}</p><button class="link" data-act="tch-req-cancel">${tr('Annuler ma demande')}</button>`
+      : `<p class="ref" style="margin:0 0 6px">${tr("Tu veux suivre des élèves ? Envoie une demande : l'administrateur la valide ou la refuse.")}</p><button data-act="tch-req" ${tch.busy ? 'disabled' : ''}>🎓 ${tr('Demander à devenir enseignant')}</button>`}` : ''}</div>`;
 }
 async function tchAct(fn, okMsg){
   tch.busy = true; tch.msg = ''; if (screen === 'account') renderAccount();
@@ -3208,6 +3217,7 @@ function renderAdmin(){
     <p class="sub">${adm.users ? `${trp(adm.users.length, '{n} compte|{n} comptes')} · ${trp(active, '{n} actif sur 7 jours|{n} actifs sur 7 jours')}` : tr('Chargement…')}</p>
     ${adm.msg ? `<div class="fb ko">${esc(adm.msg)}</div>` : ''}
     ${watchHtml()}
+    ${(adm.reqs || []).length ? `<div class="card"><h2>🎓 ${tr("Demandes d'enseignant")}</h2>${adm.reqs.map(r => `<div class="weak"><span>${esc(r.email)} · ${when(r.created_at)}</span><span><button class="link" data-act="adm-req-ok" data-v="${r.user_id}">${tr('Accepter')}</button> <button class="link" style="color:var(--ko)" data-act="adm-req-no" data-v="${r.user_id}">${tr('Refuser')}</button></span></div>`).join('')}</div>` : ''}
     <div class="row" style="margin-bottom:10px"><input type="text" id="adm-q" placeholder="${tr('Rechercher un e-mail')}" value="${esc(adm.q)}" autocomplete="off"><button data-act="adm-refresh" style="flex:0 0 auto">🔄 ${tr('Actualiser')}</button></div>
     <div class="card">${adm.users ? (list.map(row).join('') || `<p class="sub" style="margin:0">${tr('Aucun compte.')}</p>`) : ''}</div>`;
   const q = $('adm-q'); if (q) q.oninput = () => { adm.q = q.value; const pos = q.selectionStart; renderAdmin(); const n = $('adm-q'); n.focus(); n.setSelectionRange(pos, pos); };

@@ -850,7 +850,17 @@ window.I18N = {
 "Nommer enseignant": "Make teacher",
 "Retirer enseignant": "Remove teacher",
 "Nommer enseignant {u} ? Il pourra voir la progression des élèves qui l'invitent.": "Make {u} a teacher? They will be able to see the progress of students who invite them.",
-"Retirer le rôle enseignant à {u} ?": "Remove the teacher role from {u}?"
+"Retirer le rôle enseignant à {u} ?": "Remove the teacher role from {u}?",
+"Devenir enseignant": "Become a teacher",
+"Demande envoyée : l'administrateur doit la valider.": "Request sent: the administrator has to approve it.",
+"Annuler ma demande": "Cancel my request",
+"Tu veux suivre des élèves ? Envoie une demande : l'administrateur la valide ou la refuse.": "Want to follow students? Send a request: the administrator approves or declines it.",
+"Demander à devenir enseignant": "Request to become a teacher",
+"Demande envoyée.": "Request sent.",
+"Demande annulée.": "Request cancelled.",
+"Demandes d'enseignant": "Teacher requests",
+"Accepter": "Accept",
+"Refuser": "Decline"
 },
 "ar": {
 "(partie {a}/{b})": "(الجزء {a}/{b})",
@@ -1702,6 +1712,16 @@ window.I18N = {
 "Nommer enseignant": "تعيين معلّماً",
 "Retirer enseignant": "إزالة دور المعلّم",
 "Nommer enseignant {u} ? Il pourra voir la progression des élèves qui l'invitent.": "تعيين {u} معلّماً؟ سيتمكن من رؤية تقدّم الطلاب الذين يدعونه.",
-"Retirer le rôle enseignant à {u} ?": "إزالة دور المعلّم من {u}؟"
+"Retirer le rôle enseignant à {u} ?": "إزالة دور المعلّم من {u}؟",
+"Devenir enseignant": "أن تصبح معلّماً",
+"Demande envoyée : l'administrateur doit la valider.": "أُرسل الطلب: على المشرف أن يوافق عليه.",
+"Annuler ma demande": "إلغاء طلبي",
+"Tu veux suivre des élèves ? Envoie une demande : l'administrateur la valide ou la refuse.": "هل تريد متابعة طلاب؟ أرسل طلباً: يقبله المشرف أو يرفضه.",
+"Demander à devenir enseignant": "طلب أن أصبح معلّماً",
+"Demande envoyée.": "أُرسل الطلب.",
+"Demande annulée.": "أُلغي الطلب.",
+"Demandes d'enseignant": "طلبات المعلّمين",
+"Accepter": "قبول",
+"Refuser": "رفض"
 }
 };
