@@ -346,7 +346,7 @@ async function loadQuran(){
 
 /* ---------- état persistant ---------- */
 const DEF = {mode: 'mix', scope: {type: 'surah', from: 78, to: 114}, n: 10, input: 'recite', level: 40,
-  corr: 'standard', tjKind: 'rule', mkKind: 'zone', sfKind: 'pair', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
+  corr: 'standard', tjKind: 'rule', mkKind: 'zone', sfKind: 'pair', lastMemo: 'mix', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
   lang: ['fr', 'en', 'ar'].includes((navigator.language || '').slice(0, 2)) ? navigator.language.slice(0, 2) : 'fr'};
 const stored = store.get('hifz.cfg', {});
 let cfg = Object.assign({}, DEF, stored);
@@ -576,7 +576,7 @@ function home(){ // affiche l'écran du menu courant (accès réservé aux compt
   $app.innerHTML = ({home: tabHome, plan: tabPlan, train: tabTrain, progress: tabProgress, errors: tabErrors, settings: tabSettings})[cfg.tab]();
   setNav(true);
   $app.querySelectorAll('select').forEach(el => { if (el.id.startsWith('cm-')) return;
-    el.onchange = () => { syncCfg(); if (['stype', 'sgoal'].includes(el.id) || el.id.startsWith('pf-')) home(); }; });
+    el.onchange = () => { syncCfg(); if (['stype', 'sgoal', 'scat'].includes(el.id) || el.id.startsWith('pf-')) home(); }; });
   if ($('impfile')) $('impfile').onchange = e => importFile(e.target.files[0]);
   ['cm-f-cam', 'cm-f-img', 'cm-f-doc'].forEach(id => { if ($(id)) $(id).onchange = e => { queueAdd([...e.target.files]); e.target.value = ''; }; });
 }
@@ -592,6 +592,7 @@ function syncCfg(){
       cfg.scope = {type: t, from: f || 1, to: e || 114};
     }
   }
+  if ($('scat')) setCat(v('scat'));
   if ($('sn')) cfg.n = +v('sn');
   if ($('slevel')) cfg.level = +v('slevel');
   if ($('stjk')) cfg.tjKind = v('stjk');
@@ -823,13 +824,31 @@ const modeHelp = {
   link: 'Tu récites la fin d\'une sourate puis le début de la suivante.', cont: 'Tu récites un passage entier d\'une traite.',
   half: 'On te donne la première moitié, tu complètes la seconde.', phrase: 'On te donne une phrase, tu donnes la suivante.'
 };
+const CATS = [['memo', 'Mémorisation (Coran ou moutoun)'], ['tajwid', 'Tajwīd (entraînement)'], ['mkh', 'Makhārij (points de sortie)'], ['sfa', 'Ṣifāt (qualités des lettres)']];
+const CATMODE = {tajwid: 'tajweed', mkh: 'makharij', sfa: 'sifat'}, catOf = m => ({tajweed: 'tajwid', makharij: 'mkh', sifat: 'sfa'})[m] || 'memo';
+const CATHELP = {memo: 'Teste ta mémoire du Coran ou des moutoun, avec les exercices ci-dessous.', tajwid: 'Entraîne-toi sur les règles de tajwīd des versets du Coran de ta portée.',
+  mkh: 'Apprends les points de sortie des lettres. Cet exercice ne dépend pas de la portée.', sfa: 'Apprends les qualités des lettres. Cet exercice ne dépend pas de la portée.'};
+function setCat(c){ // change le type d'exercice : mémorisation, tajwīd, makhārij ou ṣifāt
+  const from = catOf(cfg.mode); if (from === c || !CATS.some(x => x[0] === c)) return;
+  if (from === 'memo') cfg.lastMemo = cfg.mode;
+  if (c === 'memo') cfg.mode = cfg.lastMemo && catOf(cfg.lastMemo) === 'memo' ? cfg.lastMemo : 'mix';
+  else cfg.mode = CATMODE[c];
+  if (cfg.scope.type === 'matn' && (c === 'tajwid' || (c === 'memo' && ['mutash', 'start', 'order', 'end', 'link'].includes(cfg.mode)))){ // le tajwīd ne porte que sur le Coran
+    if (c === 'tajwid'){ cfg.lastM = cfg.scope.id; cfg.scope = cfg.lastQ || DEF.scope; } else cfg.mode = 'mix';
+  }
+}
 function tabTrain(){
-  const sc = cfg.scope, isM = sc.type === 'matn', o = MODE_OPTS[cfg.mode] || {};
+  const sc = cfg.scope, isM = sc.type === 'matn', o = MODE_OPTS[cfg.mode] || {}, cat = catOf(cfg.mode), showScope = cat === 'memo' || cat === 'tajwid';
   return `
   <h1>${tr('Réviser')}</h1>
   <p class="sub">${tr('Choisis ce que tu veux travailler, puis lance la série.')}</p>
 
-  <div class="card"><h2>${tr('Je veux réviser')}</h2>
+  <div class="card"><h2>${tr("Type d'exercice")}</h2>
+    <select id="scat" aria-label="${tr("Type d'exercice")}">${CATS.map(([id, t]) => `<option value="${id}" ${id === cat ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select>
+    <p class="ref" style="margin:8px 0 0">${tr(CATHELP[cat])}</p>
+  </div>
+
+  ${cat === 'memo' ? `<div class="card"><h2>${tr('Je veux réviser')}</h2>
     <div class="seg">
       <button class="${isM ? '' : 'sel'}" data-act="corpus" data-v="quran">📖 ${tr('Le Coran')}</button>
       <button class="${isM ? 'sel' : ''}" data-act="corpus" data-v="matn">📜 ${tr('Les moutoun')}</button>
@@ -837,11 +856,11 @@ function tabTrain(){
   </div>
 
   <div class="card"><h2>${tr('Exercice')}</h2>
-    <div class="modes">${MODES.filter(([, , , w]) => !w || (w === 'm') === isM).map(([id, t, d]) =>
+    <div class="modes">${MODES.filter(([id, , , w]) => catOf(id) === 'memo' && (!w || (w === 'm') === isM)).map(([id, t, d]) =>
       `<button class="mode ${cfg.mode === id ? 'sel' : ''}" data-act="mode" data-v="${id}"><b>${tr(isM && id === 'which' ? 'Quel matn ?' : t)}</b><small>${tr(d)}</small></button>`).join('')}</div>
-  </div>
+  </div>` : ''}
 
-  <div class="card"><h2>${tr('Portée')}</h2>
+  ${showScope ? `<div class="card"><h2>${tr('Portée')}</h2>
     <label class="f" ${isM ? 'hidden' : ''}>${tr('Réviser…')}</label>
     <select id="stype" ${isM ? 'hidden' : ''}>
       <option value="surah" ${sc.type === 'surah' ? 'selected' : ''}>${tr('Une plage de sourates')}</option>
@@ -880,7 +899,7 @@ function tabTrain(){
       <div><label class="f">${tr('De')}</label><select id="sfrom">${sc.type === 'juz' ? opts(30, sc.from) : sc.type === 'page' ? opts(604, sc.from) : surahOpts(sc.from)}</select></div>
       <div><label class="f">${tr('À')}</label><select id="sto">${sc.type === 'juz' ? opts(30, sc.to) : sc.type === 'page' ? opts(604, sc.to) : surahOpts(sc.to)}</select></div>
     </div>
-  </div>
+  </div>` : ''}
 
   <div class="card"><h2>${tr('Options de la série')}</h2>
     <p class="ref" style="margin:0 0 8px">${tr(modeHelp[cfg.mode] || '')}</p>
@@ -910,8 +929,8 @@ function tabTrain(){
     </div>${SR && IOS_APP ? `<p class="ref" style="margin:6px 0 0">${tr("Sur iPhone, la reconnaissance vocale peut ne pas marcher dans l'application installée : ouvre le site dans Safari pour l'utiliser.")}</p>` : ''}` : `<p class="ref" style="margin:10px 0 0">${tr('Pour cet exercice, tu réponds en touchant la bonne proposition.')}</p>`}
   </div>
 
-  <div class="row"><button class="big" data-act="rdscope">📖 ${tr('Lire le texte complet')}</button><button class="big" data-act="lsopen">🎧 ${tr('Écouter ma portée')}</button></div>
-  <div class="cta"><button class="pri big" data-act="start">${tr('Commencer')} · ${esc(scopeLabel(sc))}</button></div>`;
+  ${showScope ? `<div class="row"><button class="big" data-act="rdscope">📖 ${tr('Lire le texte complet')}</button><button class="big" data-act="lsopen">🎧 ${tr('Écouter ma portée')}</button></div>` : ''}
+  <div class="cta"><button class="pri big" data-act="start">${tr('Commencer')}${showScope ? ' · ' + esc(scopeLabel(sc)) : ''}</button></div>`;
 }
 
 /* -- Progrès : statistiques et carte -- */
@@ -1380,9 +1399,50 @@ function sfBuild(kind, H, rnd, shuf){
   const falseOnes = notMine.filter(x => same && H.attrs.find(a => a.id === x).pair === same), attr = truth ? fam : hfPick(falseOnes.length ? falseOnes : notMine, rnd);
   return {kind: 'tf', letter: c, attr, correct: truth ? 't' : 'f', options: [{t: 'tf', v: 't'}, {t: 'tf', v: 'f'}]};
 }
+const HF_MARK = /[ً-ٰٟۖ-ۭ]/, HF_SUK = /[ْۡ]/, HF_VOW = /[ً-ِ]/;
+function hfClusters(t){ // lettres avec leurs signes (et leur position dans le texte)
+  const out = []; let o = 0;
+  for (const ch of t){
+    if (/[ء-يٱ-ۓ]/.test(ch)) out.push({c: ch, m: '', s: o, e: o + ch.length});
+    else if (out.length && HF_MARK.test(ch)){ out[out.length - 1].m += ch; out[out.length - 1].e = o + ch.length; }
+    o += ch.length;
+  }
+  return out;
+}
+/* Qualités qui dépendent du contexte (règles données par les sources : qalqala = ق ط ب ج د sakina — ou à l'arrêt, en fin de verset ;
+   līn = و ou ي sakina après une fatḥa). Renvoie null quand le cas n'est pas tranché : une telle question n'est jamais posée. */
+function hfCond(cl, k, attr){
+  const x = cl[k], prev = cl[k - 1];
+  if (attr === 'qalqala'){
+    if (!'قطبجد'.includes(x.c)) return null;
+    if (HF_SUK.test(x.m)) return {has: true, why: 'sukun'};
+    if (k === cl.length - 1) return /ٓ/.test(x.m) ? null : {has: true, why: 'waqf'};
+    if (/ّ/.test(x.m)) return {has: false, why: 'shadda'};
+    return HF_VOW.test(x.m) ? {has: false, why: 'voyelle'} : null;
+  }
+  if (!'وي'.includes(x.c)) return null;
+  if (HF_SUK.test(x.m) && prev && /َ/.test(prev.m) && !/ّ/.test(x.m)) return {has: true, why: 'lin'};
+  if (HF_VOW.test(x.m) || /ّ/.test(x.m)) return {has: false, why: 'voyelle'};
+  if (!x.m && prev && ((x.c === 'و' && /ُ/.test(prev.m)) || (x.c === 'ي' && /ِ/.test(prev.m)))) return {has: false, why: 'madd'};
+  return null;
+}
+function condBuild(Q, rnd, shuf){ // « la lettre surlignée a-t-elle cette qualité ici ? » sur un vrai verset du Coran
+  const attr = rnd(2) ? 'qalqala' : 'lin', want = rnd(2) === 0;
+  for (let tries = 0; tries < 400; tries++){
+    const s = Q[rnd(Q.length)], a = rnd(s.a.length), t = s.a[a].t;
+    if (t.split(/\s+/).length > 14) continue;
+    const cl = hfClusters(t), cands = [];
+    cl.forEach((x, k) => { const r = hfCond(cl, k, attr); if (r && r.has === want) cands.push({k, r}); });
+    if (!cands.length) continue;
+    const pk = hfPick(cands, rnd), x = cl[pk.k];
+    return {kind: 'cond', attr, ref: {s: s.n, a: a + 1}, before: t.slice(0, x.s), mark: t.slice(x.s, x.e), after: t.slice(x.e), letter: x.c, why: pk.r.why,
+      correct: want ? 't' : 'f', options: [{t: 'yn', v: 't'}, {t: 'yn', v: 'f'}]};
+  }
+  return null;
+}
 /* HF:end */
 const MKKINDS = [['zone', 'Zone de sortie (gorge, langue, lèvres…)'], ['same', 'Lettres du même point'], ['odd', "Trouver l'intruse"], ['halq', 'Partie de la gorge'], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
-const SFKINDS = [['pair', "Qualité d'une lettre"], ['which', "Trouver la lettre d'une qualité"], ['mnemo', 'Mots mnémotechniques du matn'], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
+const SFKINDS = [['pair', "Qualité d'une lettre"], ['which', "Trouver la lettre d'une qualité"], ['mnemo', 'Mots mnémotechniques du matn'], ['cond', 'Qualités conditionnelles (qalqala, līn)'], ['tf', 'Vrai ou faux ?'], ['mix', 'Mélange des types']];
 const AREAGLOSS = {halq: 'gorge', lisan: 'langue', shafatan: 'lèvres', khayshum: 'cavité nasale', jawf: 'cavité buccale (voyelles longues)'};
 const hfAttr = id => window.HURUF.attrs.find(a => a.id === id);
 const hfAttrL = id => `${hfAttr(id).ar} · ${hfAttr(id).tr}`;
@@ -1400,6 +1460,7 @@ function hfOpt(o){
   if (o.t === 'letter') return `<span class="ar" style="font-size:1.6rem">${o.v}</span>`;
   if (o.t === 'throat') return `<span class="ar" style="font-size:1.25rem">${o.ar}</span>`;
   if (o.t === 'attr') return esc(hfAttrL(o.v));
+  if (o.t === 'yn') return o.v === 't' ? tr('Oui') : tr('Non');
   return o.v === 't' ? tr('Vrai') : tr('Faux');
 }
 function hfShow(q, stem, bigHtml, explain, stat){
@@ -1418,9 +1479,29 @@ function qMakharij(){
   const real = hfPointOf(H, q.b), same = real === q.point;
   hfShow(q, tr('Vrai ou faux : ces deux lettres sortent du même point.'), `${q.a} · ${q.b}`, same ? `${tr('Vrai :')} ${hfGroup(q.point.letters)}` : `${tr('Faux :')} ${hfLet(q.a)} ${tr('sort de')} ${hfGroup(q.point.letters)}, ${hfLet(q.b)} ${tr('sort de')} ${hfGroup(real.letters)}`, 'mk:' + q.a);
 }
-function qSifat(){
-  const H = window.HURUF, kinds = ['pair', 'which', 'mnemo', 'tf'];
-  const q = sfBuild(cfg.sfKind === 'mix' ? kinds[rnd(kinds.length)] : cfg.sfKind || 'pair', H, rnd, shuffle), per = c => H.per[c].map(hfAttrL).join(' · ');
+const CONDRULE = () => `<p class="ref" style="margin:8px 0 0">${tr("Rappel : qalqala = ق ط ب ج د quand la lettre est sakina (ou à l'arrêt, en fin de verset) ; līn = و ou ي sakina après une fatḥa. Règle appliquée au texte du verset.")}</p>`;
+function condWhy(q){
+  const l = hfLet(q.letter);
+  return ({
+    sukun: tr('{l} porte un sukūn : qalqala.', {l}), waqf: tr("{l} est la dernière lettre du verset : à l'arrêt elle devient sakina, qalqala.", {l}),
+    shadda: tr('{l} porte une chadda : pas de qalqala ici (elle ne devient sakina qu\'à l\'arrêt).', {l}), voyelle: q.attr === 'qalqala' ? tr('{l} porte une voyelle : pas de qalqala.', {l}) : tr('{l} porte une voyelle : pas de līn.', {l}),
+    lin: tr('{l} est sakina et précédée d\'une fatḥa : līn.', {l}), madd: tr('{l} est une lettre de madd (sans sukūn, après une ḍamma ou une kasra) : pas de līn.', {l})})[q.why];
+}
+function qCond(){
+  const q = condBuild(Q, rnd, shuffle);
+  if (!q) return qSifat(true);
+  cur.r = q.ref; cur.label = tr('Ṣifāt');
+  const attrAr = q.attr === 'qalqala' ? 'القلقلة · qalqala' : 'اللين · līn';
+  cur.correct = q.correct; cur.stat = 'sf:' + q.attr; cur.explain = condWhy(q) + CONDRULE() + HFNOTE();
+  shell(`<p class="ref">${tr('La lettre surlignée a-t-elle cette qualité ici : « {a} » ?', {a: attrAr})}</p>
+    <div class="rd tj" style="font-size:${cfg.rdSize}rem">${esc(q.before)}<mark class="tjq">${esc(q.mark)}</mark>${esc(q.after)}</div>${qref(q.ref)}
+    ${q.options.map(o => `<button class="opt" data-act="opt" data-v="${o.v}">${hfOpt(o)}</button>`).join('')}<div id="fb"></div>${CONDRULE()}`);
+}
+function qSifat(noCond){
+  const H = window.HURUF, kinds = noCond ? ['pair', 'which', 'mnemo', 'tf'] : ['pair', 'which', 'mnemo', 'cond', 'tf'];
+  const kind = cfg.sfKind === 'mix' || (noCond && cfg.sfKind === 'cond') ? kinds[rnd(kinds.length)] : cfg.sfKind || 'pair';
+  if (kind === 'cond') return qCond();
+  const q = sfBuild(kind, H, rnd, shuffle), per = c => H.per[c].map(hfAttrL).join(' · ');
   if (q.kind === 'pair') return hfShow(q, tr('Quelle qualité a la lettre ci-dessous ?'), q.letter, `${hfLet(q.letter)} : ${esc(per(q.letter))}`, 'sf:' + q.correct);
   if (q.kind === 'which') return hfShow(q, tr('Quelle lettre a la qualité « {a} » ?', {a: esc(hfAttrL(q.attr))}), '', `${esc(hfAttrL(q.attr))} : ${hfGroup(H.sets[q.attr])}`, 'sf:' + q.attr);
   if (q.kind === 'mnemo') return hfShow(q, tr("Quelle qualité rassemblent les lettres de ce mot du matn d'Ibn al-Jazarī ?"), q.word, `${q.word} = ${esc(hfAttrL(q.attr))} : ${hfGroup(H.sets[q.attr])}`, 'sf:' + q.attr);
@@ -2205,7 +2286,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v26';
+const APP_VERSION = '21 oct. 2026 · v27';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

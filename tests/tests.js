@@ -239,7 +239,15 @@
     eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'la mémorisation n’est pas modifiée'); eq(E("days[today()]"), 6, 'compte pour l’objectif du jour');
     E("go('progress')"); ok(appText().includes('Mes règles de tajwīd'), 'règles dans Progrès');
     // matn : l'exercice n'est pas proposé et le mode revient à « Mélange »
-    E("cfg.mode = 'tajweed'; go('train')"); ok($q('[data-act="mode"][data-v="tajweed"]'), 'proposé pour le Coran'); clickAct('corpus', 'matn'); eq(E('cfg.mode'), 'mix'); ok(!$q('[data-act="mode"][data-v="tajweed"]'), 'absent pour les moutoun');
+    // type d'exercice : mémorisation / tajwīd / makhārij / ṣifāt
+    E("cfg.mode = 'tajweed'; go('train')"); const cs = $q('#scat'); ok(cs, 'liste « Type d’exercice »'); eq([...cs.options].map(o => o.value), ['memo', 'tajwid', 'mkh', 'sfa']); eq(cs.value, 'tajwid');
+    ok(!$q('[data-act="mode"]') && !$q('[data-act="corpus"]'), 'tajwīd : ni liste d’exercices de mémorisation ni choix Coran/moutoun'); ok($q('#stjk') && $q('#stype'), 'liste des types de tajwīd et portée du Coran');
+    cs.value = 'memo'; cs.dispatchEvent(new W.Event('change')); eq(E('cfg.mode'), 'mix'); ok($q('[data-act="mode"][data-v="cloze"]') && !$q('[data-act="mode"][data-v="tajweed"]') && !$q('[data-act="mode"][data-v="makharij"]'), 'mémorisation : seulement ses exercices');
+    clickAct('mode', 'mcq'); $q('#scat').value = 'mkh'; $q('#scat').dispatchEvent(new W.Event('change')); eq(E('cfg.mode'), 'makharij'); ok($q('#smkk') && !$q('#stype'), 'makhārij : liste de types, pas de portée'); ok(!/Commencer ·/.test(appText()) && !$q('[data-act="rdscope"]'), 'makhārij : pas de portée affichée dans le bouton'); eq(E('cfg.lastMemo'), 'mcq');
+    $q('#scat').value = 'sfa'; $q('#scat').dispatchEvent(new W.Event('change')); eq(E('cfg.mode'), 'sifat'); ok($q('#ssfk') && !$q('#stype'));
+    $q('#scat').value = 'memo'; $q('#scat').dispatchEvent(new W.Event('change')); eq(E('cfg.mode'), 'mcq', 'retour au dernier exercice de mémorisation');
+    clickAct('corpus', 'matn'); $q('#scat').value = 'tajwid'; $q('#scat').dispatchEvent(new W.Event('change')); eq(E('cfg.scope.type') !== 'matn', true, 'le tajwīd revient au Coran'); eq(E('cfg.mode'), 'tajweed');
+    E("cfg.mode = 'tajweed'; cfg.scope = {type: 'surah', from: 2, to: 2}");
     // révisions guidées : jamais d'exercice de tajwīd
     E("cfg.scope = {type: 'surah', from: 1, to: 3}; cfg.mode = 'tajweed'; start([{s: 1, a: 1}, {s: 1, a: 2}])"); ok(!$q('mark.tjq'), 'série guidée : pas de tajwīd'); noErr('série guidée');
   });
@@ -247,7 +255,7 @@
     reset("cfg.mode = 'tajweed'; cfg.scope = {type: 'surah', from: 2, to: 2}; cfg.n = 5; tjs = {};");
     E("go('train')"); const sel = $q('#stjk'); ok(sel, 'liste déroulante dans les options de la série'); eq([...sel.options].map(o => o.value), ['rule', 'color', 'find', 'tf', 'read', 'mix']);
     sel.value = 'tf'; sel.dispatchEvent(new W.Event('change')); eq(E('cfg.tjKind'), 'tf', 'le choix est enregistré'); E("go('home')"); ok(appText().includes('Vrai ou faux'), 'rappelé dans le résumé de la série');
-    E("go('train')"); clickAct('mode', 'cloze'); ok(!$q('#stjk'), 'liste absente pour les autres exercices'); clickAct('mode', 'tajweed'); ok($q('#stjk'));
+    E("cfg.mode = 'cloze'; go('train')"); ok(!$q('#stjk'), 'liste absente pour les autres exercices'); E("cfg.mode = 'tajweed'; go('train')"); ok($q('#stjk'));
     const seen = new Set();
     for (const kind of ['rule', 'color', 'find', 'tf', 'read', 'mix']){
       E(`cfg.tjKind = '${kind}'; cfg.n = 30; tjs = {}`); E("start()"); for (let i = 0; i < 40 && !$q('.opt'); i++) await wait(100);
@@ -273,7 +281,7 @@
     eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'la mémorisation n’est pas modifiée');
   });
   test('Makhārij et ṣifāt : listes déroulantes, questions, corrections, statistiques, sans toucher à la mémorisation', async () => {
-    for (const [mode, sel, kinds] of [['makharij', '#smkk', ['zone', 'same', 'odd', 'halq', 'tf', 'mix']], ['sifat', '#ssfk', ['pair', 'which', 'mnemo', 'tf', 'mix']]]){
+    for (const [mode, sel, kinds] of [['makharij', '#smkk', ['zone', 'same', 'odd', 'halq', 'tf', 'mix']], ['sifat', '#ssfk', ['pair', 'which', 'mnemo', 'cond', 'tf', 'mix']]]){
       reset(`cfg.mode = '${mode}'; cfg.n = 5; hfs = {}`); E("go('train')"); const s = $q(sel); ok(s, 'liste déroulante ' + mode); eq([...s.options].map(o => o.value), kinds);
       s.value = kinds[1]; s.dispatchEvent(new W.Event('change')); eq(E(mode === 'makharij' ? 'cfg.mkKind' : 'cfg.sfKind'), kinds[1]);
       for (const kind of kinds){
@@ -293,13 +301,25 @@
       E("go('progress')"); ok(appText().includes('Mes makhārij et ṣifāt'), 'carte dans Progrès');
     }
     // visibles aussi pour les moutoun ; remplacés par « Mélange » dans les révisions guidées
-    E("go('train')"); clickAct('corpus', 'matn'); ok($q('[data-act="mode"][data-v="makharij"]') && $q('[data-act="mode"][data-v="sifat"]'), 'proposés aussi pour les moutoun');
+    E("cfg.scope = {type: 'matn', id: 'all'}; cfg.mode = 'mix'; go('train')"); eq([...$q('#scat').options].map(o => o.value), ['memo', 'tajwid', 'mkh', 'sfa'], 'les catégories makhārij et ṣifāt restent proposées avec les moutoun');
     E("cfg.mode = 'makharij'; start([{s: 1, a: 1}, {s: 1, a: 2}])"); ok(!$q('.opt .ar') && appText().includes('Sourate') || true); noErr('guidé');
+  });
+  test('Ṣifāt : qualités conditionnelles (qalqala, līn) sur de vrais versets', async () => {
+    reset("cfg.mode = 'sifat'; cfg.sfKind = 'cond'; cfg.n = 30; hfs = {}"); E("start()");
+    for (let n = 0; n < 12; n++){
+      ok($q('.opt'), 'question ' + n); eq($$q('mark.tjq').length, 1, 'une lettre surlignée'); const btns = $$q('.opt'); eq(btns.map(b => b.dataset.v).sort(), ['f', 't']); eq(btns.map(b => b.textContent.trim()).sort(), ['Non', 'Oui']);
+      ok(/Rappel : qalqala/.test(appText()), 'rappel de la règle'); const mark = $q('mark.tjq').textContent, attrQal = /القلقلة/.test(appText());
+      ok(attrQal ? 'قطبجد'.includes(mark[0]) : 'وي'.includes(mark[0]), 'la lettre surlignée correspond à la qualité demandée : ' + mark);
+      const good = btns.find(b => b.dataset.v === E('cur.correct')), wantOk = n % 2 === 0; click(wantOk ? good : btns.find(b => b !== good)); noErr('cond');
+      ok(fb().classList.contains(wantOk ? 'ok' : 'ko')); ok(/sukūn|dernière lettre|voyelle|chadda|fatḥa|madd/.test(fb().textContent), 'explication : ' + fb().textContent.slice(0, 80)); ok($q('#fb a[href*="wiki"]'), 'sources');
+      clickAct('nextq'); if (!$q('.opt')) break;
+    }
+    ok(E("Object.keys(hfs).every(k => k === 'sf:qalqala' || k === 'sf:lin')"), 'statistiques par qualité'); eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'mémorisation intacte');
   });
   test('Makhārij et ṣifāt : aucune clé de traduction manquante (en, ar)', async () => {
     for (const L of ['en', 'ar']){
       reset(`setLang('${L}'); cfg.n = 3; hfs = {'mk:ظ': [1, 2], 'sf:qalqala': [3, 0]}`); E("go('train')");
-      for (const [mode, key, kinds] of [['makharij', 'mkKind', ['zone', 'same', 'odd', 'halq', 'tf']], ['sifat', 'sfKind', ['pair', 'which', 'mnemo', 'tf']]]){
+      for (const [mode, key, kinds] of [['makharij', 'mkKind', ['zone', 'same', 'odd', 'halq', 'tf']], ['sifat', 'sfKind', ['pair', 'which', 'mnemo', 'cond', 'tf']]]){
         E(`cfg.mode = '${mode}'; go('train')`); eq(E('[...missingKeys]'), [], L + ' ' + mode);
         for (const k of kinds){ E(`cfg.${key} = '${k}'; ses = null`); E("start()"); ok($q('.opt'), L + k); click($q('.opt')); eq(E('[...missingKeys]'), [], `${L} ${mode} ${k}`); E("home()"); }
       }

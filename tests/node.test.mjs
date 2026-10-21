@@ -251,3 +251,36 @@ test('exercices makhārij / ṣifāt : questions toujours valides (milliers de t
     q = sfBuild('tf', H, rnd, shuf); assert.equal(q.correct, H.per[q.letter].includes(q.attr) ? 't' : 'f');
   }
 });
+
+test('qualités conditionnelles : la règle de qalqala coïncide avec l\'annotation du tajwīd sur les 6236 versets', () => {
+  const html = read('index.html'); const code = html.slice(html.indexOf('/* HF:begin'), html.indexOf('/* HF:end */'));
+  const { hfClusters, hfCond, condBuild } = new Function(code + '; return {hfClusters, hfCond, condBuild};')();
+  const Qd = loadGlobal('quran.js', 'QURAN').surahs; const tj = {}; new Function('window', read('data/tajweed.js'))(tj);
+  let diff = [];
+  Qd.forEach((s, si) => s.a.forEach((v, vi) => {
+    const cl = hfClusters(v[0]); let mine = 0;
+    cl.forEach((x, k) => { const r = hfCond(cl, k, 'qalqala'); if (r && r.has) mine++; });
+    const src = (tj.QX.tajweed.s[si][vi].match(/\[q\[/g) || []).length; if (mine !== src) diff.push(`${si + 1}:${vi + 1} ${mine}/${src}`);
+  }));
+  assert.deepEqual(diff, [], 'écarts avec la source du tajwīd : ' + diff.slice(0, 5));
+});
+
+test('qualités conditionnelles : līn et questions posées sur de vrais versets', () => {
+  const html = read('index.html'); const code = html.slice(html.indexOf('/* HF:begin'), html.indexOf('/* HF:end */'));
+  const { hfClusters, hfCond, condBuild } = new Function(code + '; return {hfClusters, hfCond, condBuild};')();
+  const Qd = loadGlobal('quran.js', 'QURAN').surahs, Q = Qd.map(s => ({ n: s.n, a: s.a.map(v => ({ t: v[0] })) }));
+  // cas connus : « خَوۡف » (exemple de l'article) et « ٱلۡبَيۡتِ » (106:3) ont un līn ; « يَقُولُ » : la lettre و est une lettre de madd
+  const lin = t => { const cl = hfClusters(t); return cl.map((x, k) => [x.c, hfCond(cl, k, 'lin')]).filter(([, r]) => r); };
+  assert.deepEqual(lin(Q[105].a[2].t).filter(([, r]) => r.has).map(([c]) => c), ['ي']); assert.ok(lin(Q[105].a[3].t).some(([c, r]) => c === 'و' && r.has));
+  assert.ok(lin('يَقُولُ').some(([c, r]) => c === 'و' && !r.has && r.why === 'madd'));
+  // 3000 questions : lettre surlignée dans le bon ensemble, bonne réponse cohérente avec la règle recalculée, verset reconstitué à l'identique
+  let seed = 5; const rnd = n => (seed = (seed * 16807) % 2147483647) % n, shuf = a => a.slice();
+  const seen = { qalqala: [0, 0], lin: [0, 0] };
+  for (let i = 0; i < 3000; i++) {
+    const q = condBuild(Q, rnd, shuf); assert.ok(q); const t = Q[q.ref.s - 1].a[q.ref.a - 1].t; assert.equal(q.before + q.mark + q.after, t);
+    assert.ok((q.attr === 'qalqala' ? 'قطبجد' : 'وي').includes(q.letter)); assert.ok(q.mark.startsWith(q.letter));
+    const cl = hfClusters(t), k = cl.findIndex(x => x.s === q.before.length); const r = hfCond(cl, k, q.attr); assert.equal(r.has, q.correct === 't'); assert.equal(r.why, q.why);
+    seen[q.attr][q.correct === 't' ? 0 : 1]++;
+  }
+  for (const a of ['qalqala', 'lin']) assert.ok(seen[a][0] > 200 && seen[a][1] > 200, 'oui et non bien répartis : ' + JSON.stringify(seen));
+});
