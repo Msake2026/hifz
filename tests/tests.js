@@ -190,6 +190,34 @@
     clickAct('plan-sabaq'); ok($q('[data-act="plan-learned"]'), 'écran sabaq absent'); clickAct('plan-learned');
     eq(E('plan.log.length'), 1); eq(E('planNextChunk(plan)'), {s: 114, a: 4, b: 6}); noErr('plan');
   });
+  test('Révision espacée : liste « à renforcer », bouton « Renforcer maintenant », intervalle adaptatif', async () => {
+    reset(); const now = Date.now();
+    E(`errors = [{t: ${now}, k: '2:5', m: 'next', sc: 0}, {t: ${now}, k: '2:5', m: 'next', sc: 0}, {t: ${now - 864e5}, k: '3:9', m: 'cloze', sc: 0}]; stats = {'2:5': [0, 2], '3:9': [0, 1]}; sched = {};`);
+    E("go('home')"); ok($q('[data-act="strengthen"]'), 'bouton sur l’accueil'); ok(D.body.textContent.includes('À renforcer en priorité'));
+    ok(/2 erreurs ces 30 derniers jours/.test(D.body.textContent), 'raison affichée');
+    E("go('plan')"); ok(D.body.textContent.includes('À renforcer en priorité') && D.body.textContent.includes('tienne plus d'), 'carte complète avec explication dans le Plan');
+    clickAct('strengthen'); eq(E('ses.fixed'), true); eq(E('ses.pool.map(key).sort()'), ['2:5', '3:9']); noErr('renforcer');
+    E("home()"); E("sched = {}; record({s: 2, a: 5}, 0)"); eq(E("sched['2:5'].iv"), 0.25, 'raté : retour dans 6 h');
+    E("record({s: 2, a: 5}, 1)"); eq(E("sched['2:5'].iv"), 1, 'puis 1 jour'); ok(E("sched['2:5'].ez") < 2.2, 'facteur réduit après un raté');
+    E("errors = []; stats = {}"); E("go('home')"); ok(!$q('[data-act="strengthen"]'), 'rien à renforcer : pas de bouton');
+  });
+  test('Révision espacée : aucune clé de traduction manquante (en, ar)', async () => {
+    for (const L of ['en', 'ar']){
+      reset(); const now = Date.now();
+      E(`setLang('${L}'); errors = [{t: ${now}, k: '2:5', m: 'next', sc: 0}, {t: ${now}, k: '2:5', m: 'next', sc: 0}]; stats = {'2:5': [1, 4]}; sched = {'2:5': {iv: 0.25, due: ${now - 3 * 864e5}}}; plan = {from: 114, to: 114, order: 'desc', amt: 'v3', recent: 2, cycle: 4, mptr: 0, done: {}, log: []};`);
+      E("go('home')"); E("go('plan')"); ok(D.body.textContent.length > 100); eq(E('[...missingKeys]'), [], L);
+    }
+  });
+  test('Plan : le manzil ajoute une portion fragile sans décaler la rotation', async () => {
+    reset(); const now = Date.now(), old = E("dayKey(addDays(new Date(), -10))");
+    E(`plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 2, cycle: 4, mptr: 0, done: {}, log: [{d: '${old}', s: 114, a: 1, b: 3}, {d: '${old}', s: 114, a: 4, b: 6}, {d: '${old}', s: 113, a: 1, b: 3}, {d: '${old}', s: 112, a: 1, b: 3}, {d: '${old}', s: 111, a: 1, b: 3}]}; errors = [{t: ${now}, k: '111:1', m: 'next', sc: 0}, {t: ${now}, k: '111:2', m: 'next', sc: 0}]; stats = {}; sched = {};`);
+    const T = E("planToday()"); eq(T.rot, 2, 'rotation : 2 portions'); eq(T.xtra, 1, 'une portion fragile en plus'); eq(T.man.length, 3);
+    eq([T.man[2].s, T.man[2].a], [111, 1], 'la portion fragile est celle de la sourate 111');
+    E("go('plan')"); ok(/dont 1 à renforcer/.test(D.body.textContent), 'mention dans le Plan');
+    clickAct('plan-manzil'); eq(E('ses.chunks.length'), 3); eq(E('ses.rot'), 2); E("planFinish('manzil')"); eq(E('plan.mptr'), 2, 'la rotation avance de 2, pas de 3');
+    // sans erreur : rotation seule
+    E("errors = []; plan.mptr = 0; plan.done = {}"); eq(E("planToday().xtra"), 0);
+  });
   test('Chaque onglet s’affiche dans les 3 langues sans erreur ni « undefined »', async () => {
     for (const L of ['fr', 'en', 'ar']){
       reset(); E(`setLang('${L}')`);

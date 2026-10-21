@@ -599,7 +599,16 @@ window.I18N = {
 "Regarde aussi dans les courriers indésirables.": "Also check your spam folder.",
 "Patiente {s} secondes avant de redemander un e-mail.": "Please wait {s} seconds before requesting another email.",
 "E-mail de confirmation renvoyé à {email}. Regarde aussi dans les courriers indésirables.": "Confirmation email sent again to {email}. Also check your spam folder.",
-"Renvoyer l'e-mail de confirmation": "Resend the confirmation email"
+"Renvoyer l'e-mail de confirmation": "Resend the confirmation email",
+"À renforcer en priorité": "To reinforce first",
+"Rien à renforcer pour le moment : continue ainsi.": "Nothing to reinforce for now: keep it up.",
+"{n} erreur ces 30 derniers jours|{n} erreurs ces 30 derniers jours": "{n} mistake in the last 30 days|{n} mistakes in the last 30 days",
+"en retard de {n} j": "{n} d overdue",
+"réussite {p} %": "{p}% success",
+"Renforcer maintenant ({n})": "Reinforce now ({n})",
+"Voir la liste": "See the list",
+"dont {n} à renforcer": "{n} to reinforce",
+"Choisis chaque jour parmi tes versets les plus fragiles : erreurs récentes (les plus récentes comptent le plus), retard de révision et taux de réussite. Un verset reste dans la liste jusqu'à ce qu'il tienne plus d'une semaine sans erreur.": "Pick each day from your most fragile verses: recent mistakes (the most recent count most), overdue reviews and success rate. A verse stays on the list until it holds for more than a week without a mistake."
 },
 "ar": {
 "(partie {a}/{b})": "(الجزء {a}/{b})",
@@ -1200,6 +1209,15 @@ window.I18N = {
 "Regarde aussi dans les courriers indésirables.": "تحقّق أيضاً من مجلد الرسائل غير المرغوبة.",
 "Patiente {s} secondes avant de redemander un e-mail.": "انتظر {s} ثانية قبل طلب رسالة أخرى.",
 "E-mail de confirmation renvoyé à {email}. Regarde aussi dans les courriers indésirables.": "أُعيد إرسال رسالة التأكيد إلى {email}. تحقّق أيضاً من مجلد الرسائل غير المرغوبة.",
-"Renvoyer l'e-mail de confirmation": "إعادة إرسال رسالة التأكيد"
+"Renvoyer l'e-mail de confirmation": "إعادة إرسال رسالة التأكيد",
+"À renforcer en priorité": "للتقوية أولاً",
+"Rien à renforcer pour le moment : continue ainsi.": "لا شيء يحتاج إلى تقوية الآن: واصل هكذا.",
+"{n} erreur ces 30 derniers jours|{n} erreurs ces 30 derniers jours": "{n} خطأ في آخر 30 يوماً|{n} أخطاء في آخر 30 يوماً",
+"en retard de {n} j": "متأخر {n} يوماً",
+"réussite {p} %": "نسبة النجاح {p}%",
+"Renforcer maintenant ({n})": "قوِّ الآن ({n})",
+"Voir la liste": "عرض القائمة",
+"dont {n} à renforcer": "منها {n} للتقوية",
+"Choisis chaque jour parmi tes versets les plus fragiles : erreurs récentes (les plus récentes comptent le plus), retard de révision et taux de réussite. Un verset reste dans la liste jusqu'à ce qu'il tienne plus d'une semaine sans erreur.": "اختر كل يوم من آياتك الأضعف: الأخطاء الأخيرة (الأحدث أكثر وزناً) والتأخر في المراجعة ونسبة النجاح. تبقى الآية في القائمة حتى تثبت أكثر من أسبوع دون خطأ."
 }
 };

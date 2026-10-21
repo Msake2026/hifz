@@ -373,16 +373,52 @@ function record(r, score){
   const [ok, ko] = stats[key(r)] || [0, 0];
   stats[key(r)] = [ok + score, ko + (1 - score)];
   store.set('hifz.stats', stats);
-  // répétition espacée : réussite → intervalle ×2,2 ; hésitation → inchangé ; raté → à revoir dans 6 h
-  const k = key(r), prev = sched[k]?.iv || 0;
-  const iv = score === 1 ? (prev ? prev * 2.2 : 1) : score >= 0.5 ? Math.max(prev, 1) : 0.25;
-  sched[k] = {iv, due: Date.now() + iv * 864e5};
+  const k = key(r); sched[k] = srsNext(sched[k], score, Date.now());   // répétition espacée adaptative (voir srsNext)
   store.set('hifz.sched', sched);
   days[today()] = (days[today()] || 0) + 1;
   store.set('hifz.days', days);
 }
+/* SRS:begin — répétition espacée adaptative : fonctions pures, testées dans tests/node.test.mjs */
+const SRS = {MAXIV: 180, EZ0: 2.2, EZMIN: 1.3, EZMAX: 2.8, HALF: 10, WINDOW: 45};
+/* Après chaque réponse : réussite → l'intervalle grandit d'un facteur « ez » propre au verset (2,2 au départ, +0,05 par réussite) ;
+   hésitation → ×0,7 (1 jour au moins) et ez −0,1 ; raté → retour dans 6 h et ez −0,2 (un verset difficile grandit donc plus lentement).
+   Après un raté, la première réussite ramène à 1 jour. Réviser un verset bien avant son échéance ne fait pas grandir l'intervalle. */
+function srsNext(prev, score, now){
+  const DAY = 864e5, iv0 = (prev && prev.iv) || 0, ez0 = (prev && prev.ez) || SRS.EZ0, due0 = (prev && prev.due) || 0;
+  if (score >= 1){
+    if (iv0 >= 1 && now < due0 - 0.25 * DAY) return {iv: iv0, ez: ez0, due: due0};
+    const iv = iv0 >= 1 ? Math.min(SRS.MAXIV, iv0 * ez0) : 1;
+    return {iv, ez: Math.min(SRS.EZMAX, ez0 + 0.05), due: now + iv * DAY};
+  }
+  if (score >= 0.5){ const iv = Math.max(1, iv0 * 0.7); return {iv, ez: Math.max(SRS.EZMIN, ez0 - 0.1), due: now + iv * DAY}; }
+  return {iv: 0.25, ez: Math.max(SRS.EZMIN, ez0 - 0.2), due: now + 0.25 * DAY};
+}
+/* Versets « à renforcer en priorité » : erreurs (les récentes comptent le plus : demi-vie de 10 jours, fenêtre de 45 jours), taux de réussite
+   (dès 3 réponses) et retard de révision. Un verset qui tient depuis 7 jours ou plus compte pour 40 % de son poids. */
+function weakList(errs, stats, sched, now){
+  const DAY = 864e5, by = {}, out = [];
+  for (const e of errs){
+    const age = (now - e.t) / DAY; if (age < 0 || age > SRS.WINDOW || e.sc >= 1) continue;
+    const o = by[e.k] ||= {err: 0, n30: 0}; o.err += (1 - e.sc) * Math.pow(0.5, age / SRS.HALF); if (age <= 30) o.n30++;
+  }
+  for (const k of new Set([...Object.keys(by), ...Object.keys(stats || {})])){
+    const [ok, ko] = (stats && stats[k]) || [0, 0], tot = ok + ko, s = sched && sched[k], o = by[k] || {err: 0, n30: 0};
+    const ratio = tot >= 3 ? ko / tot : 0, lateD = s && s.due < now ? (now - s.due) / DAY : 0;
+    if (o.err < 0.3 && ratio < 0.4) continue;
+    let pri = 2 * o.err + ratio + 0.5 * Math.min(14, lateD) / 14;
+    if (s && s.iv >= 7) pri *= 0.4;
+    if (pri >= 0.6) out.push({k, pri, n30: o.n30, lateD: Math.floor(lateD), pct: tot >= 3 ? Math.round(100 * ok / tot) : null});
+  }
+  return out.sort((a, b) => b.pri - a.pri);
+}
+/* SRS:end */
 const dueRefs = () => Object.entries(sched).filter(([, v]) => v.due <= Date.now())
   .sort((a, b) => a[1].due - b[1].due).map(([k]) => pk(k)).filter(r => book(r.s));
+const weakNow = () => weakList(errors, stats, sched, Date.now()).filter(w => book(pk(w.k).s));
+function reviewPick(n = 15){ // versets dus : les plus fragiles d'abord, puis les plus en retard
+  const pri = {}; weakNow().forEach(w => { pri[w.k] = w.pri; });
+  return dueRefs().sort((a, b) => (pri[key(b)] || 0) - (pri[key(a)] || 0)).slice(0, n);
+}
 function streak(){
   let n = 0; const d = new Date();
   if (!days[today(d)]) d.setDate(d.getDate() - 1);
@@ -568,6 +604,17 @@ function setLang(l){ // change la langue de l'interface (le texte du Coran ne ch
 function go(tab){ cfg.tab = tab; saveCfg(); home(); window.scrollTo(0, 0); }
 
 /* -- Accueil : l'essentiel du jour -- */
+function weakCard(full){
+  const W = weakNow(), top = W.slice(0, full ? 10 : 3);
+  if (!W.length) return full ? `<div class="card"><h2>${tr('À renforcer en priorité')}</h2><p class="sub" style="margin:0">${tr('Rien à renforcer pour le moment : continue ainsi.')}</p></div>` : '';
+  const why = w => [w.n30 ? trp(w.n30, '{n} erreur ces 30 derniers jours|{n} erreurs ces 30 derniers jours') : '', w.lateD >= 1 ? tr('en retard de {n} j', {n: w.lateD}) : '',
+    w.pct !== null && w.pct < 75 ? tr('réussite {p} %', {p: w.pct}) : ''].filter(Boolean).join(' · ');
+  return `<div class="card"><h2>${tr('À renforcer en priorité')}</h2>
+    ${top.map(w => `<div class="weak"><span>${rlabel(pk(w.k))}${why(w) ? `<br><span class="ref">${why(w)}</span>` : ''}</span></div>`).join('')}
+    <button class="pri big" style="margin-top:8px" data-act="strengthen">${tr('Renforcer maintenant ({n})', {n: Math.min(10, W.length)})}</button>
+    ${full ? `<p class="ref" style="margin:8px 0 0">${tr("Choisis chaque jour parmi tes versets les plus fragiles : erreurs récentes (les plus récentes comptent le plus), retard de révision et taux de réussite. Un verset reste dans la liste jusqu'à ce qu'il tienne plus d'une semaine sans erreur.")}</p>`
+      : `<button class="list-btn" data-act="tab" data-v="plan"><span>${tr('Voir la liste')}</span><span>›</span></button>`}</div>`;
+}
 function tabHome(){
   const due = dueRefs(), td = days[today()] || 0, st = streak();
   const top = aggErrors(errors.filter(e => e.t >= Date.now() - 7 * 864e5)).slice(0, 3);
@@ -584,6 +631,7 @@ function tabHome(){
       : `<p class="sub" style="margin:8px 0 0">${tr("Rien à revoir pour l'instant. Lance une série : les versets à retravailler reviendront ici au bon moment.")}</p>`}
   </div>
 
+  ${weakCard(false)}
   ${plan ? (() => { const T = planToday(), tot = (T.next ? 1 : 0) + (T.rec.length ? 1 : 0) + (T.man.length ? 1 : 0), dn = (T.next && T.d.sabaq ? 1 : 0) + (T.rec.length && T.d.sabqi ? 1 : 0) + (T.man.length && T.d.manzil ? 1 : 0);
     return `<div class="card"><h2>${tr('Plan du jour')}</h2><p class="sub" style="margin:0 0 8px">${T.next || tot ? tr("{a} / {b} étapes terminées aujourd'hui", {a: dn, b: tot}) : tr('Plan terminé 🎉')}</p>
     <button class="pri big" data-act="tab" data-v="plan">${tr('Ouvrir mon plan')}</button></div>`; })() : ''}
@@ -634,14 +682,18 @@ function planSets(pl){ // portions apprises avant aujourd'hui : récentes (sabqi
   (pl.log || []).forEach(c => { if (c.d >= t0) return; (c.d >= lim ? rec : old).push(c); });
   return {rec, old};
 }
-function manzilToday(pl, old){
-  if (!old.length) return [];
+function manzilToday(pl, old){ // rotation régulière (chaque portion revient dans le cycle) + jusqu'à 2 portions fragiles en plus
+  if (!old.length) return {man: [], rot: 0, xtra: 0};
   const k = Math.min(old.length, Math.max(1, Math.ceil(old.length / pl.cycle))), st = (pl.mptr || 0) % old.length;
-  return Array.from({length: k}, (_, i) => old[(st + i) % old.length]);
+  const base = Array.from({length: k}, (_, i) => old[(st + i) % old.length]).slice(0, 8);
+  const P = {}; weakNow().forEach(w => { P[w.k] = w.pri; });
+  const xtra = old.filter(c => !base.includes(c)).map(c => ({c, w: chunkRefs(c).reduce((t, r) => t + (P[key(r)] || 0), 0)}))
+    .filter(x => x.w >= 1.2).sort((a, b) => b.w - a.w).slice(0, Math.min(2, 8 - base.length)).map(x => x.c);
+  return {man: [...base, ...xtra], rot: base.length, xtra: xtra.length};
 }
 function planToday(){
-  const {rec, old} = planSets(plan);
-  return {next: planNextChunk(plan), rec: rec.slice(-8), man: manzilToday(plan, old).slice(0, 8), d: (plan.done || {})[dayKey()] || {}, nOld: old.length, nRec: rec.length};
+  const {rec, old} = planSets(plan), M = manzilToday(plan, old);
+  return {next: planNextChunk(plan), rec: rec.slice(-8), man: M.man, rot: M.rot, xtra: M.xtra, d: (plan.done || {})[dayKey()] || {}, nOld: old.length, nRec: rec.length};
 }
 function planMark(kind){
   plan.done ||= {}; (plan.done[dayKey()] ||= {})[kind] = true;
@@ -650,7 +702,7 @@ function planMark(kind){
 }
 function planFinish(kind){
   if (ses.planDone) return; ses.planDone = true;
-  if (kind === 'manzil'){ const {old} = planSets(plan); plan.mptr = ((plan.mptr || 0) + ses.chunks.length) % Math.max(1, old.length); }
+  if (kind === 'manzil'){ const {old} = planSets(plan); plan.mptr = ((plan.mptr || 0) + (ses.rot ?? ses.chunks.length)) % Math.max(1, old.length); }
   planMark(kind);
 }
 function learnChunk(ch){
@@ -659,9 +711,9 @@ function learnChunk(ch){
   if (!dup) (plan.log ||= []).push({d: dayKey(), s: ch.s, a: ch.a, b: ch.b});
   planMark('sabaq'); sab = null; go('plan');
 }
-function startChunks(chunks, kind){
+function startChunks(chunks, kind, rot){
   const refs = chunks.flatMap(chunkRefs);
-  ses = {pool: refs, fixed: true, i: 0, score: 0, missed: [], used: new Set(), total: chunks.length, chunks, planKind: kind};
+  ses = {pool: refs, fixed: true, i: 0, score: 0, missed: [], used: new Set(), total: chunks.length, chunks, planKind: kind, rot};
   nextQ();
 }
 function openSabaq(){ const ch = planNextChunk(plan); if (!ch) return; sab = {ch, rep: 3, hide: false}; renderSabaq(); window.scrollTo(0, 0); }
@@ -721,7 +773,7 @@ function planSetupHtml(){
   ${plan ? `<button class="big" style="margin-top:8px" data-act="plan-cancel">${tr('Annuler')}</button>` : ''}`;
 }
 function tabPlan(){
-  if (!plan || planEditing) return planSetupHtml();
+  if (!plan || planEditing) return planSetupHtml() + weakCard(true);
   const T = planToday(), units = planUnits(plan), L = learnedKeys(plan), nL = units.filter(u => L.has(key(u))).length, pct = Math.round(100 * nL / units.length), rem = units.length - nL;
   const dist = new Set((plan.log || []).map(c => c.d)).size, per = dist >= 3 ? nL / dist : (plan.amt[0] === 'v' ? +plan.amt.slice(1) : +plan.amt.slice(1) * 10.3), days = Math.ceil(rem / Math.max(per, 1));
   const end = addDays(new Date(), days).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'long', year: 'numeric'});
@@ -733,11 +785,12 @@ function tabPlan(){
     <div class="goal"><i style="width:${pct}%"></i></div>
     <p style="margin:6px 0 0"><b>${tr('{a} / {b} versets appris', {a: nL, b: units.length})}</b> · ${pct} %</p>
     <p class="ref" style="margin:4px 0 0">${rem ? tr('À ce rythme : environ {d} jours (fin vers le {date}).', {d: days, date: end}) : tr('Plan terminé 🎉')}</p></div>
+  ${weakCard(true)}
   ${T.next ? row(tr('Nouveau (sabaq)'), esc(passageLabel(chunkRefs(T.next))) + ' · ' + amtLabel(plan.amt), T.d.sabaq, 'plan-sabaq', tr('Apprendre'))
     : `<div class="card"><h2>${tr('Nouveau (sabaq)')}</h2><p class="sub" style="margin:0">${tr('Plan terminé 🎉')}</p></div>`}
   ${T.rec.length ? row(tr('Révision récente (sabqi)'), trp(T.rec.length, '{n} portion apprise ces {d} derniers jours|{n} portions apprises ces {d} derniers jours', {d: plan.recent}), T.d.sabqi, 'plan-sabqi', tr('Réviser'))
     : `<div class="card"><h2>${tr('Révision récente (sabqi)')}</h2><p class="sub" style="margin:0">${tr('Rien à réviser pour le moment.')}</p></div>`}
-  ${T.man.length ? row(tr('Révision ancienne (manzil)'), trp(T.man.length, '{n} portion à revoir aujourd\'hui (cycle de {c} jours)|{n} portions à revoir aujourd\'hui (cycle de {c} jours)', {c: plan.cycle}), T.d.manzil, 'plan-manzil', tr('Réviser'))
+  ${T.man.length ? row(tr('Révision ancienne (manzil)'), trp(T.man.length, '{n} portion à revoir aujourd\'hui (cycle de {c} jours)|{n} portions à revoir aujourd\'hui (cycle de {c} jours)', {c: plan.cycle}) + (T.xtra ? ' · ' + tr('dont {n} à renforcer', {n: T.xtra}) : ''), T.d.manzil, 'plan-manzil', tr('Réviser'))
     : `<div class="card"><h2>${tr('Révision ancienne (manzil)')}</h2><p class="sub" style="margin:0">${tr('Rien à réviser pour le moment.')}</p></div>`}
   ${planDefsHtml(false)}
   <div class="row"><button data-act="plan-edit">${tr('Modifier le plan')}</button><button data-act="plan-del" style="color:var(--ko)">${tr('Supprimer le plan')}</button></div>`;
@@ -1570,7 +1623,8 @@ const onClick = e => {
       if (cfg.mode === 'phrase' && !pool.some(r => !isQ(r.s) && book(r.s).kind === 'prose')) return alert(tr('Le mode phrase concerne les textes en prose (ex. les Arbaʿūn).'));
       start(); break;
     }
-    case 'review': start(shuffle(dueRefs().slice(0, 40)).slice(0, 15)); break;
+    case 'review': start(shuffle(reviewPick(15))); break;
+    case 'strengthen': { const W = weakNow().slice(0, 10); if (W.length) start(shuffle(W.map(w => pk(w.k)))); } break;
     case 'ics': exportIcs(); break;
     case 'export': exportData(); break;
     case 'import': $('impfile').click(); break;
@@ -1610,7 +1664,7 @@ const onClick = e => {
     case 'plan-del': if (confirm(tr("Supprimer ton plan et sa progression d'apprentissage ?"))){ plan = null; savePlan(); planEditing = false; pdraft = null; home(); } break;
     case 'plan-sabaq': openSabaq(); break;
     case 'plan-sabqi': startChunks(planToday().rec, 'sabqi'); break;
-    case 'plan-manzil': startChunks(planToday().man, 'manzil'); break;
+    case 'plan-manzil': { const T = planToday(); startChunks(T.man, 'manzil', T.rot); } break;
     case 'plan-learned': learnChunk(sab && sab.ch); break;
     case 'sab-back': sab = null; go('plan'); break;
     case 'sab-play': playUrls(Array.from({length: sab.rep}).flatMap(() => chunkRefs(sab.ch).map(audioUrl))); break;
@@ -1907,7 +1961,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v21';
+const APP_VERSION = '21 oct. 2026 · v22';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

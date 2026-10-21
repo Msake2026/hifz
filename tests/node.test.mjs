@@ -121,3 +121,40 @@ test('modèles d\'e-mail : trois langues, bouton vers {{ .ConfirmationURL }}, au
     assert.ok(/[\u0600-\u06FF]/.test(t) && /Confirm|Reset|password|email/i.test(t));
   }
 });
+
+test('révision espacée : intervalle adaptatif et liste « à renforcer en priorité »', () => {
+  const html = read('index.html'); const code = html.slice(html.indexOf('/* SRS:begin'), html.indexOf('/* SRS:end */'));
+  assert.ok(code.includes('function srsNext') && code.includes('function weakList'));
+  const { srsNext, weakList, SRS } = new Function(code + '; return {srsNext, weakList, SRS};')();
+  const DAY = 864e5, T = Date.UTC(2026, 9, 21, 12);
+  // première réussite : 1 jour ; puis l'intervalle grandit d'un facteur qui augmente un peu à chaque réussite
+  let s = srsNext(undefined, 1, T); assert.equal(s.iv, 1); assert.equal(s.due, T + DAY);
+  let s2 = srsNext(s, 1, s.due); assert.ok(Math.abs(s2.iv - 2.25) < 1e-9, 'le facteur (2,2 au départ, +0,05 par réussite) est appliqué'); assert.ok(s2.ez > s.ez);
+  // un raté : retour dans 6 h, facteur réduit, jamais sous le plancher
+  const f = srsNext(s2, 0, s2.due); assert.equal(f.iv, 0.25); assert.ok(f.ez < s2.ez); assert.equal(f.due, s2.due + 0.25 * DAY);
+  let g = f; for (let i = 0; i < 20; i++) g = srsNext(g, 0, g.due); assert.equal(g.ez, SRS.EZMIN);
+  // après un raté, la première réussite ramène à 1 jour (pas à 0,55 jour)
+  assert.equal(srsNext(f, 1, f.due).iv, 1);
+  // un verset difficile grandit plus lentement qu'un verset facile
+  const easy = srsNext({iv: 10, ez: 2.5, due: T}, 1, T), hard = srsNext({iv: 10, ez: 1.4, due: T}, 1, T); assert.ok(easy.iv > hard.iv);
+  // hésitation : ×0,7 mais 1 jour au moins ; plafond de 180 jours
+  assert.equal(srsNext({iv: 10, ez: 2.2, due: T}, 0.5, T).iv, 7); assert.equal(srsNext({iv: 0, ez: 2.2, due: 0}, 0.5, T).iv, 1);
+  assert.equal(srsNext({iv: 150, ez: 2.8, due: T}, 1, T).iv, SRS.MAXIV);
+  // réviser bien avant l'échéance : rien ne change
+  const early = srsNext({iv: 10, ez: 2.2, due: T + 9 * DAY}, 1, T); assert.deepEqual(early, { iv: 10, ez: 2.2, due: T + 9 * DAY });
+  // liste à renforcer
+  const e = (k, daysAgo, sc = 0) => ({ k, t: T - daysAgo * DAY, sc });
+  const errs = [e('2:5', 0), e('2:5', 1), e('3:9', 40), e('4:1', 2, 0.5), e('9:9', 2)];
+  const stats = { '2:5': [1, 4], '3:9': [9, 1], '4:1': [5, 1], '9:9': [3, 1], '1:1': [10, 0] };
+  const sched = { '2:5': { iv: 0.25, due: T - 2 * DAY }, '3:9': { iv: 30, due: T + 5 * DAY }, '9:9': { iv: 20, due: T + 10 * DAY } };
+  const W = weakList(errs, stats, sched, T);
+  assert.equal(W[0].k, '2:5', 'le plus fragile d\'abord'); assert.equal(W[0].n30, 2); assert.ok(W[0].lateD >= 2); assert.equal(W[0].pct, 20);
+  assert.ok(!W.some(w => w.k === '3:9'), 'erreur ancienne et verset stable : pas dans la liste');
+  assert.ok(!W.some(w => w.k === '1:1'), 'jamais d\'erreur : pas dans la liste');
+  assert.ok(!W.some(w => w.k === '9:9') || W.find(w => w.k === '9:9').pri < W[0].pri, 'un verset stable pèse moins');
+  for (let i = 1; i < W.length; i++) assert.ok(W[i - 1].pri >= W[i].pri, 'trié par priorité');
+  // l'erreur récente compte plus que l'ancienne
+  const rec = weakList([e('1:1', 1)], {}, {}, T)[0], mid = weakList([e('1:1', 12)], {}, {}, T), old = weakList([e('1:1', 20)], {}, {}, T);
+  assert.ok(rec && rec.pri > 1.5); assert.equal(mid.length, 1, 'une erreur d\'il y a 12 jours reste à surveiller'); assert.equal(old.length, 0, 'une erreur d\'il y a 20 jours seule ne suffit plus');
+  assert.deepEqual(weakList([], {}, {}, T), []);
+});
