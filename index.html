@@ -510,7 +510,7 @@ function home(){ // affiche l'écran du menu courant (accès réservé aux compt
   $app.querySelectorAll('select').forEach(el => { if (el.id.startsWith('cm-')) return;
     el.onchange = () => { syncCfg(); if (['stype', 'sgoal'].includes(el.id) || el.id.startsWith('pf-')) home(); }; });
   if ($('impfile')) $('impfile').onchange = e => importFile(e.target.files[0]);
-  ['cm-f-cam', 'cm-f-img', 'cm-f-doc'].forEach(id => { if ($(id)) $(id).onchange = e => { readMatnFile(e.target.files[0]); e.target.value = ''; }; });
+  ['cm-f-cam', 'cm-f-img', 'cm-f-doc'].forEach(id => { if ($(id)) $(id).onchange = e => { queueAdd([...e.target.files]); e.target.value = ''; }; });
 }
 function syncCfg(){
   const v = id => $(id) ? $(id).value : null;
@@ -765,15 +765,19 @@ function tabTrain(){
         <p class="ref" style="margin:10px 0 6px">${tr('Importer le texte depuis une photo, un PDF ou un fichier Word :')}</p>
         <div class="row"><button type="button" data-act="cm-cam">📷 ${tr('Prendre une photo')}</button><button type="button" data-act="cm-img">🖼️ ${tr('Image ou photo')}</button><button type="button" data-act="cm-doc">📄 ${tr('PDF, Word ou texte')}</button></div>
         <input type="file" id="cm-f-cam" accept="image/*" capture="environment" hidden>
-        <input type="file" id="cm-f-img" accept="image/*" hidden>
-        <input type="file" id="cm-f-doc" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" hidden>
+        <input type="file" id="cm-f-img" accept="image/*" multiple hidden>
+        <input type="file" id="cm-f-doc" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" multiple hidden>
+        <p class="ref" style="margin:6px 0 0">${tr("Limites : image {a} Mo, PDF ou Word {b} Mo, texte {c} Mo, PDF {d} pages à la fois. Si c'est plus grand, découpe en plusieurs fichiers ou prends plusieurs photos : ajoute-les dans l'ordre du texte, elles sont lues l'une après l'autre.", {a: CM.img, b: CM.doc, c: CM.txt, d: CM.pdfPages})}</p>
+        <div id="cm-queue">${queueHtml()}</div>
+        <div class="row"><div><label class="f" for="cm-p1">${tr('Pages du PDF (facultatif) : de')}</label><input type="number" id="cm-p1" min="1" inputmode="numeric"></div>
+          <div><label class="f" for="cm-p2">${tr('à')}</label><input type="number" id="cm-p2" min="1" inputmode="numeric"></div></div>
         <p id="cm-status" class="ref" aria-live="polite" style="margin:6px 0 0"></p>
         <label class="f">${tr('Titre')}</label><input type="text" id="cm-title" placeholder="${tr('ex. Alfiyya – Ibn Mālik')}">
         <label class="f">${tr('Type de texte')}</label>
         <select id="cm-kind"><option value="poem">${tr('Poème (un vers par ligne, les deux moitiés séparées par *)')}</option><option value="prose">${tr('Prose (un passage par ligne)')}</option></select>
         <label class="f">${tr('Texte (copie-le depuis ton édition de référence)')}</label>
         <textarea id="cm-text" dir="rtl" lang="ar" placeholder="الحمد لله ربي * ..."></textarea>
-        <div class="row" style="margin-top:6px"><button type="button" data-act="cm-rev">↔ ${tr("Inverser (texte à l'envers)")}</button><button type="button" data-act="cm-clear">🧹 ${tr('Effacer le texte')}</button></div>
+        <div class="row" style="margin-top:6px"><button type="button" data-act="cm-undo">↩ ${tr('Annuler le dernier ajout')}</button><button type="button" data-act="cm-rev">↔ ${tr("Inverser (texte à l'envers)")}</button><button type="button" data-act="cm-clear">🧹 ${tr('Effacer le texte')}</button></div>
         <button class="pri" style="margin-top:8px" data-act="addcustom">${tr('Enregistrer ce matn')}</button>
         <p class="ref">${tr("La lecture d'une photo ou d'un fichier se fait sur ton appareil : rien n'est envoyé. Vérifie et corrige le texte, surtout les voyelles : une photo ne les donne pas toujours.")}</p>
         <p class="ref">${tr("Le texte reste sur cet appareil. Si tu n'indiques pas de séparateur *, chaque vers est coupé au milieu.")}</p>
@@ -1336,6 +1340,9 @@ const loadScript = src => new Promise((res, rej) => {
   const sc = document.createElement('script'); sc.src = src; sc.dataset.src = src; sc.onload = res; sc.onerror = () => rej(new Error(tr('Chargement impossible')));
   document.head.appendChild(sc);
 });
+const CM = {img: 15, doc: 20, txt: 2, pdfPages: 40, scanPages: 12, lines: 3000, queue: 15}; // limites : Mo, pages, lignes du matn, parties dans la liste
+let cmQueue = [], cmHist = [];
+const mb = n => (n / 1048576).toFixed(1);
 const absUrl = p => new URL(p, location.href).href;
 const cmStatus = m => { const e = $('cm-status'); if (e) e.textContent = m || ''; };
 const cmBusy = b => document.querySelectorAll('[data-act^="cm-"]').forEach(x => { x.disabled = b; });
@@ -1345,6 +1352,7 @@ async function imgToCanvas(file, max){
   try { bmp = await createImageBitmap(file, {imageOrientation: 'from-image'}); }
   catch { bmp = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error(tr("Impossible de lire l'image."))); im.src = URL.createObjectURL(file); }); }
   const w = bmp.width || bmp.naturalWidth, h = bmp.height || bmp.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+  if (w * h > 80e6) throw new Error(tr('Image trop grande (plus de 80 millions de pixels) : réduis-la ou prends la photo plus loin.'));
   const c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
   const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(bmp, 0, 0, c.width, c.height);
   return c;
@@ -1362,9 +1370,12 @@ async function ocrImage(file){
 }
 async function readPdf(file){
   if (!window.pdfjsLib){ cmStatus(tr('Chargement du lecteur PDF…')); await loadScript('vendor/pdfjs/pdf.min.js'); pdfjsLib.GlobalWorkerOptions.workerSrc = absUrl('vendor/pdfjs/pdf.worker.min.js'); }
-  const pdf = await pdfjsLib.getDocument({data: new Uint8Array(await file.arrayBuffer())}).promise, n = Math.min(pdf.numPages, 40), pages = [];
-  for (let i = 1; i <= n; i++){
-    cmStatus(tr('Lecture de la page {a} / {b}…', {a: i, b: n}));
+  const pdf = await pdfjsLib.getDocument({data: new Uint8Array(await file.arrayBuffer())}).promise;
+  const a = Math.max(1, +($('cm-p1') && $('cm-p1').value) || 1), b = Math.min(pdf.numPages, +($('cm-p2') && $('cm-p2').value) || pdf.numPages), cnt = b - a + 1, pages = [];
+  if (cnt < 1) throw new Error(tr('Plage de pages invalide.'));
+  if (cnt > CM.pdfPages) throw new Error(tr("Ce PDF a {n} pages à lire (maximum {m} à la fois). Indique les pages à lire (ex. de 1 à {m}) ou découpe le PDF, puis ajoute la suite dans l'ordre.", {n: cnt, m: CM.pdfPages}));
+  for (let i = a; i <= b; i++){
+    cmStatus(tr('Lecture de la page {a} / {b}…', {a: i, b}));
     const tc = await (await pdf.getPage(i)).getTextContent(), lines = []; let line = '', lastY = null;
     for (const it of tc.items){
       if (!('str' in it)) continue;
@@ -1377,10 +1388,11 @@ async function readPdf(file){
   }
   let text = pages.join('\n');
   if (text.replace(/\s/g, '').length < 30){ // PDF scanné (sans texte) : on lit les images des pages
-    const m = Math.min(pdf.numPages, 12), w = await newOcr(), all = [];
+    if (cnt > CM.scanPages) throw new Error(tr("Ce PDF est un scan de {n} pages (maximum {m} à la fois). Indique les pages à lire (ex. de 1 à {m}) ou découpe le PDF, puis ajoute la suite dans l'ordre.", {n: cnt, m: CM.scanPages}));
+    const w = await newOcr(), all = [];
     try {
-      for (let i = 1; i <= m; i++){
-        cmStatus(tr('Lecture de la page {a} / {b} (image)…', {a: i, b: m}));
+      for (let i = a; i <= b; i++){
+        cmStatus(tr('Lecture de la page {a} / {b} (image)…', {a: i, b}));
         const page = await pdf.getPage(i), vp = page.getViewport({scale: 2.2}), c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
         await page.render({canvasContext: c.getContext('2d'), viewport: vp}).promise; all.push((await w.recognize(c)).data.text);
       }
@@ -1395,11 +1407,12 @@ async function readDocx(file){ // un .docx est une archive ZIP : on lit word/doc
   if (e < 0) throw new Error(tr('Fichier Word illisible.'));
   const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true), entry = null;
   for (let i = 0; i < n && dv.getUint32(p, true) === 0x02014b50; i++){
-    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
-    if (new TextDecoder().decode(buf.subarray(p + 46, p + 46 + nl)) === 'word/document.xml') entry = {method, csize, off};
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), usize = dv.getUint32(p + 24, true), nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+    if (new TextDecoder().decode(buf.subarray(p + 46, p + 46 + nl)) === 'word/document.xml') entry = {method, csize, usize, off};
     p += 46 + nl + xl + cl;
   }
   if (!entry) throw new Error(tr('Fichier Word illisible.'));
+  if (entry.usize > 40 * 1048576) throw new Error(tr('Ce fichier Word contient trop de texte : découpe-le en plusieurs fichiers et ajoute-les dans l\'ordre.'));
   const lh = entry.off, start = lh + 30 + dv.getUint16(lh + 26, true) + dv.getUint16(lh + 28, true), raw = buf.subarray(start, start + entry.csize);
   let xml;
   if (entry.method === 0) xml = new TextDecoder().decode(raw);
@@ -1420,26 +1433,60 @@ async function readDocx(file){ // un .docx est une archive ZIP : on lit word/doc
   }
   return lines.join('\n');
 }
-async function readMatnFile(file){
-  if (!file) return;
-  if (file.size > 30 * 1024 * 1024) return cmStatus(tr('Fichier trop volumineux (30 Mo maximum).'));
-  const name = file.name || '', type = file.type || '';
+const fileKind = f => { const n = f.name || '', t = f.type || '';
+  return t.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif|bmp|gif)$/i.test(n) ? 'img' : t === 'application/pdf' || /\.pdf$/i.test(n) ? 'pdf'
+    : /\.docx$/i.test(n) || t.includes('wordprocessingml') ? 'docx' : /\.doc$/i.test(n) ? 'doc' : t.startsWith('text/') || /\.txt$/i.test(n) ? 'txt' : null; };
+const cmName = f => f.name || tr('photo');
+function queueAdd(files){ // on ajoute les parties à une liste ordonnée : elles seront lues l'une après l'autre
+  const msgs = [];
+  for (const f of files){
+    const k = fileKind(f);
+    if (!k){ msgs.push(`${cmName(f)} : ${tr('Type de fichier non pris en charge.')}`); continue; }
+    if (k === 'doc'){ msgs.push(`${cmName(f)} : ${tr("Le format .doc (ancien Word) n'est pas pris en charge : enregistre le fichier en .docx ou en PDF.")}`); continue; }
+    const lim = k === 'img' ? CM.img : k === 'txt' ? CM.txt : CM.doc;
+    if (f.size > lim * 1048576){ msgs.push(`${cmName(f)} : ${tr("Fichier trop volumineux ({s} Mo, maximum {m} Mo). Découpe-le en plusieurs fichiers (ou prends plusieurs photos) et ajoute-les dans l'ordre du texte : chaque partie est ajoutée à la suite.", {s: mb(f.size), m: lim})}`); continue; }
+    if (cmQueue.length >= CM.queue){ msgs.push(tr('La liste est pleine ({m} parties maximum) : lis-les d\'abord.', {m: CM.queue})); break; }
+    cmQueue.push(f);
+  }
+  renderQueue(); cmStatus(msgs.join(' '));
+}
+function queueHtml(){
+  if (!cmQueue.length) return '';
+  const b = (act, i, label, txt) => `<button type="button" class="link" data-act="${act}" data-v="${i}" aria-label="${label}">${txt}</button>`;
+  return `<p class="ref" style="margin:8px 0 4px"><b>${tr("Parties à lire, dans l'ordre")}</b></p>` + cmQueue.map((f, i) =>
+    `<div class="weak" style="align-items:center"><span>${i + 1}. ${esc(cmName(f))} <span class="ref">(${mb(f.size)} ${tr('Mo')})</span></span><span>${b('cm-up', i, tr('Monter'), '↑')}${b('cm-down', i, tr('Descendre'), '↓')}${b('cm-rm', i, tr('Retirer'), '✕')}</span></div>`).join('')
+    + `<div class="row" style="margin-top:8px"><button type="button" class="pri" data-act="cm-run">${tr("Lire ces parties dans l'ordre")}</button><button type="button" data-act="cm-qclear">${tr('Vider la liste')}</button></div>`;
+}
+function renderQueue(){ const el = $('cm-queue'); if (el) el.innerHTML = queueHtml(); }
+async function extractText(f){
+  const k = fileKind(f);
+  const text = k === 'img' ? await ocrImage(f) : k === 'pdf' ? await readPdf(f) : k === 'docx' ? await readDocx(f) : await f.text();
+  const t = cleanText(text);
+  if (!t) throw new Error(tr('Aucun texte trouvé dans ce fichier.'));
+  return t;
+}
+function appendMatnText(text, name){ // ajoute la partie à la suite du texte, dans l'ordre
+  const ta = $('cm-text'), old = ta.value.trim(), have = old ? old.split('\n').length : 0, add = text.split('\n').length;
+  if (have + add > CM.lines) throw new Error(tr('Ce matn devient trop long ({n} lignes, maximum {m}). Enregistre-le, puis crée un second matn pour la suite.', {n: have + add, m: CM.lines}));
+  cmHist.push(ta.value); if (cmHist.length > 30) cmHist.shift();
+  ta.value = (old ? old + '\n' : '') + text;
+  const ti = $('cm-title'); if (ti && !ti.value.trim() && name) ti.value = name.replace(/\.[^.]+$/, '');
+  return {add, total: have + add};
+}
+async function runQueue(){
+  if (!cmQueue.length) return;
+  const n0 = cmQueue.length; let done = 0, last = null;
   cmBusy(true);
   try {
-    let text;
-    if (type.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif|bmp|gif)$/i.test(name)) text = await ocrImage(file);
-    else if (type === 'application/pdf' || /\.pdf$/i.test(name)) text = await readPdf(file);
-    else if (/\.docx$/i.test(name) || type.includes('wordprocessingml')) text = await readDocx(file);
-    else if (/\.doc$/i.test(name)) throw new Error(tr("Le format .doc (ancien Word) n'est pas pris en charge : enregistre le fichier en .docx ou en PDF."));
-    else if (type.startsWith('text/') || /\.txt$/i.test(name)) text = await file.text();
-    else throw new Error(tr('Type de fichier non pris en charge.'));
-    text = cleanText(text);
-    if (!text) throw new Error(tr('Aucun texte trouvé dans ce fichier.'));
-    const ta = $('cm-text'); ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + text;
-    const ti = $('cm-title'); if (ti && !ti.value.trim()) ti.value = name.replace(/\.[^.]+$/, '');
-    cmStatus(tr("Texte lu : vérifie-le et corrige-le avant d'enregistrer."));
-  } catch (e){ cmStatus(e && e.message ? e.message : tr('Lecture impossible.')); }
-  finally { cmBusy(false); }
+    while (cmQueue.length){
+      const f = cmQueue[0];
+      cmStatus(tr('Partie {i} / {n} : {name}…', {i: done + 1, n: n0, name: cmName(f)}));
+      try { last = appendMatnText(await extractText(f), f.name); }
+      catch (e){ cmStatus(tr("Import arrêté à « {name} » : {msg}", {name: cmName(f), msg: e && e.message ? e.message : tr('Lecture impossible.')}) + (done ? ' ' + tr('Les parties précédentes ont été ajoutées.') : '')); return; }
+      cmQueue.shift(); done++; renderQueue();
+    }
+    cmStatus(tr("Texte lu : vérifie-le et corrige-le avant d'enregistrer.") + (last ? ' ' + trp(last.total, '{n} ligne au total.|{n} lignes au total.') : ''));
+  } finally { cmBusy(false); renderQueue(); }
 }
 
 /* ---------- mes moutoun ---------- */
@@ -1510,7 +1557,12 @@ const onClick = e => {
     case 'cm-cam': $('cm-f-cam').click(); break;
     case 'cm-img': $('cm-f-img').click(); break;
     case 'cm-doc': $('cm-f-doc').click(); break;
-    case 'cm-clear': $('cm-text').value = ''; cmStatus(''); break;
+    case 'cm-clear': cmHist.push($('cm-text').value); $('cm-text').value = ''; cmStatus(''); break;
+    case 'cm-undo': if (cmHist.length){ $('cm-text').value = cmHist.pop(); cmStatus(tr('Dernier ajout annulé.')); } else cmStatus(tr('Rien à annuler.')); break;
+    case 'cm-up': case 'cm-down': { const i = +v, j = el.dataset.act === 'cm-up' ? i - 1 : i + 1; if (cmQueue[j]){ [cmQueue[i], cmQueue[j]] = [cmQueue[j], cmQueue[i]]; renderQueue(); } break; }
+    case 'cm-rm': cmQueue.splice(+v, 1); renderQueue(); break;
+    case 'cm-qclear': cmQueue = []; renderQueue(); break;
+    case 'cm-run': runQueue(); break;
     case 'cm-rev': { const seg = window.Intl && Intl.Segmenter ? new Intl.Segmenter('ar', {granularity: 'grapheme'}) : null;
       $('cm-text').value = $('cm-text').value.split('\n').map(l => (seg ? [...seg.segment(l)].map(x => x.segment) : Array.from(l)).reverse().join('')).join('\n'); break; }
     case 'plan-save': {
@@ -1759,7 +1811,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v10';
+const APP_VERSION = '21 oct. 2026 · v11';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
