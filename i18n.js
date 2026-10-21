@@ -542,7 +542,8 @@ window.I18N = {
 "à": "to",
 "photo": "photo",
 "Vérifie que le texte est bien dans l'ordre du matn, de la première à la dernière ligne, surtout entre les parties importées : rien ne doit manquer ni se répéter.": "Check that the text is in the right order of the matn, from the first to the last line, especially between the imported parts: nothing should be missing or repeated.",
-"Tu as importé ce texte depuis des fichiers ou des photos : as-tu vérifié que les vers sont dans le bon ordre ?": "You imported this text from files or photos: have you checked that the verses are in the right order?"
+"Tu as importé ce texte depuis des fichiers ou des photos : as-tu vérifié que les vers sont dans le bon ordre ?": "You imported this text from files or photos: have you checked that the verses are in the right order?",
+"Avant d'enregistrer : as-tu vérifié que les vers sont dans l'ordre du matn, sans oubli ni répétition ?": "Before saving: have you checked that the verses are in the order of the matn, with nothing missing or repeated?"
 },
 "ar": {
 "(partie {a}/{b})": "(الجزء {a}/{b})",
@@ -1086,6 +1087,7 @@ window.I18N = {
 "à": "إلى",
 "photo": "صورة",
 "Vérifie que le texte est bien dans l'ordre du matn, de la première à la dernière ligne, surtout entre les parties importées : rien ne doit manquer ni se répéter.": "تحقّق من أن النص مرتّب بحسب ترتيب المتن، من السطر الأول إلى الأخير، خاصةً بين الأجزاء المستوردة: يجب ألا ينقص شيء ولا يتكرّر.",
-"Tu as importé ce texte depuis des fichiers ou des photos : as-tu vérifié que les vers sont dans le bon ordre ?": "استوردت هذا النص من ملفات أو صور: هل تحقّقت من أن الأبيات في الترتيب الصحيح؟"
+"Tu as importé ce texte depuis des fichiers ou des photos : as-tu vérifié que les vers sont dans le bon ordre ?": "استوردت هذا النص من ملفات أو صور: هل تحقّقت من أن الأبيات في الترتيب الصحيح؟",
+"Avant d'enregistrer : as-tu vérifié que les vers sont dans l'ordre du matn, sans oubli ni répétition ?": "قبل الحفظ: هل تحقّقت من أن الأبيات بترتيب المتن، دون نقص ولا تكرار؟"
 }
 };

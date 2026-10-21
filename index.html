@@ -779,6 +779,7 @@ function tabTrain(){
         <textarea id="cm-text" dir="rtl" lang="ar" placeholder="الحمد لله ربي * ..."></textarea>
         <div class="row" style="margin-top:6px"><button type="button" data-act="cm-undo">↩ ${tr('Annuler le dernier ajout')}</button><button type="button" data-act="cm-rev">↔ ${tr("Inverser (texte à l'envers)")}</button><button type="button" data-act="cm-clear">🧹 ${tr('Effacer le texte')}</button></div>
         <button class="pri" style="margin-top:8px" data-act="addcustom">${tr('Enregistrer ce matn')}</button>
+        <p class="fb mid" style="margin:8px 0 0">⚠️ ${tr("Vérifie que le texte est bien dans l'ordre du matn, de la première à la dernière ligne, surtout entre les parties importées : rien ne doit manquer ni se répéter.")}</p>
         <p class="ref">${tr("La lecture d'une photo ou d'un fichier se fait sur ton appareil : rien n'est envoyé. Vérifie et corrige le texte, surtout les voyelles : une photo ne les donne pas toujours.")}</p>
         <p class="ref">${tr("Le texte reste sur cet appareil. Si tu n'indiques pas de séparateur *, chaque vers est coupé au milieu.")}</p>
       </details>
@@ -1497,7 +1498,7 @@ function addCustom(){
   const title = $('cm-title').value.trim(), kind = $('cm-kind').value;
   const lines = $('cm-text').value.split('\n').map(s => s.trim()).filter(Boolean);
   if (!title || !lines.length) return alert(tr('Indique un titre et colle le texte.'));
-  if (cmImported && !confirm(tr('Tu as importé ce texte depuis des fichiers ou des photos : as-tu vérifié que les vers sont dans le bon ordre ?'))) return;
+  if (!confirm(cmImported ? tr('Tu as importé ce texte depuis des fichiers ou des photos : as-tu vérifié que les vers sont dans le bon ordre ?') : tr("Avant d'enregistrer : as-tu vérifié que les vers sont dans l'ordre du matn, sans oubli ni répétition ?"))) return;
   cmImported = false;
   const a = lines.map(l => {
     if (kind === 'poem'){
@@ -1816,7 +1817,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v12';
+const APP_VERSION = '21 oct. 2026 · v13';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
