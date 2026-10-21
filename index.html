@@ -628,8 +628,7 @@ function home(){ // affiche l'écran du menu courant (accès réservé aux compt
   if (cloudOn() && !me) return renderAccount();
   if (!tabsNow().some(t => t[0] === cfg.tab)) cfg.tab = 'home';
   $app.innerHTML = ({home: tabHome, plan: tabPlan, train: tabTrain, progress: tabProgress, errors: tabErrors, settings: tabSettings, student: tabStudent, teacher: tabTeacher})[cfg.tab]();
-  tchEnter();
-  setNav(true); if (cfg.tab === 'settings') setTimeout(audioSpace, 0);
+  setNav(true); tchEnter(); if (cfg.tab === 'settings') setTimeout(audioSpace, 0);
   $app.querySelectorAll('select').forEach(el => { if (el.id.startsWith('cm-')) return;
     el.onchange = () => { syncCfg(); if (['stype', 'sgoal', 'scat', 'srec', 'aud-from', 'aud-to', 'aud-cap', 'aud-q'].includes(el.id) || el.id.startsWith('pf-')) home(); }; });
   if ($('impfile')) $('impfile').onchange = e => importFile(e.target.files[0]);
