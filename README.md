@@ -18,3 +18,5 @@ Installation sur téléphone : ouvrir la page en HTTPS puis « Installer l'appli
 
 **Tests** : `node --test tests/node.test.mjs` (Coran, traductions, rappels, secrets) ; tests de l'application avec de vrais clics : `python3 -m http.server 8765` puis ouvrir `http://localhost:8765/tests/`. Ils tournent aussi à chaque `git push` (GitHub Actions). Régénérer le texte du Coran : `python3 -I tools/build_quran.py`.
 
+**Accessibilité** : audit automatique axe-core (WCAG 2.2 AA + bonnes pratiques) sur 13 écrans à chaque envoi de code ; réglage « Contraste renforcé des couleurs du tajwīd » (Réglages) ; étiquettes liées aux champs, langue arabe déclarée, retours annoncés aux lecteurs d'écran, bonne/mauvaise réponse indiquées aussi par ✓/✗. **Export CSV** (Réglages → Mes données) et **vue Semaine** du plan (onglet Plan).
+

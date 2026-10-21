@@ -208,6 +208,45 @@
       E("go('home')"); E("go('plan')"); ok(appText().length > 100); eq(E('[...missingKeys]'), [], L);
     }
   });
+  test('Plan : vue de la semaine (prévision sur 7 jours)', async () => {
+    reset("plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 2, mptr: 0, done: {}, log: []}; go('plan')");
+    const W7 = E("planWeek(plan)"); eq(W7.length, 7); eq(W7.map(x => [x.chunk.s, x.chunk.a, x.chunk.b]).slice(0, 4), [[114, 1, 3], [114, 4, 6], [113, 1, 3], [113, 4, 5]], 'portions successives');
+    eq(W7.slice(0, 5).map(x => x.rec), [0, 1, 2, 3, 3], 'révision récente : les 3 derniers jours'); eq(W7.slice(0, 7).map(x => x.man), [0, 0, 0, 0, 1, 1, 2], 'révision ancienne : ceil(portions de plus de 3 jours / cycle de 2)');
+    ok(appText().includes('Semaine') && appText().includes('Prévision'), 'carte Semaine'); eq($$q('#app .weak').filter(e => /Nouveau :/.test(e.textContent)).length, 7, '7 jours affichés');
+    ok(/▸/.test(appText()), 'aujourd’hui repéré'); noErr('semaine');
+    // aujourd'hui déjà appris : la portion du jour reste affichée (et cochée), la suite continue
+    const dk = E("dayKey()"); E(`plan.log.push({d: '${dk}', s: 114, a: 1, b: 3}); plan.done = {'${dk}': {sabaq: true}}; go('plan')`);
+    const W8 = E("planWeek(plan)"); eq([W8[0].chunk.s, W8[0].chunk.a, W8[0].chunk.b], [114, 1, 3]); eq([W8[1].chunk.s, W8[1].chunk.a], [114, 4]); ok(/✓ Nouveau/.test(appText()), 'portion du jour cochée');
+    // plan terminé
+    E("plan = {from: 114, to: 114, order: 'desc', amt: 'v10', recent: 3, cycle: 2, mptr: 0, done: {}, log: []}; go('plan')"); const W9 = E("planWeek(plan)"); eq([W9[0].chunk.b, W9[1].chunk], [6, null]); ok(appText().includes('Plan terminé'));
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 2, mptr: 0, done: {}, log: [{d: '${E("dayKey(addDays(new Date(), -2))")}', s: 114, a: 1, b: 3}]}; go('plan')`); ok(appText().length > 100, L); eq(E('[...missingKeys]'), [], L); }
+    E("setLang('fr')");
+  });
+  test('Accessibilité : réglage « contraste renforcé » des couleurs du tajwīd', async () => {
+    reset(); E("go('settings')"); const sel = $q('#shc'); ok(sel, 'réglage'); eq([...sel.options].map(o => o.value), ['auto', 'on', 'off']);
+    const col = () => W.getComputedStyle(D.documentElement).getPropertyValue('--tjc-n').trim().toLowerCase();
+    sel.value = 'on'; sel.dispatchEvent(new W.Event('change')); eq(E('cfg.hc'), true); ok(D.getElementById('tjhc'), 'feuille de style ajoutée'); ok(col() !== '#537fff', 'couleur plus foncée : ' + col());
+    E("go('settings')"); eq($q('#shc').value, 'on'); $q('#shc').value = 'off'; $q('#shc').dispatchEvent(new W.Event('change')); eq(E('cfg.hc'), false); ok(!D.getElementById('tjhc')); eq(col(), '#537fff', 'couleurs officielles');
+    E("go('settings')"); $q('#shc').value = 'auto'; $q('#shc').dispatchEvent(new W.Event('change')); eq(E('cfg.hc'), undefined, 'automatique : suit le système'); noErr('contraste');
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); go('settings')`); eq(E('[...missingKeys]'), [], L); } E("setLang('fr')");
+  });
+  test('Accessibilité : audit axe-core (WCAG 2.2 AA) des écrans principaux, sans violation', async () => {
+    const src = await fetch('https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js').then(r => r.ok ? r.text() : '').catch(() => '');
+    if (!src) return;                                            // pas d'accès au CDN : test ignoré
+    W.eval(src); const opts = {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']}}, bad = [];
+    const audit = async name => { await wait(300); const r = await W.axe.run(D, opts); r.violations.forEach(v => bad.push(`${name} : ${v.id} (${v.nodes.length}) ${v.nodes[0].target.join(' ')}`)); };
+    reset("cfg.hc = true; cfg.reciter = 'ar.alafasy'; plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 2, mptr: 0, done: {}, log: []}; applyA11y(); errors = [{t: Date.now(), k: '2:5', m: 'cloze', sc: 0}]; stats = {'2:5': [1, 3]}; cfg.scope = {type: 'surah', from: 1, to: 3};");
+    for (const t of ['home', 'plan', 'train', 'progress', 'errors', 'settings']){ E(`go('${t}')`); await audit('onglet ' + t); }
+    E("go('train')"); E("cfg.mode = 'tajweed'"); E("go('train')"); await audit('réviser (tajwīd)'); E("cfg.mode = 'mix'");
+    E("cfg.mode = 'mcq'; start()"); await audit('question QCM'); E("home()");
+    E("cfg.mode = 'cloze'; cfg.input = 'type'; start()"); await audit('question à taper'); E("home()");
+    await W.loadX('tajweed'); E("cfg.mode = 'tajweed'; cfg.tjKind = 'rule'; start()"); await audit('question tajwīd'); E("home()");
+    E("cfg.mode = 'madd'; start()"); await audit('question madd'); E("home()"); E("cfg.mode = 'makharij'; start()"); await audit('question makhārij'); E("home()");
+    E("cfg.rdTaj = true; openReader('q:1')"); for (let i = 0; i < 40 && !$q('.tj-n'); i++) await wait(100); await audit('lecteur (tajwīd en couleurs)'); E("cfg.rdTaj = false; home()");
+    E("renderLegal()"); await audit('confidentialité'); E("CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; sb = {}; me = null; renderAccount()"); await audit('connexion'); E("CLOUD.url = ''; CLOUD.anonKey = ''; sb = null");
+    eq(bad, [], 'violations axe-core');
+    E("cfg.hc = undefined; delete cfg.hc; applyA11y()");
+  });
   test('Plan : le manzil ajoute une portion fragile sans décaler la rotation', async () => {
     reset(); const now = Date.now(), old = E("dayKey(addDays(new Date(), -10))");
     E(`plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 2, cycle: 4, mptr: 0, done: {}, log: [{d: '${old}', s: 114, a: 1, b: 3}, {d: '${old}', s: 114, a: 4, b: 6}, {d: '${old}', s: 113, a: 1, b: 3}, {d: '${old}', s: 112, a: 1, b: 3}, {d: '${old}', s: 111, a: 1, b: 3}]}; errors = [{t: ${now}, k: '111:1', m: 'next', sc: 0}, {t: ${now}, k: '111:2', m: 'next', sc: 0}]; stats = {}; sched = {};`);
@@ -441,6 +480,21 @@
       }
       E("home()"); E("go('progress')"); eq(E('[...missingKeys]'), [], L);
     }
+  });
+  test('Export CSV : versets, jours, erreurs, exercices (contenu et téléchargement)', async () => {
+    reset(); const t0 = Date.now(); const got = [];
+    W.download = async (name, text, type) => { got.push({name, text, type}); };
+    E(`stats = {'1:2': [3, 1], '2:255': [0, 2], 'tuhfa:1': [1, 0]}; sched = {'1:2': {iv: 2.5, due: ${t0 + 864e5}}}; days = {'2026-10-20': 12, '2026-10-21': 5};
+      errors = [{t: ${t0}, k: '2:255', m: 'cloze', sc: 0, ans: '=cmd', bad: ['ٱللَّهُ', 'لَا']}]; tjs = {n: [4, 1]}; hfs = {'mk:ظ': [1, 2], 'ah:K': [3, 0], 'md:lazim': [0, 1]}`);
+    E("go('settings')"); const sel = $q('#csv-kind'); ok(sel && $q('[data-act="csv"]'), 'liste et bouton'); eq([...sel.options].map(o => o.value), ['verses', 'days', 'errors', 'drills']);
+    const parse = txt => txt.replace(/^\ufeff/, '').trim().split('\r\n').map(l => l.split(';'));
+    for (const [kind, rows, check] of [['verses', 4, r => ok(r[0][0] === 'Type' && r.some(x => x[2] === 'Al-Faatiha' && x[3] === '2' && x[6] === '3' && x[7] === '1' && x[8] === '75' && x[9] === '2.5'), 'verset 1:2 : 3 réussites, 1 raté, 75 %, intervalle 2,5 j')],
+      ['days', 3, r => ok(r[1][0] === '2026-10-20' && r[1][1] === '12')], ['errors', 2, r => { ok(r[1][5] === 'Mots manquants' || r[1][5].length > 0); ok(r[1][7] === "'=cmd", 'formule neutralisée'); ok(r[1][8].includes('لَا')); }], ['drills', 5, r => ok(r.some(x => x[0] === 'Tajwīd (entraînement)' || x[0] === 'Tajwīd') && r.some(x => /الإخفاء/.test(x[1])), 'exercices')]]){
+      got.length = 0; $q('#csv-kind').value = kind; clickAct('csv'); await wait(100); eq(got.length, 1, kind); ok(got[0].name.startsWith(`hifz-${kind}-`) && got[0].name.endsWith('.csv')); ok(got[0].text.startsWith('\ufeff') && /csv/.test(got[0].type));
+      const r = parse(got[0].text); eq(r.length, rows, kind + ' : lignes'); eq(new Set(r.map(x => x.length)).size, 1, kind + ' : même nombre de colonnes'); check(r);
+    }
+    E("setLang('en')"); got.length = 0; E("exportCsv('days')"); ok(got[0].text.split('\r\n')[0].includes(',') && got[0].text.includes('Answers'), 'anglais : virgule et en-têtes traduits'); E("setLang('fr')");
+    for (const L of ['en', 'ar']){ E(`setLang('${L}')`); for (const k of ['verses', 'days', 'errors', 'drills']) E(`exportCsv('${k}')`); E("go('settings')"); eq(E('[...missingKeys]'), [], L); } E("setLang('fr')"); delete W.download;
   });
   test('Espace admin : surveillance des e-mails (calme, attention, alerte, nom de domaine)', async () => {
     const mk = (n, agoH) => Array.from({length: n}, (_, i) => ({id: 'u' + agoH + i, email: `u${agoH}-${i}@x.fr`, role: 'user', blocked: false, created_at: new Date(Date.now() - agoH * 36e5).toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}));

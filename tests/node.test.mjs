@@ -406,3 +406,35 @@ test('confidentialité : chaque service contacté automatiquement est cité dans
   for (const w of ['adresse e-mail', 'progression', 'Rappels', 'notifications', 'région', 'audio']) assert.ok(new RegExp(w, 'i').test(legal) || new RegExp(w, 'i').test(html.slice(html.indexOf('Stockage sur ton appareil'), html.indexOf('Stockage sur ton appareil') + 900)), 'à décrire dans la page : ' + w);
   assert.match(cfg, /contact:\s*'[^']+@[^']+'/); assert.doesNotMatch(cfg, /region:\s*''/, 'région Supabase renseignée');
 });
+
+test('export CSV : échappement, séparateurs, protection contre les formules, UTF-8 avec BOM', () => {
+  const html = read('index.html'), c = html.slice(html.indexOf('/* CSV:begin'), html.indexOf('/* CSV:end */'));
+  const { csvCell, toCsv } = new Function(c + '; return {csvCell, toCsv};')();
+  assert.equal(csvCell('simple', ';'), 'simple'); assert.equal(csvCell('a;b', ';'), '"a;b"'); assert.equal(csvCell('a;b', ','), 'a;b'); assert.equal(csvCell('a,b', ','), '"a,b"');
+  assert.equal(csvCell('il a dit "oui"', ';'), '"il a dit ""oui"""'); assert.equal(csvCell('ligne1\nligne2', ';'), '"ligne1\nligne2"');
+  assert.equal(csvCell(null, ';'), ''); assert.equal(csvCell(undefined, ';'), ''); assert.equal(csvCell(0, ';'), '0'); assert.equal(csvCell(12.5, ';'), '12.5');
+  assert.equal(csvCell('=1+1', ';'), "'=1+1"); assert.equal(csvCell('+cmd|x', ';'), "'+cmd|x"); assert.equal(csvCell('@SUM(A1)', ';'), "'@SUM(A1)"); assert.equal(csvCell('-2+3', ';'), "'-2+3"); assert.equal(csvCell('-3', ';'), '-3'); assert.equal(csvCell('بِسْمِ', ';'), 'بِسْمِ');
+  const out = toCsv([['a', 'b;c'], [1, 'ء']], ';'); assert.ok(out.startsWith('\ufeff')); assert.equal(out.slice(1), 'a;"b;c"\r\n1;ء\r\n');
+});
+
+test('accessibilité : contrastes WCAG des couleurs du thème et du tajwīd (mode contraste renforcé)', () => {
+  const html = read('index.html'), a = html.slice(html.indexOf('/* A11Y:begin'), html.indexOf('/* A11Y:end */'));
+  const { a11yContrast, a11yDarken, a11yLum } = new Function(a + '; return {a11yContrast, a11yDarken, a11yLum};')();
+  assert.ok(Math.abs(a11yContrast('#000000', '#ffffff') - 21) < 0.01); assert.ok(Math.abs(a11yContrast('#777777', '#ffffff') - 4.48) < 0.02, 'valeur de référence WCAG');
+  // couleurs du thème : texte courant >= 4,5:1 (clair et sombre)
+  const css = html.slice(html.indexOf(':root{'), html.indexOf('*{box-sizing'));
+  const light = Object.fromEntries([...css.slice(0, css.indexOf('@media')).matchAll(/--([a-z-]+):(#[0-9a-fA-F]{6})/g)].map(m => [m[1], m[2]]));
+  const dark = { ...light, ...Object.fromEntries([...css.slice(css.indexOf('@media')).matchAll(/--([a-z-]+):(#[0-9a-fA-F]{6})/g)].map(m => [m[1], m[2]])) };
+  for (const [name, t] of [['clair', light], ['sombre', dark]]) {
+    for (const [fg, bg] of [['ink', 'bg'], ['ink', 'card'], ['muted', 'bg'], ['muted', 'card'], ['accent', 'card'], ['accent-ink', 'accent'], ['ok', 'okbg'], ['ko', 'kobg'], ['mid', 'midbg'], ['ko', 'card'], ['ok', 'card']])
+      assert.ok(a11yContrast(t[fg], t[bg]) >= 4.5, `thème ${name} : ${fg} sur ${bg} = ${a11yContrast(t[fg], t[bg]).toFixed(2)}`);
+  }
+  // couleurs officielles du tajwīd sur la page claire : lesquelles sont sous 4,5:1 ; la version renforcée les corrige toutes
+  const leg = [...html.matchAll(/\['([a-z])', '(#[0-9A-F]{6})', '/g)].map(m => [m[1], m[2]]); assert.equal(leg.length, 15);
+  const bg = '#fbf6e8', low = leg.filter(([, c]) => a11yContrast(c, bg) < 4.5), hc = leg.map(([k, c]) => [k, a11yDarken(c, bg)]);
+  assert.equal(leg.filter(([k]) => k !== 's' && k !== 'b').length, 15); assert.equal(low.length, 10, 'le texte du réglage annonce 10 règles sur 15 : ' + low.map(x => x.join('=')));
+  for (const [k, c] of hc) assert.ok(a11yContrast(c, bg) >= 4.5, `${k} ${c} : ${a11yContrast(c, bg).toFixed(2)}`);
+  assert.ok(hc.every(([k, c], i) => c === leg[i][1] || a11yContrast(leg[i][1], bg) < 4.5), 'seules les couleurs trop pâles sont modifiées');
+  const hex = new Set(hc.map(([, c]) => c)); assert.ok(hex.size >= 12, 'les couleurs restent distinctes : ' + hex.size);
+  assert.equal(a11yDarken('#000EBC', bg), '#000EBC');
+});

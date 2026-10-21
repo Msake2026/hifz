@@ -17,9 +17,9 @@
 <link rel="stylesheet" href="fonts/fonts.css">
 <style>
 :root{
-  --bg:#f3ead6; --card:#fcf7ea; --ink:#2b2218; --muted:#7a6a52; --line:#decfa9; --line-soft:#ecddb6;
+  --bg:#f3ead6; --card:#fcf7ea; --ink:#2b2218; --muted:#6f6049; --line:#decfa9; --line-soft:#ecddb6;
   --accent:#0f5d46; --accent-ink:#fff8e6; --gold:#b58a2c; --gold-soft:#e3cf98; --glow:rgba(190,150,60,.20);
-  --ok:#1f7a4d; --okbg:#e1efd9; --ko:#a8362b; --kobg:#f6ddd5; --mid:#a8741a; --midbg:#f6e8c3;
+  --ok:#1e764a; --okbg:#e1efd9; --ko:#a8362b; --kobg:#f6ddd5; --mid:#895f15; --midbg:#f6e8c3;
   --pattern:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23b58a2c' stroke-opacity='.14'%3E%3Crect x='20' y='20' width='32' height='32'/%3E%3Crect x='20' y='20' width='32' height='32' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='4'/%3E%3C/g%3E%3C/svg%3E");
   --serif:"Cormorant Garamond","Amiri Quran",Georgia,serif;
 }
@@ -115,11 +115,15 @@ body.has-nav main{padding-bottom:96px}
 .vend{color:var(--accent);font-size:.8em;white-space:nowrap}
 .tjq{background:#ffe38a;color:#222;border-radius:4px;padding:0 3px}.tjn{color:#8a6d1f;font-weight:700;font-size:.55em;margin:0 3px 0 1px}
 .rd.tj{background:#fbf6e8;color:#222;padding:8px 10px;border-radius:10px} .rd.tj .vend{color:#8a6d1f}   /* page claire : les couleurs officielles du tajwīd restent lisibles aussi en mode sombre */
-.tj-h,.tj-s,.tj-l{color:#AAAAAA}.tj-n{color:#537FFF}.tj-p{color:#4050FF}.tj-m{color:#000EBC}.tj-o{color:#2144C1}.tj-q{color:#DD0008}.tj-c{color:#D500B7}.tj-f{color:#9400A8}
-.tj-w{color:#58B800}.tj-i{color:#26BFFD}.tj-a{color:#169777}.tj-u{color:#169200}.tj-d,.tj-b{color:#A1A1A1}.tj-g{color:#FF7E1E}
+:root{--tjc-h:#AAAAAA;--tjc-s:#AAAAAA;--tjc-l:#AAAAAA;--tjc-n:#537FFF;--tjc-p:#4050FF;--tjc-m:#000EBC;--tjc-o:#2144C1;--tjc-q:#DD0008;--tjc-c:#D500B7;--tjc-f:#9400A8;--tjc-w:#58B800;--tjc-i:#26BFFD;--tjc-a:#169777;--tjc-u:#169200;--tjc-d:#A1A1A1;--tjc-b:#A1A1A1;--tjc-g:#FF7E1E}   /* couleurs officielles de la légende ; remplacées par une version plus contrastée en mode « contraste renforcé » */
+.tj-h{color:var(--tjc-h)}.tj-s{color:var(--tjc-s)}.tj-l{color:var(--tjc-l)}.tj-n{color:var(--tjc-n)}.tj-p{color:var(--tjc-p)}.tj-m{color:var(--tjc-m)}.tj-o{color:var(--tjc-o)}.tj-q{color:var(--tjc-q)}.tj-c{color:var(--tjc-c)}.tj-f{color:var(--tjc-f)}
+.tj-w{color:var(--tjc-w)}.tj-i{color:var(--tjc-i)}.tj-a{color:var(--tjc-a)}.tj-u{color:var(--tjc-u)}.tj-d{color:var(--tjc-d)}.tj-b{color:var(--tjc-b)}.tj-g{color:var(--tjc-g)}
 .rvb{margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--line)}.rvb .rd{margin:0}
 .rtr{margin:4px 0 0;font-size:.95rem;line-height:1.55;text-align:start}.rtf{margin:6px 0 0;font-size:1rem;line-height:1.9;direction:rtl;text-align:right;color:var(--muted,inherit);font-family:"Amiri Quran","Traditional Arabic",serif}
 .tjkey{display:inline-flex;align-items:center;gap:6px;margin:2px 10px 2px 0;font-size:.85rem}.tjkey i{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid #0002}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.opt.c::after{content:' ✓'}.opt.w::after{content:' ✗'}   /* bonne / mauvaise réponse : pas seulement la couleur */
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 .pl{display:flex;gap:10px;align-items:baseline;justify-content:flex-start;padding:2px 4px;border-bottom:1px solid var(--line)}
 .pl .psep{color:var(--accent);font-size:.7em;flex:none}.pl .pn,.pp .pn{font-family:Inter,sans-serif;font-size:.65rem;color:var(--muted);flex:none;min-width:1.6em;text-align:center}
 .pp{padding:4px;border-bottom:1px solid var(--line)}
@@ -587,7 +591,7 @@ function setNav(on){
   const n = $('nav'); n.hidden = !on; document.body.classList.toggle('has-nav', on); screen = on ? 'tab' : 'full';
   if (!on) return;
   const due = dueRefs().length;
-  n.innerHTML = `<div class="in">${TABS.map(([id, t, ico]) => `<button class="${cfg.tab === id ? 'sel' : ''}" data-act="tab" data-v="${id}" aria-label="${tr(t)}"${cfg.tab === id ? ' aria-current="page"' : ''}>
+  n.innerHTML = `<div class="in">${TABS.map(([id, t, ico]) => `<button class="${cfg.tab === id ? 'sel' : ''}" ${cfg.tab === id ? 'aria-current="page"' : ''} data-act="tab" data-v="${id}" aria-label="${tr(t)}"${cfg.tab === id ? ' aria-current="page"' : ''}>
     <svg viewBox="0 0 24 24" aria-hidden="true">${ico}</svg>${tr(t)}${id === 'home' && due ? `<span class="badge">${due > 99 ? '99+' : due}</span>` : ''}</button>`).join('')}</div>`;
 }
 const scopeLabel = sc => sc.type === 'matn' ? (sc.id === 'all' ? tr('Tous les moutoun') : (MT[sc.id] ? MN(sc.id) : tr('Matn')))
@@ -626,6 +630,7 @@ function syncCfg(){
   if ($('sn')) cfg.n = +v('sn');
   if ($('slevel')) cfg.level = +v('slevel');
   if ($('stjk')) cfg.tjKind = v('stjk');
+  if ($('shc')){ const x = v('shc'); if (x === 'auto') delete cfg.hc; else cfg.hc = x === 'on'; applyA11y(); }
   if ($('smkk')) cfg.mkKind = v('smkk');
   if ($('sahk')) cfg.ahKind = v('sahk');
   if ($('aud-from')){ cfg.audFrom = +v('aud-from'); cfg.audTo = +v('aud-to'); cfg.audCap = +v('aud-cap'); cfg.audQ = +v('aud-q'); audioUI.plan = null; }
@@ -816,6 +821,27 @@ function planSetupHtml(){
   <button class="pri big" data-act="plan-save">${plan ? tr('Enregistrer le plan') : tr('Créer mon plan')}</button>
   ${plan ? `<button class="big" style="margin-top:8px" data-act="plan-cancel">${tr('Annuler')}</button>` : ''}`;
 }
+function planWeek(pl, from = new Date()){ // prévision sur 7 jours : on suppose que la portion prévue est apprise chaque jour
+  const log = (pl.log || []).slice(), out = [];
+  for (let i = 0; i < 7; i++){
+    const day = addDays(from, i), dk = dayKey(day), lim = dayKey(addDays(day, -pl.recent));
+    const rec = log.filter(c => c.d < dk && c.d >= lim).length, old = log.filter(c => c.d < dk && c.d < lim).length;
+    const man = old ? Math.min(old, Math.max(1, Math.ceil(old / pl.cycle))) : 0;
+    const dn = i === 0 ? (pl.done || {})[dk] || {} : {};
+    let chunk = null;
+    if (i === 0 && dn.sabaq) chunk = log.slice().reverse().find(c => c.d === dk) || null;    // déjà appris aujourd'hui
+    else { chunk = planNextChunk({...pl, log}); if (chunk) log.push({d: dk, s: chunk.s, a: chunk.a, b: chunk.b}); }
+    out.push({day, key: dk, chunk, rec, man, done: dn});
+  }
+  return out;
+}
+function planWeekHtml(pl){
+  const W = planWeek(pl), fmt = d => d.toLocaleDateString(LOCALE(), {weekday: 'long', day: 'numeric', month: 'short'});
+  return `<div class="card"><h2>${tr('Semaine')}</h2>
+    ${W.map((x, i) => `<div class="weak" style="display:block${i === 0 ? ';font-weight:600' : ''}"><div>${i === 0 ? '▸ ' : ''}${esc(fmt(x.day))}</div>
+      <div class="ref" style="margin:2px 0 0">${x.chunk ? `${x.done.sabaq ? '✓ ' : ''}${tr('Nouveau :')} ${esc(passageLabel(chunkRefs(x.chunk)))}` : tr('Plan terminé 🎉')}${x.rec ? ` · ${x.done.sabqi ? '✓ ' : ''}${trp(x.rec, 'révision récente : {n} portion|révision récente : {n} portions')}` : ''}${x.man ? ` · ${x.done.manzil ? '✓ ' : ''}${trp(x.man, 'révision ancienne : {n} portion|révision ancienne : {n} portions')}` : ''}</div></div>`).join('')}
+    <p class="ref" style="margin:8px 0 0">${tr("Prévision : elle suppose que tu apprends chaque jour la portion prévue. Les portions de révision sont celles de la règle sabqi / manzil de ton plan.")}</p></div>`;
+}
 function tabPlan(){
   if (!plan || planEditing) return planSetupHtml() + weakCard(true);
   const T = planToday(), units = planUnits(plan), L = learnedKeys(plan), nL = units.filter(u => L.has(key(u))).length, pct = Math.round(100 * nL / units.length), rem = units.length - nL;
@@ -836,6 +862,7 @@ function tabPlan(){
     : `<div class="card"><h2>${tr('Révision récente (sabqi)')}</h2><p class="sub" style="margin:0">${tr('Rien à réviser pour le moment.')}</p></div>`}
   ${T.man.length ? row(tr('Révision ancienne (manzil)'), trp(T.man.length, '{n} portion à revoir aujourd\'hui (cycle de {c} jours)|{n} portions à revoir aujourd\'hui (cycle de {c} jours)', {c: plan.cycle}) + (T.xtra ? ' · ' + tr('dont {n} à renforcer', {n: T.xtra}) : ''), T.d.manzil, 'plan-manzil', tr('Réviser'))
     : `<div class="card"><h2>${tr('Révision ancienne (manzil)')}</h2><p class="sub" style="margin:0">${tr('Rien à réviser pour le moment.')}</p></div>`}
+  ${planWeekHtml(plan)}
   ${planDefsHtml(false)}
   <div class="row"><button data-act="plan-edit">${tr('Modifier le plan')}</button><button data-act="plan-del" style="color:var(--ko)">${tr('Supprimer le plan')}</button></div>`;
 }
@@ -951,7 +978,7 @@ function tabTrain(){
         <select id="smkk">${MKKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.mkKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
       ${o.sf ? `<div><label class="f" for="ssfk">${tr('Type de question de ṣifāt')}</label>
         <select id="ssfk">${SFKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.sfKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
-      ${o.tj ? `<div><label class="f" for="stjk">${tr('Type de question de tajwīd')}</label>
+      ${o.tj ? `${cfg.tjKind === 'read' ? `<p class="ref" style="flex:1 1 100%;margin:0">${tr("Ce type de question repose sur les couleurs : choisis un autre type si tu distingues mal les couleurs.")}</p>` : ''}<div><label class="f" for="stjk">${tr('Type de question de tajwīd')}</label>
         <select id="stjk">${TJKINDS.map(([id, t]) => `<option value="${id}" ${id === cfg.tjKind ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
       ${o.level ? `<div><label class="f">${tr('Mots cachés (mots manquants)')}</label>
         <select id="slevel">${[20, 40, 60, 80].map(n => `<option value="${n}" ${n === cfg.level ? 'selected' : ''}>${n} %</option>`).join('')}</select></div>` : ''}
@@ -1033,6 +1060,11 @@ function tabSettings(){
       <button data-act="ics">📅 ${tr('Ajouter au calendrier')}</button></div>
   </div>
 
+  <div class="card"><h2>${tr('Accessibilité')}</h2>
+    <label class="f" for="shc">${tr('Contraste renforcé des couleurs du tajwīd')}</label>
+    <select id="shc"><option value="auto" ${cfg.hc === undefined ? 'selected' : ''}>${tr('Automatique (préférence du système)')}</option><option value="on" ${cfg.hc === true ? 'selected' : ''}>${tr('Oui')}</option><option value="off" ${cfg.hc === false ? 'selected' : ''}>${tr('Non')}</option></select>
+    <p class="ref" style="margin:6px 0 0">${tr("Les couleurs officielles du tajwīd ont un faible contraste sur fond clair (10 règles sur 15 ont une couleur sous la recommandation 4,5:1). Ce réglage les fonce, en gardant la même teinte.")}</p></div>
+
   ${audioCard()}
 
   ${remindCard()}
@@ -1040,6 +1072,8 @@ function tabSettings(){
   <div class="card"><h2>${tr('Mes données')}</h2>
     <div class="row"><button data-act="export">⬇ ${tr('Exporter ma progression')}</button><button data-act="import">⬆ ${tr('Importer')}</button></div>
     <input type="file" id="impfile" accept="application/json,.json" hidden>
+    <label class="f" for="csv-kind">${tr('Exporter pour un tableur (CSV)')}</label>
+    <div class="row" style="align-items:end"><select id="csv-kind">${CSVKINDS.map(([id, t]) => `<option value="${id}">${tr(t)}</option>`).join('')}</select><button data-act="csv" style="flex:0 0 auto">⬇ CSV</button></div>
     <p class="ref" style="margin:8px 0 0">${tr('Tout est stocké sur cet appareil. Exporte régulièrement pour ne rien perdre en changeant de téléphone.')}</p>
     <p style="margin:6px 0 0"><button class="link" data-act="reset" style="color:var(--ko)">${tr('Réinitialiser statistiques et historique')}</button></p>
   </div>
@@ -1088,6 +1122,7 @@ function start(fixed){
 function shell(inner){
   setNav(false);
   $app.innerHTML = `
+  <h1 class="sr-only">${tr('Question {i} sur {n}', {i: ses.i, n: ses.total})}</h1>
   <div class="top"><button class="link" data-act="home">✕ ${tr('Quitter')}</button><span>${ses.i} / ${ses.total}</span></div>
   <div class="bar"><i style="width:${100 * (ses.i - 1) / ses.total}%"></i></div>
   <div class="card">${inner}</div>`;
@@ -1298,7 +1333,7 @@ function qCloze(){
   const hidden = new Set(shuffle(T.idx).slice(0, k));
   cur.T = T; cur.hidden = hidden; cur.audio = [r];
   const html = T.tok.map((w, i) => !hidden.has(i) ? esc(w)
-    : cfg.input === 'type' ? `<input class="blankin" data-i="${i}" dir="rtl" lang="ar" autocomplete="off">`
+    : cfg.input === 'type' ? `<input class="blankin" data-i="${i}" dir="rtl" lang="ar" autocomplete="off" aria-label="${tr('Mot manquant {n}', {n: [...hidden].sort((x, y) => x - y).indexOf(i) + 1})}">`
     : `<span class="blank" data-act="blank" data-i="${i}">${esc(w)}</span>`).join(' ');
   shell(`<p class="ref">${tr('Complète le verset ({x}).', {x: trp(k, '{n} mot caché|{n} mots cachés')})}</p>
     <div class="ar">${html}</div>${qref(r)}
@@ -1912,6 +1947,52 @@ async function download(name, text, type){
   a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name; a.click();
 }
 
+/* A11Y:begin — contrastes WCAG 2.x (fonctions pures testées en Node) */
+const a11yLum = hex => { const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const a11yContrast = (a, b) => { const x = a11yLum(a), y = a11yLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+function a11yHsl(hex){ const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  if (!d) return [0, 0, l]; const s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); const h = mx === r ? ((g - b) / d + (g < b ? 6 : 0)) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return [h * 60, s, l]; }
+function a11yHex(h, s, l){ const f = n => { const k = (n + h / 30) % 12, a = s * Math.min(l, 1 - l); return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))).toString(16).padStart(2, '0'); }; return '#' + f(0) + f(8) + f(4); }
+function a11yDarken(hex, bg, min = 4.5){ // même teinte, plus sombre, jusqu'à atteindre le contraste demandé sur le fond bg
+  let [h, s, l] = a11yHsl(hex), c = hex; while (a11yContrast(c, bg) < min && l > 0){ l = Math.max(0, l - 0.01); c = a11yHex(h, s, l); } return c;
+}
+/* A11Y:end */
+const TJ_PAGE = '#fbf6e8';                                          // fond clair des textes colorés (.rd.tj)
+const tjHcStyle = () => `:root{${TJLEG.map(([c, col]) => `--tjc-${c}:${a11yDarken(col, TJ_PAGE)}`).join(';')};--tjc-s:${a11yDarken('#AAAAAA', TJ_PAGE)};--tjc-b:${a11yDarken('#A1A1A1', TJ_PAGE)}}`;
+function applyA11y(){ // contraste renforcé des couleurs du tajwīd (réglage, ou préférence du système « plus de contraste »)
+  const on = cfg.hc !== undefined ? !!cfg.hc : !!(window.matchMedia && matchMedia('(prefers-contrast: more)').matches);
+  let st = document.getElementById('tjhc'); if (on){ if (!st){ st = document.createElement('style'); st.id = 'tjhc'; document.head.appendChild(st); } st.textContent = tjHcStyle(); } else if (st) st.remove();
+}
+/* CSV:begin — export des statistiques pour un tableur (fonctions pures, testées en Node) */
+function csvCell(v, sep){ // protège les séparateurs, guillemets et sauts de ligne ; neutralise les cellules qui commenceraient une formule (= + - @)
+  let t = v === null || v === undefined ? '' : String(v);
+  if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+([.,]\d+)?$/.test(t)) t = "'" + t;
+  return t.includes(sep) || /["\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+}
+const toCsv = (rows, sep) => '\ufeff' + rows.map(r => r.map(c => csvCell(c, sep)).join(sep)).join('\r\n') + '\r\n';   // BOM : Excel lit bien l'UTF-8 (arabe compris)
+/* CSV:end */
+const CSVKINDS = [['verses', 'Versets (réussites, ratés, prochaine révision)'], ['days', 'Réponses par jour'], ['errors', "Historique des erreurs"], ['drills', 'Exercices de tajwīd, makhārij, ṣifāt, aḥkām, madd']];
+function csvRows(kind){
+  const pct = (o, k) => o + k ? Math.round(100 * o / (o + k)) : '', dt = t => new Date(t).toISOString().slice(0, 10);
+  if (kind === 'days') return [[tr('Date'), tr('Réponses')], ...Object.entries(days).sort().map(([d, n]) => [d, n])];
+  if (kind === 'errors') return [[tr('Date'), tr('Heure'), tr('Sourate / matn'), tr('Nom'), tr('Verset'), tr('Exercice'), tr('Score'), tr('Réponse donnée'), tr('Mots faux')],
+    ...errors.map(e => { const r = pk(e.k), q = isQ(r.s), tm = new Date(e.t); return [dt(e.t), tm.toTimeString().slice(0, 5), r.s, book(r.s) ? (q ? SN(r.s) : MN(r.s)) : '', r.a, MODE_NAME[e.m] || e.m, e.sc, e.ans || '', (e.bad || []).join(' ')]; })];
+  if (kind === 'drills'){
+    const lab = k => { const [t, v] = k.split(':'); return t === 'mk' ? tr('Makhārij') + ' ' + v : t === 'ah' ? tr('Aḥkām') + ' ' + (AH_NAME[v] || v) : t === 'md' ? tr('Madd') + ' ' + (MD_NAME[v] || v) : tr('Ṣifāt') + ' ' + (hfAttr(v) ? hfAttr(v).ar + ' ' + hfAttr(v).tr : v); };
+    return [[tr('Exercice'), tr('Élément'), tr('Réussites'), tr('Ratés'), tr('Taux (%)')],
+      ...Object.entries(tjs).filter(([c]) => TJNAME[c]).map(([c, [o, k]]) => [tr('Tajwīd'), tr(TJNAME[c]), o, k, pct(o, k)]),
+      ...Object.entries(hfs).map(([key, [o, k]]) => [lab(key).split(' ')[0], lab(key), o, k, pct(o, k)])];
+  }
+  return [[tr('Type'), tr('Sourate / matn'), tr('Nom'), tr('Verset'), tr('Page'), tr('Juz'), tr('Réussites'), tr('Ratés'), tr('Taux (%)'), tr('Intervalle (jours)'), tr('Prochaine révision')],
+    ...Object.entries(stats).filter(([k]) => book(pk(k).s)).map(([k, [o, ko]]) => { const r = pk(k), q = isQ(r.s), v = q ? Q[r.s - 1].a[r.a - 1] : null, sc = sched[k];
+      return [q ? tr('Coran') : tr('Matn'), r.s, q ? SN(r.s) : MN(r.s), r.a, v ? v.p : '', v ? v.j : '', Math.round(o * 100) / 100, Math.round(ko * 100) / 100, pct(o, ko), sc ? Math.round(sc.iv * 10) / 10 : '', sc ? dt(sc.due) : '']; })
+    .sort((a, b) => (typeof a[1] === 'number' ? a[1] : 999) - (typeof b[1] === 'number' ? b[1] : 999) || a[3] - b[3])];
+}
+function exportCsv(kind){
+  const k = CSVKINDS.some(x => x[0] === kind) ? kind : 'verses', sep = LANG === 'fr' ? ';' : ',';
+  download(`hifz-${k}-${today()}.csv`, toCsv(csvRows(k), sep), 'text/csv;charset=utf-8');
+}
+
 /* ---------- sauvegarde / restauration ---------- */
 function exportData(){
   download('hifz-sauvegarde-' + today() + '.json', JSON.stringify({app: 'hifz', v: 1, cfg, stats, sched, days, custom, errors, plan}), 'application/json');
@@ -2139,6 +2220,7 @@ const onClick = e => {
     case 'strengthen': { const W = weakNow().slice(0, 10); if (W.length) start(shuffle(W.map(w => pk(w.k)))); } break;
     case 'ics': exportIcs(); break;
     case 'export': exportData(); break;
+    case 'csv': exportCsv($('csv-kind') ? $('csv-kind').value : 'verses'); break;
     case 'import': $('impfile').click(); break;
     case 'addcustom': addCustom(); break;
     case 'delcustom':
@@ -2301,7 +2383,7 @@ const TJLEG = [['h', '#AAAAAA', 'Hamzat al-waṣl'], ['l', '#AAAAAA', 'Lām sola
   ['w', '#58B800', 'Idghām shafawī'], ['i', '#26BFFD', 'Iqlāb'], ['a', '#169777', 'Idghām avec ghunna'], ['u', '#169200', 'Idghām sans ghunna'], ['d', '#A1A1A1', 'Idghām mutajānisayn / mutaqāribayn'], ['g', '#FF7E1E', 'Ghunna (2 temps)']];
 const TJNAME = Object.fromEntries(TJLEG.map(([c, , n]) => [c, n]));   // famille de règle -> nom (légende officielle)
 const TRSRC = {fr: 'Hamidullah', en: 'Saheeh International'};
-const tjLegendHtml = () => `<p style="margin:6px 0 0">${TJLEG.map(([c, col, n]) => `<span class="tjkey"><i style="background:${col}"></i>${esc(tr(n))}</span>`).join('')}</p>`;
+const tjLegendHtml = () => `<p style="margin:6px 0 0">${TJLEG.map(([c, col, n]) => `<span class="tjkey"><i style="background:var(--tjc-${c},${col})"></i>${esc(tr(n))}</span>`).join('')}</p>`;
 function rdSources(){
   const L = [], a = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
   if (cfg.rdTaj) L.push(`<p class="ref" style="margin:8px 0 0">${tr("Couleurs du tajwīd : annotation automatique d'Islamic Network (api.alquran.cloud), non relue par un enseignant. Vérifie avec ton professeur ; elle suit une écriture légèrement différente du texte des exercices.")} ${a('https://1x.ax/islamic-network/alquran/tools/~files/master/docs/tajweed.md', tr('Légende officielle'))}.
@@ -2328,13 +2410,13 @@ function secHtml(id){
   const q = isQ(id), B = book(id), n = B.a.length, siz = cfg.rdSize;
   if (q){
     const bas = id !== 1 && id !== 9 ? `<div class="ar" style="text-align:center;font-size:1.5rem">${esc(verse({s: 1, a: 1}))}</div>` : '';
-    return `<section class="rsec" id="rs-${id}"><h3 class="rtitle"><span class="ar">${esc(B.ar)}</span><small>${id}. ${esc(SN(id))} · ${trp(n, '{n} verset|{n} versets')} · ${tr('pages {a}–{b}', {a: B.a[0].p, b: B.a[n - 1].p})}</small></h3>${bas}
+    return `<section class="rsec" id="rs-${id}"><h2 class="rtitle"><span class="ar">${esc(B.ar)}</span><small>${id}. ${esc(SN(id))} · ${trp(n, '{n} verset|{n} versets')} · ${tr('pages {a}–{b}', {a: B.a[0].p, b: B.a[n - 1].p})}</small></h2>${bas}
       ${cfg.rdTr || cfg.rdTf ? B.a.map((_, i) => `<div class="rvb"><div class="rd${cfg.rdTaj ? ' tj' : ''}" style="font-size:${siz}rem">${rvSpan(id, i + 1)}</div>
         ${cfg.rdTr ? `<p class="rtr" lang="${cfg.rdTr}" dir="ltr">${esc(window.QX[cfg.rdTr].s[id - 1][i])}</p>` : ''}${cfg.rdTf ? `<p class="rtf" lang="ar">${esc(window.QX.muyassar.s[id - 1][i])}</p>` : ''}</div>`).join('')
       : `<div class="rd${cfg.rdTaj ? ' tj' : ''}" style="font-size:${siz}rem">${B.a.map((_, i) => rvSpan(id, i + 1)).join(' ')}</div>`}</section>`;
   }
   const unit = {vers: '{n} vers|{n} vers', hadith: '{n} hadith|{n} hadiths', passage: '{n} passage|{n} passages'}[B.unit] || '{n}';
-  return `<section class="rsec" id="rs-${id}"><h3 class="rtitle"><span class="ar">${esc(B.ar)}</span><small>${esc(MN(id))} · ${trp(n, unit)}${B.author ? ' · ' + esc(tr(B.author)) : ''}</small></h3>${srcNote({id})}
+  return `<section class="rsec" id="rs-${id}"><h2 class="rtitle"><span class="ar">${esc(B.ar)}</span><small>${esc(MN(id))} · ${trp(n, unit)}${B.author ? ' · ' + esc(tr(B.author)) : ''}</small></h2>${srcNote({id})}
     ${B.a.map((u, i) => {
       const w = u.t.split(/\s+/), h = B.kind === 'poem' && u.m ? u.m : 0;
       const txt = h ? `<span>${esc(w.slice(0, h).join(' '))}</span><span class="psep">✦</span><span>${esc(w.slice(h).join(' '))}</span>` : esc(u.t);
@@ -2365,6 +2447,7 @@ function renderReader(){
   const total = q ? rd.secs.reduce((a, id) => a + slen(id), 0) : 0;
   const info = multi ? (q ? `${trp(rd.secs.length, '{n} sourate|{n} sourates')} · ${trp(total, '{n} verset|{n} versets')}` : `${trp(rd.secs.length, '{n} matn|{n} moutoun')}`) : '';
   $app.innerHTML = `
+  <h1 class="sr-only">${tr('Lecteur')}</h1>
   <div class="top"><button class="link" data-act="rd-back">${tr('← Retour')}</button><span>${q ? tr('Coran') : tr('Moutoun')}</span></div>
   <div class="card" style="margin-top:8px">${sel}${jump}
     ${info ? `<p class="ref" style="margin:8px 0 0">${info}</p>` : ''}
@@ -2484,7 +2567,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v33';
+const APP_VERSION = '21 oct. 2026 · v36';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -3028,7 +3111,16 @@ function adminDelete(id){ const u = userOf(id); if (!u) return;
   if (confirm(tr('Supprimer définitivement le compte {u} et toute sa progression ? Irréversible.', {u: u.email}))) adminAct(() => sb.rpc('admin_delete_user', {target: id})); }
 $app.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.enter){ e.preventDefault(); $(e.target.dataset.enter)?.click(); } });
 
+/* ---------- accessibilité : lie chaque étiquette à son champ, déclare la langue du texte arabe, annonce les retours ---------- */
+function fixA11y(){
+  $app.querySelectorAll('label:not([for])').forEach(l => { const c = l.closest('.card, div, form') || $app; const f = [...c.querySelectorAll('select, input:not([type=checkbox]):not([type=file]), textarea')].find(x => (l.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING) && !l.contains(x)); if (f && f.id && !l.querySelector('input,select')) l.setAttribute('for', f.id); });
+  $app.querySelectorAll('.ar:not([lang]), .rd:not([lang]), .rv:not([lang])').forEach(e => e.setAttribute('lang', 'ar'));
+  ['fb', 'aud-msg', 'rem-msg', 'acc-msg', 'cm-status', 'heard'].forEach(id => { const e = document.getElementById(id); if (e && !e.hasAttribute('aria-live')) e.setAttribute('aria-live', 'polite'); });
+}
+if (window.MutationObserver) new MutationObserver(() => { clearTimeout(fixA11y.t); fixA11y.t = setTimeout(fixA11y, 30); }).observe($app, {childList: true, subtree: true});
+
 /* ---------- démarrage ---------- */
+applyA11y();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 (async function init(){
   MT = Object.fromEntries((window.MOUTOUN?.texts || []).map(t => [t.id, t]));

@@ -18,3 +18,5 @@
 6. **Essai complet sur un iPhone** : installer l'application, créer un compte, recevoir l'e-mail, activer un rappel, télécharger une sourate hors ligne.
 
 GitHub désactive les tâches planifiées d'un dépôt sans activité pendant 60 jours : un envoi (`git push`) ou un lancement manuel les réactive (GitHub t'écrit avant de le faire).
+7. **Lecteur d'écran réel** : l'audit automatique (axe-core) ne remplace pas un essai avec VoiceOver (iPhone : Réglages → Accessibilité → VoiceOver) sur les écrans principaux et un exercice.
+
