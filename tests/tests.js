@@ -562,6 +562,41 @@
       ok(appText().length > 200, L); E("tch.students = window.__state.students; tch.detail = {id: 's1', data: window.__state.detail}; renderTeacher()"); eq(E('[...missingKeys]'), [], L); E("renderAdmin()"); eq(E('[...missingKeys]'), [], L + ' admin'); }
     E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false}; adm.users = null");
   });
+  test('Enseignant : messages, objectifs fixés sans acceptation, code de classe (serveur simulé)', async () => {
+    reset(); const calls = []; W.__calls = calls; const iso = d => new Date(Date.now() + d * 864e5).toISOString(), day = d => iso(d).slice(0, 10);
+    W.__S = {msgs: [{id: 7, teacher_email: 'prof@x.fr', body: 'Courage pour la sourate 78 !', created_at: iso(-1)}], goals: [{id: 3, teacher_email: 'prof@x.fr', surah: 78, due: day(5), note: 'avant dimanche'}], classes: [{code: 'CLASSE22', expires_at: iso(20), uses: 3, max_uses: 40}], tgoals: []};
+    E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; stats = {'78:1': [3, 0], '78:2': [2, 1]}; me = {user: {id: 's1', email: 'eleve@x.fr'}, profile: {role: 'user'}};
+      sb = {from(){ return {select(){ const p = Promise.resolve({data: [], error: null}); p.is = () => ({gt: () => p}); return p; }}; }, auth: {}, async rpc(n, a){ const S = window.__S; window.__calls.push(n + ' ' + JSON.stringify(a || {}));
+        if (n === 'links_mine' || n === 'access_log_mine') return {data: [], error: null}; if (n === 'messages_mine') return {data: S.msgs, error: null};
+        if (n === 'goals_for') return {data: a && a.target ? S.tgoals : S.goals, error: null}; if (n === 'message_delete'){ S.msgs = S.msgs.filter(m => m.id !== a.p_id); return {data: null, error: null}; }
+        if (n === 'class_join') return a.p_code.toUpperCase() === 'BADCODE1' ? {data: null, error: {message: 'Code invalide ou expiré.'}} : {data: [{teacher_id: 't1', email: 'prof@x.fr'}], error: null};
+        if (n === 'class_mine') return {data: S.classes, error: null}; if (n === 'class_create'){ S.classes.push({code: 'NOUVEAU2', expires_at: new Date(Date.now() + 30 * 864e5).toISOString(), uses: 0, max_uses: 40}); return {data: null, error: null}; }
+        if (n === 'class_close'){ S.classes = S.classes.filter(c => c.code !== a.p_code); return {data: null, error: null}; }
+        if (n === 'teacher_students') return {data: [{id: 's1', email: 'eleve@x.fr', since: new Date().toISOString(), last_seen: null, answers: 5, ok: 4, errors: 1}], error: null};
+        if (n === 'teacher_student_data') return {data: {email: 'eleve@x.fr', stats: {'78:1': [3, 0], '78:2': [2, 1], '78:3': [1, 0]}, days: {}, errors: []}, error: null};
+        if (n === 'teacher_goal_set'){ S.tgoals.push({id: 11, teacher_email: 'prof@x.fr', surah: a.p_surah, due: a.p_due, note: a.p_note || null}); return {data: null, error: null}; }
+        if (n === 'goal_delete'){ S.tgoals = S.tgoals.filter(g => g.id !== a.p_id); return {data: null, error: null}; }
+        return {data: null, error: null}; }};`);
+    E("openAccount()"); for (let i = 0; i < 40 && !appText().includes('Objectifs fixés'); i++) await wait(50); await wait(200);
+    let t = appText(); ok(t.includes('Courage pour la sourate 78') && t.includes('prof@x.fr'), 'message de l’enseignant'); ok(t.includes('avant dimanche') && /2\/\d+ versets travaillés/.test(t), 'objectif et avancement : ' + t.slice(t.indexOf('Objectifs fixés'), t.indexOf('Objectifs fixés') + 140));
+    ok(!$q('[data-act="tch-goal-accept"]') && !/Accepter|Refuser/.test(t), 'aucune acceptation demandée à l’élève pour un objectif'); noErr('élève');
+    clickAct('tch-msg-del', '7'); await wait(300); ok(calls.some(c => c === 'message_delete {"p_id":7}') && !appText().includes('Courage pour'), 'message supprimé par l’élève');
+    $q('#tch-join').value = 'badcode1'; clickAct('tch-join-go'); await wait(300); ok(appText().includes('Code invalide ou expiré.'), 'code de classe refusé');
+    $q('#tch-join').value = 'classe22'; clickAct('tch-join-go'); await wait(300); ok(calls.includes('class_join {"p_code":"classe22"}') && appText().includes('Classe rejointe : prof@x.fr'), 'classe rejointe');
+    // côté enseignant
+    E("me = {user: {id: 't1', email: 'prof@x.fr'}, profile: {role: 'teacher'}}; openTeacher()"); for (let i = 0; i < 40 && !appText().includes('eleve@x.fr'); i++) await wait(50); await wait(200);
+    t = appText(); ok(t.includes('Groupe de classe') && t.includes('CLASSE22') && t.includes('3/40'), 'code de classe affiché');
+    clickAct('tch-class-new'); for (let i = 0; i < 40 && !appText().includes('NOUVEAU2'); i++) await wait(50); ok(appText().includes('NOUVEAU2'), 'code de classe créé');
+    clickAct('tch-class-close', 'CLASSE22'); await wait(300); ok(calls.includes('class_close {"p_code":"CLASSE22"}') && !appText().includes('CLASSE22'), 'code de classe fermé');
+    clickAct('tch-detail', 's1'); for (let i = 0; i < 40 && !$q('[data-act="tch-goal-add"]'); i++) await wait(50); ok($q('[data-act="tch-send"]') && $q('#tch-gs').options.length === 114, 'formulaires objectif et message');
+    $q('#tch-gs').value = '78'; $q('#tch-gd').value = day(6); $q('#tch-gn').value = 'relire'; clickAct('tch-goal-add', 's1'); for (let i = 0; i < 40 && !appText().includes('relire'); i++) await wait(50);
+    ok(calls.some(c => c === 'teacher_goal_set {"target":"s1","p_surah":78,"p_due":"' + day(6) + '","p_note":"relire"}'), 'objectif fixé'); ok(/3\/\d+ \(\d+ %\)/.test(appText()), 'avancement de l’élève affiché');
+    clickAct('tch-goal-del', '11'); await wait(300); ok(calls.includes('goal_delete {"p_id":11}') && !appText().includes('relire'), 'objectif supprimé');
+    clickAct('tch-send', 's1'); await wait(200); ok(appText().includes('Écris un message.'), 'message vide refusé');
+    $q('#tch-msg').value = 'Bravo !'; clickAct('tch-send', 's1'); await wait(300); ok(calls.includes('teacher_message_send {"target":"s1","p_body":"Bravo !"}') && appText().includes('Message envoyé.'), 'message envoyé');
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); tch.detail = {id: 's1', data: {stats: {}, days: {}, errors: []}, goals: [{id: 1, surah: 2, due: '${day(3)}', note: 'x'}]}; renderTeacher(); openAccount()`); await wait(300); E("tch.msgs = [{id: 1, teacher_email: 'p@x.fr', body: 'b', created_at: new Date().toISOString()}]; renderAccount()"); eq(E('[...missingKeys]'), [], L); }
+    E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; stats = {}; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: ''}");
+  });
   test('Espace admin : surveillance des e-mails (calme, attention, alerte, nom de domaine)', async () => {
     const mk = (n, agoH) => Array.from({length: n}, (_, i) => ({id: 'u' + agoH + i, email: `u${agoH}-${i}@x.fr`, role: 'user', blocked: false, created_at: new Date(Date.now() - agoH * 36e5).toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}));
     reset(); E("me = {user: {id: 'a', email: 'admin@x.fr'}, profile: {role: 'admin'}}");

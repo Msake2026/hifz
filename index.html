@@ -2313,6 +2313,13 @@ const onClick = e => {
     case 'tch-cancel': tchCancel(v); break;
     case 'tch-revoke': tchRevoke(v); break;
     case 'tch-copy': tchCopy(); break;
+    case 'tch-msg-del': tchMsgDel(v); break;
+    case 'tch-join-go': tchJoin(); break;
+    case 'tch-class-new': tchClassNew(); break;
+    case 'tch-class-close': tchClassClose(v); break;
+    case 'tch-send': tchSend(v); break;
+    case 'tch-goal-add': tchGoalAdd(v); break;
+    case 'tch-goal-del': tchGoalDel(v); break;
     case 'tch-req': tchAct(() => sb.rpc('teacher_request'), tr('Demande envoyée.')).then(tchLoadStudent); break;
     case 'tch-req-cancel': tchAct(() => sb.rpc('teacher_request_cancel'), tr('Demande annulée.')).then(tchLoadStudent); break;
     case 'adm-req-ok': adminAct(() => sb.rpc('admin_set_role', {target: v, new_role: 'teacher'})); break;
@@ -3110,9 +3117,13 @@ function tcFrequent(errors, n = 10){ // versets les plus souvent ratés
   const c = {}; for (const e of errors || []){ const x = c[e.k] ||= {k: e.k, n: 0, last: 0}; x.n++; x.last = Math.max(x.last, e.t); }
   return Object.values(c).sort((a, b) => b.n - a.n || b.last - a.last).slice(0, n);
 }
+function tcGoal(stats, surah, total){ // avancement d'un objectif : versets déjà travaillés de la sourate
+  let seen = 0; for (const k of Object.keys(stats || {})) if (k.split(':')[0] === String(surah)) seen++;
+  return {seen, total, pct: total ? Math.min(100, Math.round(100 * seen / total)) : 0};
+}
 /* TC:end */
 const isTeacher = () => !!(me && me.profile && me.profile.role === 'teacher');
-let tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false};
+let tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: ''};
 const tchErr = e => { tch.msg = friendly(e); tch.ok = false; };
 async function tchLoadStudent(){ // ce que l'élève voit : ses invitations, ses enseignants, les consultations
   if (!me || !sb) return;
@@ -3120,6 +3131,8 @@ async function tchLoadStudent(){ // ce que l'élève voit : ses invitations, ses
     const [a, b, c] = await Promise.all([sb.rpc('links_mine'), sb.from('teacher_invites').select('code, expires_at, used_by').is('used_by', null).gt('expires_at', new Date().toISOString()), sb.rpc('access_log_mine')]);
     for (const r of [a, b, c]) if (r.error) throw r.error;
     const q = await sb.from('teacher_requests').select('created_at'); tch.req = !q.error && !!(q.data && q.data.length);
+    const safe = async f => { try { const r = await f(); return r.error ? [] : (r.data || []); } catch { return []; } };   // messages et objectifs : absents tant que teacher.sql n'est pas relancé
+    [tch.msgs, tch.goals] = await Promise.all([safe(() => sb.rpc('messages_mine')), safe(() => sb.rpc('goals_for'))]);
     tch.links = (a.data || []).filter(x => x.as_role === 'teacher'); tch.invites = b.data || []; tch.log = c.data || [];
   } catch (e){ tchErr(e); }
   tch.loaded = true; if (screen === 'account') renderAccount();
@@ -3136,6 +3149,11 @@ function tchStudentCard(){
     ${I && I.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Invitations en attente')}</h3>${I.map(x => `<div class="weak"><span><b>${esc(x.code)}</b> · ${tr("jusqu'au {d}", {d: fd(x.expires_at)})}</span><button class="link" data-act="tch-cancel" data-v="${esc(x.code)}">${tr('Annuler')}</button></div>`).join('')}` : ''}
     ${L && L.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Mes enseignants')}</h3>${L.map(x => `<div class="weak"><span>${esc(x.email)} · ${tr('depuis le {d}', {d: fd(x.since)})}</span><button class="link" style="color:var(--ko)" data-act="tch-revoke" data-v="${x.other_id}">${tr("Retirer l'accès")}</button></div>`).join('')}` : ''}
     ${G && G.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Consultations récentes de mes données')}</h3>${G.slice(0, 8).map(x => `<p class="ref" style="margin:0">${fdate(Date.parse(x.at))} · ${esc(x.teacher_email)}</p>`).join('')}` : ''}
+    ${tch.goals && tch.goals.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Objectifs fixés par mes enseignants')}</h3>${tch.goals.map(g => { const x = tcGoal(stats, g.surah, slen(g.surah)); return `<div class="weak"><span><b>${esc(SN(g.surah))}</b> · ${tr('pour le {d}', {d: fd(g.due)})} · ${x.seen}/${x.total} ${tr('versets travaillés')} (${x.pct} %)${g.note ? ` · ${esc(g.note)}` : ''}</span></div>`; }).join('')}` : ''}
+    ${tch.msgs && tch.msgs.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Messages de mes enseignants')}</h3>${tch.msgs.slice(0, 5).map(m => `<div class="weak"><span>${fdate(Date.parse(m.created_at))} · ${esc(m.teacher_email)}<br>${esc(m.body)}</span><button class="link" data-act="tch-msg-del" data-v="${m.id}" aria-label="${tr('Supprimer le message')}">✕</button></div>`).join('')}` : ''}
+    <h3 style="margin:12px 0 4px;font-size:1rem">${tr('Rejoindre une classe')}</h3>
+    <p class="ref" style="margin:0 0 6px">${tr("Ton enseignant peut te donner un code de classe : en le saisissant, tu lui donnes accès à ta progression (comme avec une invitation). Tu peux retirer l'accès quand tu veux.")}</p>
+    <div class="row"><input type="text" id="tch-join" aria-label="${tr('Code de classe')}" autocomplete="off" autocapitalize="characters" maxlength="12" style="text-transform:uppercase" data-enter="tch-join-go"><button class="pri" data-act="tch-join-go" id="tch-join-go" style="flex:0 0 auto">${tr('Rejoindre')}</button></div>
     ${me.profile && me.profile.role === 'user' ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Devenir enseignant')}</h3>${tch.req
       ? `<p class="ref" style="margin:0 0 6px">${tr("Demande envoyée : l'administrateur doit la valider.")}</p><button class="link" data-act="tch-req-cancel">${tr('Annuler ma demande')}</button>`
       : `<p class="ref" style="margin:0 0 6px">${tr("Tu veux suivre des élèves ? Envoie une demande : l'administrateur la valide ou la refuse.")}</p><button data-act="tch-req" ${tch.busy ? 'disabled' : ''}>🎓 ${tr('Demander à devenir enseignant')}</button>`}` : ''}</div>`;
@@ -3145,12 +3163,22 @@ async function tchAct(fn, okMsg){
   try { const r = await fn(); if (r && r.error) throw r.error; tch.ok = true; tch.msg = okMsg || ''; } catch (e){ tchErr(e); }
   tch.busy = false; await tchLoadStudent();
 }
+const tchMsgDel = id => tchAct(() => sb.rpc('message_delete', {p_id: +id}), tr('Message supprimé.'));
+async function tchJoin(){
+  const c = ($('tch-join') ? $('tch-join').value : '').trim();
+  if (!c){ tch.ok = false; tch.msg = tr('Saisis le code de classe.'); return renderAccount(); }
+  await tchAct(async () => { const {data, error} = await sb.rpc('class_join', {p_code: c}); if (error) throw error; const r = Array.isArray(data) ? data[0] : data; tch.msg = ''; tch.joinMsg = tr('Classe rejointe : {e}', {e: r.email}); return {}; }, '');
+  if (tch.joinMsg){ tch.ok = true; tch.msg = tch.joinMsg; tch.joinMsg = ''; renderAccount(); }
+}
 const tchInvite = () => tchAct(async () => { const {data, error} = await sb.rpc('invite_create'); if (error) throw error; tch.code = Array.isArray(data) ? data[0] : data; }, '');
 const tchCancel = code => tchAct(() => sb.rpc('invite_cancel', {p_code: code}), tr('Invitation annulée.'));
 const tchRevoke = id => { if (confirm(tr("Retirer l'accès de cet enseignant à ta progression ?"))) tchAct(() => sb.rpc('link_revoke', {other: id}), tr('Accès retiré.')); };
 async function tchCopy(){ try { await navigator.clipboard.writeText(tch.code.code); tch.ok = true; tch.msg = tr('Code copié.'); } catch { tch.ok = false; tch.msg = tr('Copie impossible : recopie le code à la main.'); } renderAccount(); }
 /* espace enseignant */
-async function openTeacher(){ if (!isTeacher()) return; tch.detail = null; tch.students = null; tch.msg = ''; renderTeacher(); window.scrollTo(0, 0); await tchLoadStudents(); }
+async function openTeacher(){ if (!isTeacher()) return; tch.detail = null; tch.students = null; tch.msg = ''; renderTeacher(); window.scrollTo(0, 0); await Promise.all([tchLoadStudents(), tchLoadClasses()]); }
+async function tchLoadClasses(){ try { const {data, error} = await sb.rpc('class_mine'); tch.classes = error ? [] : (data || []); } catch { tch.classes = []; } if (screen === 'teacher') renderTeacher(); }
+async function tchClassNew(){ try { const {error} = await sb.rpc('class_create'); if (error) throw error; tch.ok = true; tch.msg = ''; } catch (e){ tchErr(e); } await tchLoadClasses(); }
+async function tchClassClose(code){ if (!confirm(tr('Fermer ce code de classe ? Les élèves déjà liés restent liés.'))) return; try { const {error} = await sb.rpc('class_close', {p_code: code}); if (error) throw error; tch.ok = true; tch.msg = ''; } catch (e){ tchErr(e); } await tchLoadClasses(); }
 async function tchLoadStudents(){
   try { const {data, error} = await sb.rpc('teacher_students'); if (error) throw error; tch.students = data || []; } catch (e){ tchErr(e); tch.students = tch.students || []; }
   renderTeacher();
@@ -3164,7 +3192,24 @@ async function tchAdd(){
 }
 async function tchDetail(id){
   if (tch.detail && tch.detail.id === id){ tch.detail = null; return renderTeacher(); }
-  try { const {data, error} = await sb.rpc('teacher_student_data', {target: id}); if (error) throw error; tch.detail = {id, data}; tch.msg = ''; } catch (e){ tchErr(e); }
+  try { const {data, error} = await sb.rpc('teacher_student_data', {target: id}); if (error) throw error; tch.detail = {id, data, goals: []}; tch.msg = ''; await tchLoadGoals(id); } catch (e){ tchErr(e); }
+  renderTeacher();
+}
+async function tchLoadGoals(id){ try { const {data, error} = await sb.rpc('goals_for', {target: id}); if (tch.detail && tch.detail.id === id) tch.detail.goals = error ? [] : (data || []); } catch { if (tch.detail) tch.detail.goals = []; } }
+async function tchSend(id){
+  const t = ($('tch-msg') ? $('tch-msg').value : '').trim(); if (!t){ tch.ok = false; tch.msg = tr('Écris un message.'); return renderTeacher(); }
+  try { const {error} = await sb.rpc('teacher_message_send', {target: id, p_body: t}); if (error) throw error; tch.ok = true; tch.msg = tr('Message envoyé.'); } catch (e){ tchErr(e); }
+  renderTeacher();
+}
+async function tchGoalAdd(id){
+  const su = +($('tch-gs') ? $('tch-gs').value : 0), due = $('tch-gd') ? $('tch-gd').value : '', note = $('tch-gn') ? $('tch-gn').value : '';
+  if (!due){ tch.ok = false; tch.msg = tr('Choisis une date.'); return renderTeacher(); }
+  try { const {error} = await sb.rpc('teacher_goal_set', {target: id, p_surah: su, p_due: due, p_note: note}); if (error) throw error; tch.ok = true; tch.msg = tr('Objectif ajouté.'); await tchLoadGoals(id); } catch (e){ tchErr(e); }
+  renderTeacher();
+}
+async function tchGoalDel(gid){
+  const id = tch.detail && tch.detail.id; if (!id) return;
+  try { const {error} = await sb.rpc('goal_delete', {p_id: +gid}); if (error) throw error; tch.ok = true; tch.msg = ''; await tchLoadGoals(id); } catch (e){ tchErr(e); }
   renderTeacher();
 }
 async function tchDrop(id){ if (!confirm(tr('Retirer cet élève de ta liste ? Tu ne verras plus sa progression.'))) return; try { const {error} = await sb.rpc('link_revoke', {other: id}); if (error) throw error; tch.detail = null; tch.ok = true; tch.msg = tr('Élève retiré.'); } catch (e){ tchErr(e); } await tchLoadStudents(); }
@@ -3177,19 +3222,32 @@ function tchDetailHtml(d){
     ${F.length ? `<p class="ref" style="margin:8px 0 2px"><b>${tr('Erreurs fréquentes')}</b></p>${F.map(x => { const r = pk(x.k); return book(r.s) ? `<div class="weak"><span>${rlabel(r)}</span><span>${x.n}×</span></div>` : ''; }).join('')}` : ''}
     ${last.length ? `<p class="ref" style="margin:8px 0 2px"><b>${tr('Dernières erreurs :')}</b></p>${last.map(e => { const r = pk(e.k); return book(r.s) ? `<p class="ref" style="margin:0">${fdate(e.t)} · ${rlabel(r)} · ${esc(MODE_NAME[e.m] || e.m)}</p>` : ''; }).join('')}` : ''}</div>`;
 }
+function tchActionsHtml(id){
+  const D = tch.detail, goals = D.goals || [], fd = t => new Date(t + 'T00:00:00').toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short', year: 'numeric'}), soon = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  return `<div class="sib"><p class="ref" style="margin:0 0 2px"><b>${tr('Objectifs')}</b></p>
+    ${goals.map(g => { const x = tcGoal(D.data.stats, g.surah, slen(g.surah)); return `<div class="weak"><span>${esc(SN(g.surah))} · ${tr('pour le {d}', {d: fd(g.due)})} · ${x.seen}/${x.total} (${x.pct} %)${g.note ? ` · ${esc(g.note)}` : ''}</span><button class="link" style="color:var(--ko)" data-act="tch-goal-del" data-v="${g.id}">${tr('Supprimer')}</button></div>`; }).join('') || `<p class="ref" style="margin:0">${tr("Aucun objectif en cours.")}</p>`}
+    <div class="row" style="margin-top:6px"><select id="tch-gs" aria-label="${tr('Sourate')}">${Q.map(x => `<option value="${x.n}">${x.n}. ${esc(SN(x.n))}</option>`).join('')}</select><input type="date" id="tch-gd" value="${soon}" aria-label="${tr('Date limite')}"></div>
+    <div class="row"><input type="text" id="tch-gn" maxlength="140" placeholder="${tr('Remarque (facultatif)')}" aria-label="${tr('Remarque (facultatif)')}"><button data-act="tch-goal-add" data-v="${id}" style="flex:0 0 auto">${tr('Fixer l\'objectif')}</button></div>
+    <p class="ref" style="margin:10px 0 2px"><b>${tr('Message à l\'élève')}</b></p>
+    <textarea id="tch-msg" maxlength="280" rows="2" aria-label="${tr('Message à l\'élève')}" placeholder="${tr('Un mot d\'encouragement (280 caractères)')}" style="width:100%"></textarea>
+    <button data-act="tch-send" data-v="${id}">${tr('Envoyer')}</button></div>`;
+}
 function renderTeacher(){
   setNav(false); screen = 'teacher';
   const S = tch.students, row = u => { const open = tch.detail && tch.detail.id === u.id, rate = Number(u.answers) ? Math.round(100 * u.ok / u.answers) + ' %' : '—';
     return `<div class="sib"><p style="margin:0"><b>${esc(u.email)}</b></p>
       <p class="ref" style="margin:0">${tr('depuis le {d}', {d: new Date(u.since).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short', year: 'numeric'})})} · ${tr('actif {b}', {b: when(u.last_seen)})} · ${trp(Math.round(u.answers), '{n} réponse|{n} réponses')} · ${tr('réussite {d}', {d: rate})}</p>
       <div class="grades"><button data-act="tch-detail" data-v="${u.id}">${open ? tr('Masquer') : tr('Progression')}</button><button data-act="tch-del" data-v="${u.id}" style="color:var(--ko)">${tr('Retirer')}</button></div>
-      ${open ? (tch.detail.data ? tchDetailHtml(tch.detail.data) : '') : ''}</div>`; };
+      ${open ? (tch.detail.data ? tchDetailHtml(tch.detail.data) + tchActionsHtml(u.id) : '') : ''}</div>`; };
   $app.innerHTML = `<div class="top"><button class="link" data-act="acc-back">${tr('← Retour')}</button><span>${tr('Enseignant')}</span></div>
     <h1 style="margin-top:8px">${tr('Espace enseignant')}</h1>
     <p class="sub">${S ? trp(S.length, '{n} élève|{n} élèves') : tr('Chargement…')}</p>
     ${tch.msg ? `<div class="fb ${tch.ok ? 'ok' : 'ko'}">${esc(tch.msg)}</div>` : ''}
     <div class="card"><h2>${tr('Ajouter un élève')}</h2><p class="ref" style="margin:0 0 6px">${tr("L'élève génère un code dans Réglages → Compte → Mon enseignant. Saisis-le ici : tu ne vois que les élèves qui t'ont invité, tant qu'ils le souhaitent.")}</p>
       <label class="f" for="tch-code">${tr("Code d'invitation")}</label><div class="row"><input type="text" id="tch-code" autocomplete="off" autocapitalize="characters" maxlength="12" style="text-transform:uppercase" data-enter="tch-go"><button id="tch-go" class="pri" data-act="tch-add" style="flex:0 0 auto">${tr('Ajouter')}</button></div></div>
+    <div class="card"><h2>${tr('Groupe de classe')}</h2><p class="ref" style="margin:0 0 6px">${tr("Un code réutilisable (40 élèves, 30 jours) à donner à toute la classe. Chaque élève le saisit lui-même : il t'ouvre ainsi l'accès à sa progression.")}</p>
+      ${(tch.classes || []).map(c => `<div class="weak"><span><b style="letter-spacing:.12em">${esc(c.code)}</b> · ${c.uses}/${c.max_uses} ${tr('élèves')} · ${tr("jusqu'au {d}", {d: new Date(c.expires_at).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short'})})}</span><button class="link" style="color:var(--ko)" data-act="tch-class-close" data-v="${esc(c.code)}">${tr('Fermer')}</button></div>`).join('')}
+      <button data-act="tch-class-new">${tr('Créer un code de classe')}</button></div>
     <div class="card">${S ? (S.map(row).join('') || `<p class="sub" style="margin:0">${tr("Aucun élève pour l'instant.")}</p>`) : ''}</div>`;
 }
 function renderAdmin(){

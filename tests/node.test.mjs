@@ -54,7 +54,7 @@ test('traductions : chaque texte tr()/trp() de index.html existe en anglais et e
 
 test('fonction send-reminders : 1er et 2e rappel (une fois par jour, seulement dans la fenêtre)', () => {
   const ts = read('supabase/functions/send-reminders/index.ts');
-  const code = ts.slice(ts.indexOf('function localParts'), ts.indexOf('Deno.serve'))
+  const code = ts.slice(ts.indexOf('function localParts'), ts.indexOf('const REQ'))
     .replace(/sub: Sub/g, 'sub').replace(/now: Date/g, 'now').replace(/tz: string/g, 'tz').replace('t: string | null, last: string | null', 't, last');
   const { decide } = new Function(code + '; return {decide};')();
   const base = { tz: 'Europe/Paris', remind_time: '20:00', remind_time2: '21:30', last_sent: null, last_sent2: null };

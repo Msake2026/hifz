@@ -155,9 +155,9 @@ begin
   perform t.as_user(f1); assert (select uses from public.class_mine()) = 2, 'deux élèves, pas de double comptage'; assert (select count(*) from public.teacher_students()) = 2, 'le code de classe crée les liens';
   perform t.as_user(f1); perform t.fails('select public.class_join(''' || code2 || ''')', 'P0001');       -- son propre code
   perform t.as_user(c1); perform t.fails('select public.class_join(''ZZZZZZZZ'')', 'P0001');
-  perform t.as_super(); update public.teacher_classes set max_uses = 2 where code = code2; perform t.as_user(c1); perform t.fails('select public.class_join(''' || code2 || ''')', 'P0001');
-  perform t.as_super(); update public.teacher_classes set max_uses = 40, expires_at = now() - interval '1 minute' where code = code2; perform t.as_user(c1); perform t.fails('select public.class_join(''' || code2 || ''')', 'P0001');
-  perform t.as_super(); update public.teacher_classes set expires_at = now() + interval '1 day' where code = code2; update public.profiles set role = 'user' where id = f1; perform t.as_user(c1); perform t.fails('select public.class_join(''' || code2 || ''')', 'P0001');
+  perform t.as_super(); update public.teacher_classes set max_uses = 2 where teacher_classes.code = code2; perform t.as_user(c1); perform t.fails('select public.class_join(''' || code2 || ''')', 'P0001');
+  perform t.as_super(); update public.teacher_classes set max_uses = 40, expires_at = now() - interval '1 minute' where teacher_classes.code = code2; perform t.as_user(c1); perform t.fails('select public.class_join(''' || code2 || ''')', 'P0001');
+  perform t.as_super(); update public.teacher_classes set expires_at = now() + interval '1 day' where teacher_classes.code = code2; update public.profiles set role = 'user' where id = f1; perform t.as_user(c1); perform t.fails('select public.class_join(''' || code2 || ''')', 'P0001');
   perform t.as_super(); update public.profiles set role = 'teacher' where id = f1; perform t.as_user(f1); perform public.class_close(code2); assert (select count(*) from public.class_mine()) = 0, 'code fermé';
   perform t.as_user(f1); for i in 1..3 loop perform public.class_create(); end loop; perform t.fails('select public.class_create()', 'P0001');
   perform t.as_super(); delete from public.teacher_links where teacher_id = f1;
