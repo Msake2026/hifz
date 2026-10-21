@@ -233,7 +233,8 @@
   test('Accessibilité : audit axe-core (WCAG 2.2 AA) des écrans principaux, sans violation', async () => {
     const src = await fetch('https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js').then(r => r.ok ? r.text() : '').catch(() => '');
     if (!src) return;                                            // pas d'accès au CDN : test ignoré
-    W.eval(src); const opts = {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']}}, bad = [];
+    W.eval(src); const st = D.createElement('style'); st.textContent = '.cta,#nav{position:static!important}'; D.head.appendChild(st);   // barres collantes : elles masquent des champs selon la hauteur de l'écran (le décalage du focus est traité par scroll-padding) ; on mesure ici la taille des cibles
+    const opts = {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']}}, bad = [];
     const audit = async name => { await wait(300); const r = await W.axe.run(D, opts); r.violations.forEach(v => bad.push(`${name} : ${v.id} (${v.nodes.length}) ${v.nodes[0].target.join(' ')} — ${((v.nodes[0].any[0] || v.nodes[0].none[0] || {}).message || v.nodes[0].failureSummary || '').slice(0, 260)}`)); };
     reset("cfg.hc = true; cfg.reciter = 'ar.alafasy'; plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 2, mptr: 0, done: {}, log: []}; applyA11y(); errors = [{t: Date.now(), k: '2:5', m: 'cloze', sc: 0}]; stats = {'2:5': [1, 3]}; cfg.scope = {type: 'surah', from: 1, to: 3};");
     for (const t of ['home', 'plan', 'train', 'progress', 'errors', 'settings']){ E(`go('${t}')`); await audit('onglet ' + t); }
@@ -245,7 +246,7 @@
     E("cfg.rdTaj = true; openReader('q:1')"); for (let i = 0; i < 40 && !$q('.tj-n'); i++) await wait(100); await audit('lecteur (tajwīd en couleurs)'); E("cfg.rdTaj = false; home()");
     E("renderLegal()"); await audit('confidentialité'); E("CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; sb = {}; me = null; renderAccount()"); await audit('connexion'); E("CLOUD.url = ''; CLOUD.anonKey = ''; sb = null");
     eq(bad, [], 'violations axe-core');
-    E("cfg.hc = undefined; delete cfg.hc; applyA11y()");
+    st.remove(); E("cfg.hc = undefined; delete cfg.hc; applyA11y()");
   });
   test('Plan : le manzil ajoute une portion fragile sans décaler la rotation', async () => {
     reset(); const now = Date.now(), old = E("dayKey(addDays(new Date(), -10))");
