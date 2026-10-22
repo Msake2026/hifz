@@ -579,10 +579,13 @@
         if (n === 'teacher_goal_set'){ S.tgoals.push({id: 11, teacher_email: 'prof@x.fr', surah: a.p_surah, due: a.p_due, note: a.p_note || null}); return {data: null, error: null}; }
         if (n === 'goal_delete'){ S.tgoals = S.tgoals.filter(g => g.id !== a.p_id); return {data: null, error: null}; }
         return {data: null, error: null}; }};`);
-    E("go('student')"); for (let i = 0; i < 40 && !appText().includes('Objectifs fixés'); i++) await wait(50); await wait(200);
-    let t = appText(); ok(t.includes('Courage pour la sourate 78') && t.includes('prof@x.fr'), 'message de l’enseignant'); ok(t.includes('avant dimanche') && /2\/\d+ versets travaillés/.test(t), 'objectif et avancement : ' + t.slice(t.indexOf('Objectifs fixés'), t.indexOf('Objectifs fixés') + 140));
+    E("go('student')"); for (let i = 0; i < 40 && !appText().includes('Mes objectifs'); i++) await wait(50); await wait(200);
+    let t = appText(); ok(t.includes('Courage pour la sourate 78') && t.includes('prof@x.fr'), 'message de l’enseignant'); ok(t.includes('avant dimanche') && /2\/\d+ versets travaillés/.test(t), 'objectif et avancement : ' + t.slice(t.indexOf('Mes objectifs'), t.indexOf('Mes objectifs') + 140));
     ok(!$q('[data-act="tch-goal-accept"]') && !/Accepter|Refuser/.test(t), 'aucune acceptation demandée à l’élève pour un objectif'); noErr('élève');
     ok(calls.includes('messages_mark_read {}'), 'les messages reçus sont marqués lus à l’ouverture');
+    ok($q('#chat-thread .msg.them .b') && $q('#chat-thread .msg.them .b').textContent.includes('Courage'), 'bulle du message de l’enseignant (à gauche)');
+    $q('#tch-reply').value = 'Merci'; $q('#tch-reply').dispatchEvent(new W.Event('input', {bubbles: true})); eq($q('#chat-count').textContent, '5/280', 'compteur de caractères');
+    const n0 = calls.length; $q('#tch-reply').dispatchEvent(new W.KeyboardEvent('keydown', {key: 'Enter', shiftKey: true, bubbles: true})); await wait(150); eq(calls.length, n0, 'Maj+Entrée : pas d’envoi');
     $q('#tch-reply').value = 'Merci !'; clickAct('tch-reply-send'); await wait(300); ok(calls.includes('student_message_send {"p_teacher":"t1","p_body":"Merci !"}'), 'l’élève répond à son enseignant');
     clickAct('tch-msg-del', '7'); await wait(300); ok(calls.some(c => c === 'message_delete {"p_id":7}') && !appText().includes('Courage pour'), 'message supprimé par l’élève');
     ok(appText().includes('Message supprimé.'), 'confirmation affichée'); await wait(3300); ok(!appText().includes('Message supprimé.'), 'la confirmation disparaît seule au bout de 3 s');
@@ -601,8 +604,16 @@
     ok(calls.some(c => c === 'teacher_goal_set {"target":"s1","p_surah":78,"p_due":"' + day(6) + '","p_note":"relire"}'), 'objectif fixé'); ok(/3\/\d+ \(\d+ %\)/.test(appText()), 'avancement de l’élève affiché');
     clickAct('tch-goal-del', '11'); await wait(300); ok(calls.includes('goal_delete {"p_id":11}') && !appText().includes('relire'), 'objectif supprimé');
     ok(appText().includes('Merci prof') && appText().includes('✓✓'), 'conversation : réponse de l’élève et accusé « lu »');
+    ok($q('#chat-thread .msg.me') && $q('#chat-thread .msg.them'), 'conversation en bulles : moi à droite, l’élève à gauche');
     clickAct('tch-send', 's1'); await wait(200); ok(appText().includes('Écris un message.'), 'message vide refusé');
     $q('#tch-msg').value = 'Bravo !'; clickAct('tch-send', 's1'); await wait(300); ok(calls.includes('teacher_message_send {"target":"s1","p_body":"Bravo !"}') && !appText().includes('Message envoyé.'), 'message envoyé, sans confirmation qui reste affichée');
+    E(`tch.students = [{id: 'a', email: 'zoe@x.fr', since: '${iso(-9)}', last_seen: null, answers: 0, ok: 0, errors: 0}, {id: 'b', email: 'amir@x.fr', since: '${iso(-9)}', last_seen: '${iso(-0.1)}', answers: 10, ok: 9, errors: 1}, {id: 'c', email: 'lea@x.fr', since: '${iso(-30)}', last_seen: '${iso(-20)}', answers: 10, ok: 3, errors: 7}]; tch.detail = null; tch.q = ''; tch.sort = 'activity'; tch.unread = {c: 2}; cfg.tab = 'teacher'; home()`);
+    const order = () => { const t = appText(); return ['amir@x.fr', 'lea@x.fr', 'zoe@x.fr'].map(e => [t.indexOf(e, t.indexOf('Mes élèves')), e]).sort((x, y) => x[0] - y[0]).map(x => x[1]); };
+    eq(order(), ['amir@x.fr', 'lea@x.fr', 'zoe@x.fr'], 'tri par activité récente'); ok(appText().includes('jamais connecté') && appText().includes('inactif depuis 20 j'), 'alertes d’inactivité');
+    $q('#tch-sort').value = 'unread'; $q('#tch-sort').dispatchEvent(new W.Event('change', {bubbles: true})); eq(order()[0], 'lea@x.fr', 'tri par messages non lus');
+    $q('#tch-sort').value = 'rate'; $q('#tch-sort').dispatchEvent(new W.Event('change', {bubbles: true})); eq(order()[0], 'lea@x.fr', 'tri : les plus fragiles d’abord');
+    $q('#tch-q').value = 'zo'; $q('#tch-q').dispatchEvent(new W.Event('input', {bubbles: true})); ok(appText().includes('zoe@x.fr') && !appText().includes('amir@x.fr'), 'recherche d’un élève'); ok(E('document.activeElement && document.activeElement.id') === 'tch-q', 'le champ de recherche garde le focus');
+    E("tch.q = ''; tch.sort = 'activity'");
     for (const L of ['en', 'ar']){ E(`setLang('${L}'); tch.detail = {id: 's1', data: {stats: {}, days: {}, errors: []}, goals: [{id: 1, surah: 2, due: '${day(3)}', note: 'x'}], thread: [{id: 1, body: 'b', created_at: new Date().toISOString(), from_student: false, read_at: null}]}; tch.uid = 't1'; tch.students = window.__S ? [] : []; cfg.tab = 'teacher'; home()`); await wait(300); E("tch.loaded = true; tch.msgs = [{id: 1, teacher_id: 't', teacher_email: 'p@x.fr', body: 'b', created_at: new Date().toISOString(), from_student: false, read_at: null}, {id: 2, teacher_id: 't', teacher_email: 'p@x.fr', body: 'r', created_at: new Date().toISOString(), from_student: true, read_at: null}]; cfg.tab = 'student'; home()"); eq(E('[...missingKeys]'), [], L); }
     E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; stats = {}; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: ''}");
   });

@@ -34,6 +34,19 @@
   --ok:#74d3a1; --okbg:#173326; --ko:#ff9a8c; --kobg:#3d1f1a; --mid:#e8b95b; --midbg:#3a2c14;
   --pattern:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23d5b25a' stroke-opacity='.09'%3E%3Crect x='20' y='20' width='32' height='32'/%3E%3Crect x='20' y='20' width='32' height='32' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='4'/%3E%3C/g%3E%3C/svg%3E");}
 *{box-sizing:border-box}
+.chat{max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--line-soft);border-radius:12px;background:var(--bg);margin-bottom:8px}
+.chat .day{align-self:center;font-size:.74rem;color:var(--muted);margin:4px 0 0}
+.msg{max-width:86%;display:flex;flex-direction:column}
+.msg.me{align-self:flex-end;align-items:flex-end}.msg.them{align-self:flex-start;align-items:flex-start}
+.msg .b{padding:8px 11px;border-radius:14px;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--line);background:var(--card)}
+.msg.me .b{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.msg .t{font-size:.74rem;color:var(--muted);margin-top:2px}
+.msg .t button.link{padding:0 4px;min-width:24px;min-height:24px}
+.compose{display:flex;gap:8px;align-items:flex-end}.compose textarea{flex:1;min-height:44px;resize:vertical}
+.cnt{font-size:.74rem;color:var(--muted)}
+.bar{height:8px;border-radius:5px;background:var(--line-soft);overflow:hidden;margin:4px 0}.bar i{display:block;height:100%;background:var(--accent)}
+.warn{color:var(--mid)}
+
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,"Noto Sans Arabic",system-ui,sans-serif}
 main{max-width:720px;margin:0 auto;padding:20px 16px 60px}
@@ -629,7 +642,7 @@ function home(){ // affiche l'écran du menu courant (accès réservé aux compt
   if (cloudOn() && !me) return renderAccount();
   if (!tabsNow().some(t => t[0] === cfg.tab)) cfg.tab = 'home';
   $app.innerHTML = ({home: tabHome, plan: tabPlan, train: tabTrain, progress: tabProgress, errors: tabErrors, settings: tabSettings, student: tabStudent, teacher: tabTeacher})[cfg.tab]();
-  setNav(true); tchEnter(); if (cfg.tab === 'settings') setTimeout(audioSpace, 0);
+  setNav(true); tchEnter(); chatBottom(); if (cfg.tab === 'settings') setTimeout(audioSpace, 0);
   $app.querySelectorAll('select').forEach(el => { if (el.id.startsWith('cm-')) return;
     el.onchange = () => { syncCfg(); if (['stype', 'sgoal', 'scat', 'srec', 'aud-from', 'aud-to', 'aud-cap', 'aud-q'].includes(el.id) || el.id.startsWith('pf-')) home(); }; });
   if ($('impfile')) $('impfile').onchange = e => importFile(e.target.files[0]);
@@ -2632,7 +2645,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '22 oct. 2026 · v43';
+const APP_VERSION = '22 oct. 2026 · v44';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2835,7 +2848,7 @@ function renderAccount(){
 }
 let msgTimer = null;
 function clearMsg(){ acc.msg = ''; acc.auto = false; const m = $('acc-msg'); if (m) m.remove(); }
-$app.addEventListener('change', e => { if (e.target.id === 'wk-on') wkToggle(e.target.checked); if (e.target.id === 'rem-two') $('rem-time2').disabled = !e.target.checked; if (e.target.id === 'tjp'){ cfg.tjp = e.target.checked; saveCfg(); applyA11y(); }
+$app.addEventListener('change', e => { if (e.target.id === 'tch-reply-to'){ tch.chatWith = e.target.value; chatPaint(chatHtml(chThread(), m => m.from_student, true)); chatBottom(); } if (e.target.id === 'tch-sort'){ tch.sort = e.target.value; tchRefresh(); } if (e.target.id === 'wk-on') wkToggle(e.target.checked); if (e.target.id === 'rem-two') $('rem-time2').disabled = !e.target.checked; if (e.target.id === 'tjp'){ cfg.tjp = e.target.checked; saveCfg(); applyA11y(); }
   if (e.target.id === 'aud-auto'){ cfg.audAuto = e.target.checked; saveCfg(); if (cfg.audAuto) maybeAutoAudio(); } });
 $app.addEventListener('input', () => { if (screen === 'account' && acc.msg && acc.ok) clearMsg(); }); // un message de confirmation s'efface dès qu'on tape
 const EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -3158,7 +3171,7 @@ function tcGoal(stats, surah, total){ // avancement d'un objectif : versets déj
 }
 /* TC:end */
 const isTeacher = () => !!(me && me.profile && me.profile.role === 'teacher');
-let tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: '', wk: false, unread: {}, loading: false};
+let tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: '', wk: false, unread: {}, loading: false, q: '', sort: 'activity', chatWith: null};
 const tchErr = e => { tch.msg = friendly(e); tch.ok = false; };
 async function tchLoadStudent(){ // ce que l'élève voit : ses invitations, ses enseignants, les consultations, les messages
   if (!me || !sb || isAdmin() || tch.loading) return;
@@ -3184,6 +3197,26 @@ async function tchLoadStudent(){ // ce que l'élève voit : ses invitations, ses
 // un message de réussite disparaît seul au bout de 3 s (les erreurs restent affichées)
 const tchFlash = () => { clearTimeout(tch.t); if (tch.msg && tch.ok) tch.t = setTimeout(() => { if (tch.ok){ tch.msg = ''; document.querySelectorAll('.tch-flash').forEach(e => e.remove()); } }, 3000); };
 const tchRefresh = () => { if (screen === 'tab' && (cfg.tab === 'student' || cfg.tab === 'teacher')) home(); else if (screen === 'account') renderAccount(); tchFlash(); };
+// toutes les 20 s : nouveaux messages (conversation ouverte : mise à jour douce ; sinon : pastilles du menu seulement)
+let chatBusy = false;
+async function chatPoll(){
+  if (chatBusy || document.hidden || !me || !sb || isAdmin() || screen !== 'tab' || !tch.loaded || !sb.rpc) return;
+  chatBusy = true;
+  try {
+    const r = await sb.rpc('messages_mine');
+    if (!r.error){
+      tch.msgs = r.data || [];
+      if (cfg.tab === 'student' && $('chat-thread')){ chatPaint(chatHtml(chThread(), m => m.from_student, true)); if (unreadStudent()){ sb.rpc('messages_mark_read'); tch.msgs.forEach(m => { if (!m.from_student && !m.read_at) m.read_at = new Date().toISOString(); }); } }
+    }
+    if (isTeacher()){
+      const u = await sb.rpc('teacher_unread'); if (!u.error) tch.unread = Object.fromEntries((u.data || []).map(x => [x.student_id, Number(x.n)]));
+      if (cfg.tab === 'teacher' && tch.detail && $('chat-thread')){ const t = await sb.rpc('teacher_thread', {target: tch.detail.id}); if (!t.error){ tch.detail.thread = t.data || []; chatPaint(chatHtml(tch.detail.thread.slice().reverse(), m => !m.from_student, false)); delete tch.unread[tch.detail.id]; } }
+    }
+    if (screen === 'tab') setNav(true);
+  } catch { /* hors ligne : on réessaiera */ }
+  chatBusy = false;
+}
+setInterval(chatPoll, 20000);
 // à l'ouverture d'un onglet : chargement des données (une seule fois par visite)
 function tchEnter(){
   if (!me || !sb) return;
@@ -3191,8 +3224,49 @@ function tchEnter(){
   if (!tch.loaded && !tch.loading) tchLoadStudent();
   if (cfg.tab === 'teacher' && isTeacher() && tch.students === null && !tch.loadingT){ tch.loadingT = true; Promise.all([tchLoadStudents(), tchLoadClasses()]).finally(() => { tch.loadingT = false; }); }
 }
+/* ----- conversation (bulles) ----- */
+const chDay = t => new Date(t).toLocaleDateString(LOCALE(), {weekday: 'short', day: 'numeric', month: 'short'});
+const chTime = t => new Date(t).toLocaleTimeString(LOCALE(), {hour: '2-digit', minute: '2-digit'});
+// list : messages du plus ancien au plus récent ; mine(m) : vrai si le message est de moi ; del : bouton de suppression (élève)
+function chatHtml(list, mine, del){
+  if (!list.length) return `<p class="ref" style="margin:0;text-align:center">${tr("Aucun message pour l'instant.")}</p>`;
+  let last = '';
+  return list.map(m => {
+    const d = chDay(m.created_at), me_ = mine(m), head = d !== last ? `<div class="day">${esc(d)}</div>` : ''; last = d;
+    const fresh = !me_ && !m.read_at ? '● ' : '';
+    return `${head}<div class="msg ${me_ ? 'me' : 'them'}"><div class="b">${esc(m.body)}</div><div class="t">${fresh}${chTime(m.created_at)}${me_ ? ` · ${m.read_at ? '✓✓ ' + tr('lu') : '✓ ' + tr('envoyé')}` : ''}${del ? ` <button class="link" data-act="tch-msg-del" data-v="${m.id}" aria-label="${tr('Supprimer le message')}">✕</button>` : ''}</div></div>`;
+  }).join('');
+}
+const chatBottom = () => { const c = $('chat-thread'); if (c) c.scrollTop = c.scrollHeight; };
+// actualisation douce : on ne remplace que la conversation (le texte en cours de saisie n'est jamais touché)
+function chatPaint(html){ const c = $('chat-thread'); if (!c || c.innerHTML === html) return; const near = c.scrollHeight - c.scrollTop - c.clientHeight < 60; c.innerHTML = html; if (near) chatBottom(); }
+const chTeachers = () => { const m = new Map(); for (const l of tch.links || []) m.set(l.other_id, l.email); for (const x of tch.msgs || []) if (!m.has(x.teacher_id)) m.set(x.teacher_id, x.teacher_email); return [...m]; };
+const chWith = () => { const T = chTeachers(); if (!T.length) return null; if (!T.some(x => x[0] === tch.chatWith)) tch.chatWith = (T.find(x => (tch.msgs || []).some(m => m.teacher_id === x[0] && !m.from_student && !m.read_at)) || T[0])[0]; return tch.chatWith; };
+const chThread = () => (tch.msgs || []).filter(m => m.teacher_id === chWith()).slice().reverse();   // messages_mine renvoie les plus récents d'abord
+function chatCard(){
+  const T = chTeachers(); if (!T.length) return '';
+  const w = chWith(), th = chThread(), canReply = th.some(m => !m.from_student);
+  return `<div class="card"><h2>${tr('Messages')}</h2>
+    ${T.length > 1 ? `<label class="f" for="tch-reply-to">${tr('Répondre à')}</label><select id="tch-reply-to">${T.map(([id, e]) => `<option value="${id}" ${id === w ? 'selected' : ''}>${esc(e)}</option>`).join('')}</select>` : `<p class="ref" style="margin:0 0 6px">${esc(T[0][1])}</p><input type="hidden" id="tch-reply-to" value="${T[0][0]}">`}
+    <div class="chat" id="chat-thread" role="log" aria-live="polite" aria-label="${tr('Conversation')}" tabindex="0">${chatHtml(th, m => m.from_student, true)}</div>
+    ${canReply ? `<div class="compose"><textarea id="tch-reply" maxlength="280" rows="3" aria-label="${tr('Ta réponse')}" placeholder="${tr('Écris ta réponse…')}" data-enter="tch-reply-send" data-count="chat-count"></textarea><button class="pri" id="tch-reply-send" data-act="tch-reply-send">${tr('Envoyer')}</button></div><span class="cnt" id="chat-count">0/280</span>`
+      : `<p class="ref" style="margin:0">${tr("Tu pourras répondre quand ton enseignant t'aura écrit.")}</p>`}</div>`;
+}
+const dueLabel = due => { const n = Math.ceil((new Date(due + 'T23:59:59') - Date.now()) / 864e5); return n < 0 ? `<span class="warn">${tr('en retard de {n} j', {n: -n})}</span>` : n === 0 ? tr("aujourd'hui") : tr('dans {n} j', {n}); };
+function goalsCard(){
+  if (!tch.goals || !tch.goals.length) return '';
+  const fd = t => new Date(t + 'T00:00:00').toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short'});
+  return `<div class="card"><h2>${tr('Mes objectifs')}</h2>${tch.goals.map(g => { const x = tcGoal(stats, g.surah, slen(g.surah));
+    return `<div class="sib"><p style="margin:0"><b>${esc(SN(g.surah))}</b> · ${tr('pour le {d}', {d: fd(g.due)})} · ${dueLabel(g.due)}</p>
+      <div class="bar" role="img" aria-label="${x.pct} %"><i style="width:${x.pct}%"></i></div>
+      <p class="ref" style="margin:0">${x.seen}/${x.total} ${tr('versets travaillés')} (${x.pct} %)${x.pct >= 100 ? ' 🎉' : ''}${g.note ? ` · ${esc(g.note)}` : ''}</p></div>`; }).join('')}</div>`;
+}
 function tabStudent(){
-  return `<h1 style="margin-top:8px">${tr('Espace élève')}</h1><p class="sub">${tr('Ton enseignant, tes objectifs et tes messages.')}</p>${tch.loaded ? tchStudentCard() : `<p class="sub">${tr('Chargement…')}</p>`}`;
+  const unseen = unreadStudent(), nT = (tch.links || []).length, nG = (tch.goals || []).length;
+  const sum = tch.loaded ? [trp(nT, '{n} enseignant|{n} enseignants'), trp(nG, '{n} objectif en cours|{n} objectifs en cours'), unseen ? `<b>${trp(unseen, '{n} message non lu|{n} messages non lus')}</b>` : ''].filter(Boolean).join(' · ') : '';
+  return `<h1 style="margin-top:8px">${tr('Espace élève')}</h1><p class="sub">${sum || tr('Ton enseignant, tes objectifs et tes messages.')}</p>
+    ${tch.msg && cfg.tab === 'student' ? `<p class="fb tch-flash ${tch.ok ? 'ok' : 'ko'}">${esc(tch.msg)}</p>` : ''}
+    ${tch.loaded ? chatCard() + goalsCard() + tchStudentCard() : `<p class="sub">${tr('Chargement…')}</p>`}`;
 }
 function wkCard(){
   if (!me) return '';
@@ -3209,13 +3283,9 @@ function tchStudentCard(){
     <button data-act="tch-invite" ${tch.busy ? 'disabled' : ''}>✉ ${tr('Inviter un enseignant')}</button>
     ${tch.code ? `<div class="fb ok" style="margin-top:8px"><b style="font-size:1.4rem;letter-spacing:.15em" id="tch-code-new">${esc(tch.code.code)}</b><br><span class="ref">${tr('Valable jusqu\'au {d}. Donne ce code à ton enseignant : il ne sert qu\'une fois.', {d: fd(tch.code.expires_at)})}</span>
       <br><button class="link" data-act="tch-copy">${tr('Copier le code')}</button></div>` : ''}
-    ${tch.msg && (cfg.tab === 'student' || screen === 'account') ? `<p class="fb tch-flash ${tch.ok ? 'ok' : 'ko'}" style="margin:8px 0 0">${esc(tch.msg)}</p>` : ''}
     ${I && I.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Invitations en attente')}</h3>${I.map(x => `<div class="weak"><span><b>${esc(x.code)}</b> · ${tr("jusqu'au {d}", {d: fd(x.expires_at)})}</span><button class="link" data-act="tch-cancel" data-v="${esc(x.code)}">${tr('Annuler')}</button></div>`).join('')}` : ''}
     ${L && L.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Mes enseignants')}</h3>${L.map(x => `<div class="weak"><span>${esc(x.email)} · ${tr('depuis le {d}', {d: fd(x.since)})}</span></div>`).join('')}` : ''}
     ${G && G.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Consultations récentes de mes données')}</h3>${G.slice(0, 8).map(x => `<p class="ref" style="margin:0">${fdate(Date.parse(x.at))} · ${esc(x.teacher_email)}</p>`).join('')}` : ''}
-    ${tch.goals && tch.goals.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Objectifs fixés par mes enseignants')}</h3>${tch.goals.map(g => { const x = tcGoal(stats, g.surah, slen(g.surah)); return `<div class="weak"><span><b>${esc(SN(g.surah))}</b> · ${tr('pour le {d}', {d: fd(g.due)})} · ${x.seen}/${x.total} ${tr('versets travaillés')} (${x.pct} %)${g.note ? ` · ${esc(g.note)}` : ''}</span></div>`; }).join('')}` : ''}
-    ${tch.msgs && tch.msgs.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Messages de mes enseignants')}</h3>${tch.msgs.slice(0, 10).map(m => `<div class="weak"><span>${m.from_student ? `<b>${tr('Moi')}</b>` : `${m.read_at ? '' : '● '}${esc(m.teacher_email)}`} · ${fdate(Date.parse(m.created_at))}${m.from_student ? ` · ${m.read_at ? '✓✓ ' + tr('lu') : '✓ ' + tr('envoyé')}` : ''}<br>${esc(m.body)}</span><button class="link" data-act="tch-msg-del" data-v="${m.id}" aria-label="${tr('Supprimer le message')}">✕</button></div>`).join('')}
-      ${(() => { const T = [...new Map(tch.msgs.filter(m => !m.from_student).map(m => [m.teacher_id, m.teacher_email]))]; return T.length ? `<div class="row" style="margin-top:6px">${T.length > 1 ? `<select id="tch-reply-to" aria-label="${tr('Répondre à')}">${T.map(([id, e]) => `<option value="${id}">${esc(e)}</option>`).join('')}</select>` : `<input type="hidden" id="tch-reply-to" value="${T[0][0]}">`}<textarea id="tch-reply" maxlength="280" rows="2" aria-label="${tr('Ta réponse')}" placeholder="${tr('Ta réponse (280 caractères)')}"></textarea></div><button data-act="tch-reply-send">${tr('Répondre')}</button>` : ''; })()}` : ''}
     <h3 style="margin:12px 0 4px;font-size:1rem">${tr('Rejoindre une classe')}</h3>
     <p class="ref" style="margin:0 0 6px">${tr("Ton enseignant peut te donner un code de classe : en le saisissant, tu lui donnes accès à ta progression (comme avec une invitation).")}</p>
     <div class="row"><input type="text" id="tch-join" aria-label="${tr('Code de classe')}" autocomplete="off" autocapitalize="characters" maxlength="12" style="text-transform:uppercase" data-enter="tch-join-go"><button class="pri" data-act="tch-join-go" id="tch-join-go" style="flex:0 0 auto">${tr('Rejoindre')}</button></div>
@@ -3294,24 +3364,30 @@ function tchDetailHtml(d){
     ${last.length ? `<p class="ref" style="margin:8px 0 2px"><b>${tr('Dernières erreurs :')}</b></p>${last.map(e => { const r = pk(e.k); return book(r.s) ? `<p class="ref" style="margin:0">${fdate(e.t)} · ${rlabel(r)} · ${esc(MODE_NAME[e.m] || e.m)}</p>` : ''; }).join('')}` : ''}</div>`;
 }
 function tchActionsHtml(id){
-  const D = tch.detail, goals = D.goals || [], fd = t => new Date(t + 'T00:00:00').toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short', year: 'numeric'}), soon = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  const D = tch.detail, goals = D.goals || [], fd = t => new Date(t + 'T00:00:00').toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short'}), soon = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
   return `<div class="sib"><p class="ref" style="margin:0 0 2px"><b>${tr('Objectifs')}</b></p>
-    ${goals.map(g => { const x = tcGoal(D.data.stats, g.surah, slen(g.surah)); return `<div class="weak"><span>${esc(SN(g.surah))} · ${tr('pour le {d}', {d: fd(g.due)})} · ${x.seen}/${x.total} (${x.pct} %)${g.note ? ` · ${esc(g.note)}` : ''}</span><button class="link" style="color:var(--ko)" data-act="tch-goal-del" data-v="${g.id}">${tr('Supprimer')}</button></div>`; }).join('') || `<p class="ref" style="margin:0">${tr("Aucun objectif en cours.")}</p>`}
+    ${goals.map(g => { const x = tcGoal(D.data.stats, g.surah, slen(g.surah)); return `<div class="weak" style="display:block"><div style="display:flex;justify-content:space-between;gap:8px"><span>${esc(SN(g.surah))} · ${tr('pour le {d}', {d: fd(g.due)})} · ${dueLabel(g.due)}${g.note ? ` · ${esc(g.note)}` : ''}</span><button class="link" style="color:var(--ko)" data-act="tch-goal-del" data-v="${g.id}">${tr('Supprimer')}</button></div><div class="bar" role="img" aria-label="${x.pct} %"><i style="width:${x.pct}%"></i></div><span class="ref">${x.seen}/${x.total} (${x.pct} %)</span></div>`; }).join('') || `<p class="ref" style="margin:0">${tr("Aucun objectif en cours.")}</p>`}
     <div class="row" style="margin-top:6px"><select id="tch-gs" aria-label="${tr('Sourate')}">${Q.map(x => `<option value="${x.n}">${x.n}. ${esc(SN(x.n))}</option>`).join('')}</select><input type="date" id="tch-gd" value="${soon}" aria-label="${tr('Date limite')}"></div>
     <div class="row"><input type="text" id="tch-gn" maxlength="140" placeholder="${tr('Remarque (facultatif)')}" aria-label="${tr('Remarque (facultatif)')}"><button data-act="tch-goal-add" data-v="${id}" style="flex:0 0 auto">${tr('Fixer l\'objectif')}</button></div>
-    <p class="ref" style="margin:10px 0 2px"><b>${tr('Conversation')}</b></p>
-    ${(D.thread || []).slice(0, 10).map(m => `<div class="weak"><span>${m.from_student ? esc(D.data.email || '') : `<b>${tr('Moi')}</b>`} · ${fdate(Date.parse(m.created_at))}${m.from_student ? '' : ` · ${m.read_at ? '✓✓ ' + tr('lu') : '✓ ' + tr('envoyé')}`}<br>${esc(m.body)}</span></div>`).join('')}
-    <p class="ref" style="margin:10px 0 2px"><b>${tr('Message à l\'élève')}</b></p>
-    <textarea id="tch-msg" maxlength="280" rows="2" aria-label="${tr('Message à l\'élève')}" placeholder="${tr('Un mot d\'encouragement (280 caractères)')}" style="width:100%"></textarea>
-    <button data-act="tch-send" data-v="${id}">${tr('Envoyer')}</button></div>`;
+    <p class="ref" style="margin:10px 0 4px"><b>${tr('Conversation')}</b></p>
+    <div class="chat" id="chat-thread" role="log" aria-live="polite" aria-label="${tr('Conversation')}" tabindex="0">${chatHtml((D.thread || []).slice().reverse(), m => !m.from_student, false)}</div>
+    <div class="compose"><textarea id="tch-msg" maxlength="280" rows="3" aria-label="${tr('Message à l\'élève')}" placeholder="${tr('Un mot d\'encouragement (280 caractères)')}" data-enter="tch-send-btn" data-count="chat-count"></textarea><button class="pri" id="tch-send-btn" data-act="tch-send" data-v="${id}">${tr('Envoyer')}</button></div><span class="cnt" id="chat-count">0/280</span></div>`;
 }
 const renderTeacher = () => tchRefresh();
+const tchSorted = () => {
+  const U = tch.unread || {}, q = (tch.q || '').toLowerCase(), act = u => u.last_seen ? Date.parse(u.last_seen) : 0, rate = u => Number(u.answers) ? u.ok / u.answers : 2;
+  const by = {activity: (a, b) => act(b) - act(a), unread: (a, b) => (U[b.id] || 0) - (U[a.id] || 0) || act(b) - act(a), rate: (a, b) => rate(a) - rate(b), name: (a, b) => a.email.localeCompare(b.email)}[tch.sort] || (() => 0);
+  return (tch.students || []).filter(u => !q || u.email.toLowerCase().includes(q)).sort(by);
+};
 function tabTeacher(){
-  const S = tch.students, row = u => { const open = tch.detail && tch.detail.id === u.id, rate = Number(u.answers) ? Math.round(100 * u.ok / u.answers) + ' %' : '—';
-    return `<div class="sib"><p style="margin:0"><b>${esc(u.email)}</b>${(tch.unread || {})[u.id] ? ` <span class="badge" style="position:static;display:inline-block">✉ ${tch.unread[u.id]}</span>` : ''}</p>
-      <p class="ref" style="margin:0">${tr('depuis le {d}', {d: new Date(u.since).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short', year: 'numeric'})})} · ${tr('actif {b}', {b: when(u.last_seen)})} · ${trp(Math.round(u.answers), '{n} réponse|{n} réponses')} · ${tr('réussite {d}', {d: rate})}</p>
-      <div class="grades"><button data-act="tch-detail" data-v="${u.id}">${open ? tr('Masquer') : tr('Progression')}</button><button data-act="tch-del" data-v="${u.id}" style="color:var(--ko)">${tr('Retirer')}</button></div>
+  const S = tch.students, fdd = t => new Date(t).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short', year: 'numeric'}), idle = u => !u.last_seen ? Infinity : Math.floor((Date.now() - Date.parse(u.last_seen)) / 864e5);
+  const row = u => { const open = tch.detail && tch.detail.id === u.id, pct = Number(u.answers) ? Math.round(100 * u.ok / u.answers) : null, d = idle(u);
+    return `<div class="sib"><p style="margin:0"><b>${esc(u.email)}</b>${(tch.unread || {})[u.id] ? ` <span class="badge" style="position:static;display:inline-block">✉ ${tch.unread[u.id]}</span>` : ''}${d > 7 ? ` <span class="warn">⚠ ${d === Infinity ? tr('jamais connecté') : tr('inactif depuis {n} j', {n: d})}</span>` : ''}</p>
+      <p class="ref" style="margin:0">${tr('depuis le {d}', {d: fdd(u.since)})} · ${tr('actif {b}', {b: when(u.last_seen)})} · ${trp(Math.round(u.answers), '{n} réponse|{n} réponses')} · ${trp(u.errors, '{n} erreur|{n} erreurs')}</p>
+      ${pct === null ? '' : `<div class="bar" role="img" aria-label="${tr('réussite {p} %', {p: pct})}"><i style="width:${pct}%"></i></div><p class="ref" style="margin:0">${tr('réussite {p} %', {p: pct})}</p>`}
+      <div class="grades"><button data-act="tch-detail" data-v="${u.id}">${open ? tr('Masquer') : tr('Progression et messages')}</button><button data-act="tch-del" data-v="${u.id}" style="color:var(--ko)">${tr('Retirer')}</button></div>
       ${open ? (tch.detail.data ? tchDetailHtml(tch.detail.data) + tchActionsHtml(u.id) : '') : ''}</div>`; };
+  const list = tchSorted();
   return `<h1 style="margin-top:8px">${tr('Espace enseignant')}</h1>
     <p class="sub">${S ? trp(S.length, '{n} élève|{n} élèves') : tr('Chargement…')}</p>
     ${tch.msg ? `<div class="fb tch-flash ${tch.ok ? 'ok' : 'ko'}">${esc(tch.msg)}</div>` : ''}
@@ -3320,7 +3396,8 @@ function tabTeacher(){
     <div class="card"><h2>${tr('Groupe de classe')}</h2><p class="ref" style="margin:0 0 6px">${tr("Un code réutilisable (40 élèves, 30 jours) à donner à toute la classe. Chaque élève le saisit lui-même : il t'ouvre ainsi l'accès à sa progression.")}</p>
       ${(tch.classes || []).map(c => `<div class="weak"><span><b style="letter-spacing:.12em">${esc(c.code)}</b> · ${c.uses}/${c.max_uses} ${tr('élèves')} · ${tr("jusqu'au {d}", {d: new Date(c.expires_at).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short'})})}</span><button class="link" style="color:var(--ko)" data-act="tch-class-close" data-v="${esc(c.code)}">${tr('Fermer')}</button></div>`).join('')}
       <button data-act="tch-class-new">${tr('Créer un code de classe')}</button></div>
-    <div class="card">${S ? (S.map(row).join('') || `<p class="sub" style="margin:0">${tr("Aucun élève pour l'instant.")}</p>`) : ''}</div>`;
+    <div class="card"><h2>${tr('Mes élèves')}</h2>${S && S.length > 1 ? `<div class="row"><input type="text" id="tch-q" style="flex:1 1 100%" placeholder="${tr('Rechercher un élève')}" aria-label="${tr('Rechercher un élève')}" value="${esc(tch.q || '')}" autocomplete="off"><select id="tch-sort" aria-label="${tr('Trier par')}">${[['activity', 'Activité récente'], ['unread', 'Messages non lus'], ['rate', 'Réussite (les plus fragiles d\'abord)'], ['name', 'Nom']].map(([k, t]) => `<option value="${k}" ${tch.sort === k ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select></div>` : ''}
+      ${S ? (list.map(row).join('') || `<p class="sub" style="margin:0">${S.length ? tr('Aucun résultat.') : tr("Aucun élève pour l'instant.")}</p>`) : ''}</div>`;
 }
 function renderAdmin(){
   setNav(false); screen = 'admin';
@@ -3373,7 +3450,11 @@ function adminBlock(id){ const u = userOf(id); if (!u) return;
   if (confirm(tr(u.blocked ? 'Débloquer {u} ?' : 'Bloquer {u} ?', {u: u.email}))) adminAct(() => sb.rpc('admin_set_blocked', {target: id, b: !u.blocked})); }
 function adminDelete(id){ const u = userOf(id); if (!u) return;
   if (confirm(tr('Supprimer définitivement le compte {u} et toute sa progression ? Irréversible.', {u: u.email}))) adminAct(() => sb.rpc('admin_delete_user', {target: id})); }
-$app.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.enter){ e.preventDefault(); $(e.target.dataset.enter)?.click(); } });
+$app.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && e.target.dataset && e.target.dataset.enter){ e.preventDefault(); $(e.target.dataset.enter)?.click(); } });   // Maj+Entrée : retour à la ligne dans un message
+$app.addEventListener('input', e => {
+  const c = e.target.dataset && e.target.dataset.count; if (c && $(c)) $(c).textContent = e.target.value.length + '/280';
+  if (e.target.id === 'tch-q'){ tch.q = e.target.value; const pos = e.target.selectionStart; tchRefresh(); const n = $('tch-q'); if (n){ n.focus(); n.setSelectionRange(pos, pos); } }
+});
 
 /* ---------- accessibilité : lie chaque étiquette à son champ, déclare la langue du texte arabe, annonce les retours ---------- */
 function fixA11y(){
