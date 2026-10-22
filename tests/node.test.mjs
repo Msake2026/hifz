@@ -441,7 +441,10 @@ test('accessibilité : contrastes WCAG des couleurs du thème et du tajwīd (mod
 
 test('suivi par un enseignant : régularité, progression par sourate, erreurs fréquentes (fonctions pures)', () => {
   const html = read('index.html'), tc = html.slice(html.indexOf('/* TC:begin'), html.indexOf('/* TC:end */'));
-  const { tcRegularity, tcPerSurah, tcFrequent, tcGoal, tcRemaining, tcRanges, tcPace } = new Function(tc + '; return {tcRegularity, tcPerSurah, tcFrequent, tcGoal, tcRemaining, tcRanges, tcPace};')();
+  const { tcRegularity, tcPerSurah, tcFrequent, tcGoal, tcRemaining, tcRanges, tcPace, tcGoalR } = new Function(tc + '; return {tcRegularity, tcPerSurah, tcFrequent, tcGoal, tcRemaining, tcRanges, tcPace, tcGoalR};')();
+  { const len = n => ({ 1: 7, 2: 286, 3: 200 })[n]; const R = tcGoalR({ '1:1': [1, 0], '1:2': [0, 1], '2:1': [2, 0], '2:2': [1, 0] }, 1, 3, len);
+    assert.equal(R.total, 493); assert.equal(R.seen, 3); assert.equal(R.left, 490); assert.deepEqual(R.parts.map(p => [p.s, p.rest.length]), [[1, 6], [2, 284], [3, 200]]); assert.equal(R.pct, 1);
+    assert.deepEqual(tcGoalR({}, 1, 1, len), { seen: 0, total: 7, left: 7, pct: 0, parts: [{ s: 1, total: 7, rest: [1, 2, 3, 4, 5, 6, 7] }] }); assert.equal(tcGoalR({}, 2, undefined, len).total, 286); }
   assert.deepEqual(tcRemaining({ '1:1': [1, 0], '1:2': [0, 2], '1:4': [3, 1] }, 1, 7), [2, 3, 5, 6, 7]);
   assert.equal(tcRanges([1, 2, 3, 5, 7, 8]), '1–3, 5, 7, 8'.replace('7, 8', '7, 8')); assert.equal(tcRanges([2, 3, 5, 6, 7]), '2, 3, 5–7'); assert.equal(tcRanges([]), ''); assert.equal(tcRanges(Array.from({ length: 40 }, (_, i) => i * 2 + 1), 3), '1, 3, 5 …');
   const noon = Date.parse('2026-10-22T12:00:00'); assert.deepEqual(tcPace(6, '2026-10-24', noon), { days: 3, perDay: 2 }); assert.deepEqual(tcPace(5, '2026-10-22', noon), { days: 1, perDay: 5 }); assert.deepEqual(tcPace(5, '2026-10-20', noon), { days: -1, perDay: 0 }); assert.deepEqual(tcPace(0, '2026-10-24', noon), { days: 3, perDay: 0 });

@@ -594,7 +594,7 @@
     E("go('student')"); await wait(300); t = appText();
     ok(/Reste à réussir : 3(–|, )\d+/.test(t) && t.includes('Rythme conseillé') && t.includes('Réviser les versets restants'), 'objectif : versets restants, rythme conseillé, bouton de révision : ' + t.slice(t.indexOf('Mes objectifs'), t.indexOf('Mes objectifs') + 400));
     E("go('home')"); await wait(150); ok(appText().includes('Objectif de ton enseignant'), 'rappel de l’objectif sur l’Accueil');
-    clickAct('goal-go', '78'); await wait(300); ok(E("ses.goal === true && ses.pool.length > 0 && ses.pool.every(r => r.s === 78 && r.a > 2)"), 'la série ne contient que des versets de la sourate pas encore réussis');
+    clickAct('goal-go', '78-78'); await wait(300); ok(E("ses.goal === true && ses.pool.length > 0 && ses.pool.every(r => r.s === 78 && r.a > 2)"), 'la série ne contient que des versets de la sourate pas encore réussis');
     for (let i = 0; i < 6; i++){ ok(E("['next','cloze','mcq'].includes(cur.m) && cur.r.s === 78 && cur.r.a > 2"), 'questions sur le verset demandé'); E("nextQ()"); if (E("screen") === 'full' && !E("cur")) break; }
     E("home()");
     E("openAccount()"); await wait(500); ok($q('#tch-join') && !$q('#chat-thread'), 'rejoindre une classe : dans Mon compte');
@@ -610,7 +610,12 @@
     clickAct('tch-class-close', 'CLASSE22'); await wait(300); ok(calls.includes('class_close {"p_code":"CLASSE22"}') && !appText().includes('CLASSE22'), 'code de classe fermé');
     clickAct('tch-detail', 's1'); for (let i = 0; i < 40 && !$q('[data-act="tch-goal-add"]'); i++) await wait(50); ok($q('[data-act="tch-send"]') && $q('#tch-gs').options.length === 114, 'formulaires objectif et message');
     $q('#tch-gs').value = '78'; $q('#tch-gd').value = day(6); $q('#tch-gn').value = 'relire'; clickAct('tch-goal-add', 's1'); for (let i = 0; i < 40 && !appText().includes('relire'); i++) await wait(50);
-    ok(calls.some(c => c === 'teacher_goal_set {"target":"s1","p_surah":78,"p_due":"' + day(6) + '","p_note":"relire"}'), 'objectif fixé'); ok(/3\/\d+ \(\d+ %\)/.test(appText()), 'avancement de l’élève affiché');
+    ok(calls.some(c => c === 'teacher_goal_set {"target":"s1","p_surah":78,"p_due":"' + day(6) + '","p_note":"relire","p_surah_to":null}'), 'objectif fixé (une seule sourate : pas de plage)');
+    // objectif sur plusieurs sourates : « de … à … »
+    $q('#tch-gs').value = '78'; $q('#tch-gs').dispatchEvent(new W.Event('change', {bubbles: true})); eq($q('#tch-ge').value, '78', 'la 2e liste suit la 1re'); $q('#tch-ge').value = '80'; $q('#tch-gn').value = 'trois sourates'; $q('#tch-gd').value = day(6);
+    clickAct('tch-goal-add', 's1'); await wait(300); ok(calls.some(c => c === 'teacher_goal_set {"target":"s1","p_surah":78,"p_due":"' + day(6) + '","p_note":"trois sourates","p_surah_to":80}'), 'objectif sur 78 → 80 envoyé');
+    ok(E("goalName({surah: 78, surah_to: 80})").includes(' → ') && E("goalName({surah: 78, surah_to: null})") === E("SN(78)") && E("goalName({surah: 78, surah_to: 78})") === E("SN(78)"), 'nom d’un objectif : une sourate ou une plage');
+    ok(E("(() => { stats = {'78:1': [1, 0]}; const i = goalInfo({surah: 78, surah_to: 79, due: '2099-01-01'}); return i.r.parts.length === 2 && i.x.total === slen(78) + slen(79) && i.x.seen === 1; })()"), 'progression cumulée sur plusieurs sourates'); ok(E("goalRestText(goalInfo({surah: 78, surah_to: 79, due: '2099-01-01'}))").includes(' : tout'), 'reste : « tout » pour une sourate non commencée'); E("stats = {}"); ok(/3\/\d+ \(\d+ %\)/.test(appText()), 'avancement de l’élève affiché');
     clickAct('tch-goal-del', '11'); await wait(300); ok(calls.includes('goal_delete {"p_id":11}') && !appText().includes('relire'), 'objectif supprimé');
     ok(appText().includes('Merci prof') && appText().includes('✓✓'), 'conversation : réponse de l’élève et accusé « lu »');
     ok($q('#chat-thread .msg.me') && $q('#chat-thread .msg.them'), 'conversation en bulles : moi à droite, l’élève à gauche');
