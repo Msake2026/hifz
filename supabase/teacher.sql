@@ -291,6 +291,7 @@ create table if not exists public.teacher_goals (
   note       text check (note is null or char_length(note) <= 140),
   created_at timestamptz not null default now()
 );
+alter table public.teacher_goals add column if not exists surah_to int check (surah_to is null or surah_to between 1 and 114);   -- objectif sur plusieurs sourates : de surah à surah_to (inclus)
 create table if not exists public.teacher_classes (
   code       text primary key,
   teacher_id uuid not null references auth.users(id) on delete cascade,
@@ -344,17 +345,20 @@ language sql security definer set search_path = public as $$
   delete from public.teacher_messages where id = p_id and (student_id = auth.uid() or teacher_id = auth.uid())
 $$;
 
-create or replace function public.teacher_goal_set(target uuid, p_surah int, p_due date, p_note text default null) returns void
+drop function if exists public.teacher_goal_set(uuid, int, date, text);
+create or replace function public.teacher_goal_set(target uuid, p_surah int, p_due date, p_note text default null, p_surah_to int default null) returns void
 language plpgsql security definer set search_path = public as $$
+declare v_to int := case when p_surah_to is null or p_surah_to = p_surah then null else p_surah_to end;
 begin
   if not public.teacher_has(target) then raise exception 'accès refusé' using errcode = '42501'; end if;
   if p_surah is null or p_surah < 1 or p_surah > 114 then raise exception 'Sourate inconnue.' using errcode = 'P0001'; end if;
+  if v_to is not null and (v_to < p_surah or v_to > 114) then raise exception 'Plage de sourates invalide.' using errcode = 'P0001'; end if;
   if p_due is null or p_due < current_date or p_due > current_date + 365 then raise exception 'Date invalide (dans l''année à venir).' using errcode = 'P0001'; end if;
   if (select count(*) from public.teacher_goals g where g.teacher_id = auth.uid() and g.student_id = target and g.due >= current_date) >= 5 then
     raise exception 'Cet élève a déjà 5 objectifs en cours : supprime-en un.' using errcode = 'P0001';
   end if;
-  insert into public.teacher_goals (teacher_id, student_id, surah, due, note) values (auth.uid(), target, p_surah, p_due, nullif(trim(coalesce(p_note, '')), ''));
-  perform public.notify(target, 'goal', p_surah::text, (select p.email from public.profiles p where p.id = auth.uid()));
+  insert into public.teacher_goals (teacher_id, student_id, surah, surah_to, due, note) values (auth.uid(), target, p_surah, v_to, p_due, nullif(trim(coalesce(p_note, '')), ''));
+  perform public.notify(target, 'goal', p_surah::text || coalesce('-' || v_to::text, ''), (select p.email from public.profiles p where p.id = auth.uid()));
 end $$;
 
 create or replace function public.goal_delete(p_id bigint) returns void
@@ -363,17 +367,18 @@ language sql security definer set search_path = public as $$
 $$;
 
 -- objectifs : l'élève voit les siens, l'enseignant ceux qu'il a fixés (target = l'élève) ; les objectifs échus depuis plus de 30 jours disparaissent
-create or replace function public.goals_for(target uuid default null) returns table (id bigint, teacher_email text, surah int, due date, note text)
+drop function if exists public.goals_for(uuid);
+create or replace function public.goals_for(target uuid default null) returns table (id bigint, teacher_email text, surah int, surah_to int, due date, note text)
 language plpgsql stable security definer set search_path = public as $$
 begin
   if target is null or target = auth.uid() then
-    return query select g.id, p.email, g.surah, g.due, g.note from public.teacher_goals g join public.profiles p on p.id = g.teacher_id
+    return query select g.id, p.email, g.surah, g.surah_to, g.due, g.note from public.teacher_goals g join public.profiles p on p.id = g.teacher_id
       where g.student_id = auth.uid() and g.due >= current_date - 30
         and exists (select 1 from public.teacher_links l where l.teacher_id = g.teacher_id and l.student_id = g.student_id)
       order by g.due, g.id;
   else
     if not public.teacher_has(target) then raise exception 'accès refusé' using errcode = '42501'; end if;
-    return query select g.id, p.email, g.surah, g.due, g.note from public.teacher_goals g join public.profiles p on p.id = g.teacher_id
+    return query select g.id, p.email, g.surah, g.surah_to, g.due, g.note from public.teacher_goals g join public.profiles p on p.id = g.teacher_id
       where g.teacher_id = auth.uid() and g.student_id = target and g.due >= current_date - 30 order by g.due, g.id;
   end if;
 end $$;
@@ -425,10 +430,10 @@ begin
 end $$;
 
 revoke all on function public.teacher_has(uuid), public.teacher_message_send(uuid, text), public.messages_mine(), public.message_delete(bigint),
-  public.teacher_goal_set(uuid, int, date, text), public.goal_delete(bigint), public.goals_for(uuid),
+  public.teacher_goal_set(uuid, int, date, text, int), public.goal_delete(bigint), public.goals_for(uuid),
   public.class_create(), public.class_close(text), public.class_mine(), public.class_join(text) from public, anon;
 grant execute on function public.teacher_has(uuid), public.teacher_message_send(uuid, text), public.messages_mine(), public.message_delete(bigint),
-  public.teacher_goal_set(uuid, int, date, text), public.goal_delete(bigint), public.goals_for(uuid),
+  public.teacher_goal_set(uuid, int, date, text, int), public.goal_delete(bigint), public.goals_for(uuid),
   public.class_create(), public.class_close(text), public.class_mine(), public.class_join(text) to authenticated;
 
 -- 11. Résumé de la semaine par e-mail (facultatif : chacun l'active pour lui-même ; envoyé par la fonction send-reminders le dimanche)

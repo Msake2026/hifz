@@ -147,6 +147,13 @@ begin
   perform t.as_user(f1); perform public.goal_delete((select id from public.goals_for(b) limit 1)); assert (select count(*) from public.goals_for(b)) = 4, 'l''enseignant supprime un objectif';
   perform t.as_super(); update public.teacher_goals set due = current_date - 31 where id = (select min(id) from public.teacher_goals);
   perform t.as_user(f1); assert (select count(*) from public.goals_for(b)) = 3, 'un objectif échu depuis plus de 30 jours disparaît';
+  -- objectif sur plusieurs sourates
+  perform t.as_user(f1); perform public.teacher_goal_set(b, 80, current_date + 5, 'trois sourates', 82);
+  assert (select g.surah_to from public.goals_for(b) g where g.surah = 80) = 82, 'plage enregistrée'; perform t.as_user(b);
+  assert (select g.surah_to from public.goals_for() g where g.surah = 80) = 82 and (select count(*) from public.goals_for() g where g.surah_to is null) >= 1, 'l''élève voit la plage ; sans plage : nul';
+  perform t.as_user(f1); perform t.fails('select public.teacher_goal_set(''' || b || ''', 80, current_date + 5, null, 79)', 'P0001'); perform t.fails('select public.teacher_goal_set(''' || b || ''', 80, current_date + 5, null, 115)', 'P0001');
+  perform public.goal_delete((select g.id from public.goals_for(b) g where g.surah = 80)); perform public.teacher_goal_set(b, 80, current_date + 5, null, 80); assert (select g.surah_to from public.goals_for(b) g where g.surah = 80) is null, 'même sourate : pas de plage';
+  perform public.goal_delete((select g.id from public.goals_for(b) g where g.surah = 80));
   perform t.as_user(b); perform public.link_revoke(f1); assert (select count(*) from public.links_mine() where as_role = 'teacher') = 1, 'toujours lié après une tentative de l''élève';
   perform t.as_user(f1); perform public.link_revoke(b); perform t.as_user(b); assert (select count(*) from public.messages_mine()) = 0 and (select count(*) from public.goals_for()) = 0, 'lien coupé : messages et objectifs ne s''affichent plus';
   perform t.as_user(f1); perform t.fails('select public.teacher_message_send(''' || b || ''', ''après'')', '42501');
