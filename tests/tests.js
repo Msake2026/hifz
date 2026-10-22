@@ -587,10 +587,16 @@
     ok(calls.includes('messages_mark_read {}'), 'les messages reçus sont marqués lus à l’ouverture');
     ok($q('#chat-thread .msg.them .b') && $q('#chat-thread .msg.them .b').textContent.includes('Courage'), 'bulle du message de l’enseignant (à gauche)');
     $q('#tch-reply').value = 'Merci'; $q('#tch-reply').dispatchEvent(new W.Event('input', {bubbles: true})); eq($q('#chat-count').textContent, '5/280', 'compteur de caractères');
-    const n0 = calls.length; $q('#tch-reply').dispatchEvent(new W.KeyboardEvent('keydown', {key: 'Enter', shiftKey: true, bubbles: true})); await wait(150); eq(calls.length, n0, 'Maj+Entrée : pas d’envoi');
+    const sent = () => calls.filter(c => c.startsWith('student_message_send')).length, n0 = sent(); $q('#tch-reply').dispatchEvent(new W.KeyboardEvent('keydown', {key: 'Enter', shiftKey: true, bubbles: true})); await wait(150); eq(sent(), n0, 'Maj+Entrée : pas d’envoi');
     $q('#tch-reply').value = 'Merci !'; clickAct('tch-reply-send'); await wait(300); ok(calls.includes('student_message_send {"p_teacher":"t1","p_body":"Merci !"}'), 'l’élève répond à son enseignant');
     clickAct('tch-msg-del', '7'); await wait(300); ok(calls.some(c => c === 'message_delete {"p_id":7}') && !appText().includes('Courage pour'), 'message supprimé par l’élève');
     ok(appText().includes('Message supprimé.'), 'confirmation affichée'); await wait(3300); ok(!appText().includes('Message supprimé.'), 'la confirmation disparaît seule au bout de 3 s');
+    E("go('student')"); await wait(300); t = appText();
+    ok(/Reste à réussir : 3(–|, )\d+/.test(t) && t.includes('Rythme conseillé') && t.includes('Réviser les versets restants'), 'objectif : versets restants, rythme conseillé, bouton de révision : ' + t.slice(t.indexOf('Mes objectifs'), t.indexOf('Mes objectifs') + 400));
+    E("go('home')"); await wait(150); ok(appText().includes('Objectif de ton enseignant'), 'rappel de l’objectif sur l’Accueil');
+    clickAct('goal-go', '78'); await wait(300); ok(E("ses.goal === true && ses.pool.length > 0 && ses.pool.every(r => r.s === 78 && r.a > 2)"), 'la série ne contient que des versets de la sourate pas encore réussis');
+    for (let i = 0; i < 6; i++){ ok(E("['next','cloze','mcq'].includes(cur.m) && cur.r.s === 78 && cur.r.a > 2"), 'questions sur le verset demandé'); E("nextQ()"); if (E("screen") === 'full' && !E("cur")) break; }
+    E("home()");
     E("openAccount()"); await wait(500); ok($q('#tch-join') && !$q('#chat-thread'), 'rejoindre une classe : dans Mon compte');
     $q('#tch-join').value = 'badcode1'; clickAct('tch-join-go'); await wait(300); ok(appText().includes('Code invalide ou expiré.'), 'code de classe refusé');
     $q('#tch-join').value = 'classe22'; clickAct('tch-join-go'); await wait(300); ok(calls.includes('class_join {"p_code":"classe22"}') && appText().includes('Classe rejointe : prof@x.fr'), 'classe rejointe');

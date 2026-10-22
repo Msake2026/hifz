@@ -722,6 +722,7 @@ function tabHome(){
   </div>
 
   ${weakCard(false)}
+  ${goalHomeCard()}
   ${plan ? (() => { const T = planToday(), tot = (T.next ? 1 : 0) + (T.rec.length ? 1 : 0) + (T.man.length ? 1 : 0), dn = (T.next && T.d.sabaq ? 1 : 0) + (T.rec.length && T.d.sabqi ? 1 : 0) + (T.man.length && T.d.manzil ? 1 : 0);
     return `<div class="card"><h2>${tr('Plan du jour')}</h2><p class="sub" style="margin:0 0 8px">${T.next || tot ? tr("{a} / {b} étapes terminées aujourd'hui", {a: dn, b: tot}) : tr('Plan terminé 🎉')}</p>
     <button class="pri big" data-act="tab" data-v="plan">${tr('Ouvrir mon plan')}</button></div>`; })() : ''}
@@ -1160,7 +1161,7 @@ function start(fixed){
   }
   const pool = fixed || (HFMODES.includes(cfg.mode) ? [{s: 1, a: 1}] : buildPool(cfg.scope));   // makhārij / ṣifāt : indépendants de la portée
   if (!pool.length) return alert(tr('Aucun verset dans cette portée.'));
-  ses = {pool, fixed: !!fixed, i: 0, score: 0, missed: [], used: new Set(), total: fixed ? fixed.length : cfg.n};
+  ses = {pool, fixed: !!fixed, i: 0, score: 0, missed: [], used: new Set(), total: fixed ? fixed.length : cfg.n, goal: goalSession}; goalSession = false;
   nextQ();
 }
 function shell(inner){
@@ -1192,7 +1193,7 @@ function nextQ(){
     return startPassage(refs, passageLabel(refs), ses.planKind === 'manzil' ? tr('Révision ancienne : récite de mémoire ce passage.') : tr('Révision récente : récite de mémoire ce passage.'));
   }
   const hasQ = ses.pool.some(r => isQ(r.s)), hasM = ses.pool.some(r => !isQ(r.s));
-  let m = cfg.mode;
+  let m = cfg.mode; if (ses.goal && !['next', 'cloze', 'mcq'].includes(m)) m = ['next', 'cloze', 'mcq'][rnd(3)];
   if (m === 'tajweed' && (ses.fixed || !hasQ)) m = 'mix';
   if (HFMODES.includes(m)){
     if (!ses.fixed){ cur = {m, r: null, done: false, audio: [], hf: true, label: tr(m === 'makharij' ? 'Makhārij' : m === 'ahkam' ? 'Aḥkām' : m === 'madd' ? 'Madd' : 'Ṣifāt')}; return m === 'makharij' ? qMakharij() : m === 'ahkam' ? qAhkam() : m === 'madd' ? qMadd() : qSifat(); }
@@ -2367,6 +2368,7 @@ const onClick = e => {
     case 'tch-msg-del': tchMsgDel(v); break;
     case 'tch-reply-send': tchReply(); break;
     case 'bell': nfToggle(); break;
+    case 'goal-go': startGoal(+v); break;
     case 'nf-open': nfOpen(+v); break;
     case 'nf-done': nfRead(+v); break;
     case 'nf-all': nfAll(); break;
@@ -2657,7 +2659,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '22 oct. 2026 · v46';
+const APP_VERSION = '22 oct. 2026 · v47';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -3184,6 +3186,18 @@ function tcGoal(stats, surah, total){ // avancement d'un objectif : versets de l
   let seen = 0; for (const [k, v] of Object.entries(stats || {})) if (k.split(':')[0] === String(surah) && v && v[0] > 0) seen++;
   return {seen, total, pct: total ? Math.min(100, Math.round(100 * seen / total)) : 0};
 }
+function tcRemaining(stats, surah, total){ // numéros des versets de la sourate pas encore réussis
+  const out = []; for (let a = 1; a <= total; a++){ const v = (stats || {})[surah + ':' + a]; if (!(v && v[0] > 0)) out.push(a); } return out;
+}
+function tcRanges(list, max = 12){ // [1,2,3,5,7,8] -> « 1–3, 5, 7–8 » (au plus `max` groupes, puis « … »)
+  const g = []; for (const n of list){ const l = g[g.length - 1]; if (l && n === l[1] + 1) l[1] = n; else g.push([n, n]); }
+  const t = g.map(([a, b]) => a === b ? String(a) : b === a + 1 ? a + ', ' + b : a + '–' + b);
+  return t.length > max ? t.slice(0, max).join(', ') + ' …' : t.join(', ');
+}
+function tcPace(remaining, due, now){ // jours restants (inclus aujourd'hui) et nombre de versets à réussir par jour ; days < 1 : échéance dépassée
+  const days = Math.floor((Date.parse(due + 'T23:59:59') - now) / 864e5) + 1;
+  return {days, perDay: days >= 1 && remaining ? Math.ceil(remaining / days) : 0};
+}
 /* TC:end */
 const isTeacher = () => !!(me && me.profile && me.profile.role === 'teacher');
 let tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: '', wk: false, unread: {}, loading: false, q: '', sort: 'activity', chatWith: null, openAfter: null};
@@ -3333,13 +3347,37 @@ function chatCard(){
       : `<p class="ref" style="margin:0">${tr("Tu pourras répondre quand ton enseignant t'aura écrit.")}</p>`}</div>`;
 }
 const dueLabel = due => { const n = Math.ceil((new Date(due + 'T23:59:59') - Date.now()) / 864e5); return n < 0 ? `<span class="warn">${tr('en retard de {n} j', {n: -n})}</span>` : n === 0 ? tr("aujourd'hui") : tr('dans {n} j', {n}); };
+const goalInfo = g => { const tot = slen(g.surah), x = tcGoal(stats, g.surah, tot), rest = tcRemaining(stats, g.surah, tot), pace = tcPace(rest.length, g.due, Date.now()); return {tot, x, rest, pace}; };
 function goalsCard(){
   if (!tch.goals || !tch.goals.length) return '';
   const fd = t => new Date(t + 'T00:00:00').toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short'});
-  return `<div class="card"><h2>${tr('Mes objectifs')}</h2>${tch.goals.map(g => { const x = tcGoal(stats, g.surah, slen(g.surah));
-    return `<div class="sib"><p style="margin:0"><b>${esc(SN(g.surah))}</b> · ${tr('pour le {d}', {d: fd(g.due)})} · ${dueLabel(g.due)}</p>
+  return `<div class="card"><h2>${tr('Mes objectifs')}</h2>
+    <p class="ref" style="margin:0 0 8px">${tr("Comment atteindre 100 % : lance « Réviser les versets restants ». Chaque verset que tu réussis (récitation, mots manquants, question…) est validé ; une réponse fausse ne le valide pas, il reste à faire.")}</p>
+    ${tch.goals.map(g => { const {x, rest, pace} = goalInfo(g);
+      const plan = x.pct >= 100 ? `<b>${tr('Objectif atteint, machaa Allah 🎉')}</b>`
+        : pace.days < 1 ? `<span class="warn">${tr("Échéance dépassée : réussis les {n} versets restants dès que possible.", {n: rest.length})}</span>`
+        : `${tr('Rythme conseillé : {n} par jour', {n: trp(pace.perDay, '{n} verset|{n} versets')})}`;
+      return `<div class="sib"><p style="margin:0"><b>${esc(SN(g.surah))}</b> · ${tr('pour le {d}', {d: fd(g.due)})} · ${dueLabel(g.due)}</p>
       <div class="bar" role="img" aria-label="${x.pct} %"><i style="width:${x.pct}%"></i></div>
-      <p class="ref" style="margin:0">${x.seen}/${x.total} ${tr('versets réussis')} (${x.pct} %)${x.pct >= 100 ? ' 🎉' : ''}${g.note ? ` · ${esc(g.note)}` : ''}</p></div>`; }).join('')}<p class="ref" style="margin:8px 0 0">${tr("Un verset compte quand tu l'as réussi au moins une fois dans un exercice (une réponse fausse ne fait pas avancer l'objectif).")}</p></div>`;
+      <p class="ref" style="margin:0">${x.seen}/${x.total} ${tr('versets réussis')} (${x.pct} %)${g.note ? ` · ${esc(g.note)}` : ''}</p>
+      ${rest.length ? `<p class="ref" style="margin:4px 0 0">${tr('Reste à réussir : {l}', {l: tcRanges(rest)})}</p>` : ''}
+      <p style="margin:4px 0 6px">${plan}</p>
+      ${rest.length ? `<button class="pri" data-act="goal-go" data-v="${g.surah}">${tr('Réviser les versets restants')} (${Math.min(rest.length, cfg.n)})</button>` : ''}</div>`; }).join('')}</div>`;
+}
+/* lance une série sur les versets de l'objectif pas encore réussis (les premiers de la sourate, au plus cfg.n) ; les questions portent
+   sur le verset lui-même (suite, mots manquants, choix de la suite) pour que chaque réussite valide bien le verset demandé */
+let goalSession = false;
+function startGoal(surah){
+  const rest = tcRemaining(stats, surah, slen(surah)); if (!rest.length) return;
+  goalSession = true; start(rest.slice(0, cfg.n).map(a => ({s: surah, a})));
+}
+// rappel sur l'Accueil : l'objectif le plus proche
+function goalHomeCard(){
+  if (!me || !tch.goals || !tch.goals.length) return '';
+  const g = tch.goals.map(g => ({g, i: goalInfo(g)})).filter(o => o.i.x.pct < 100).sort((a, b) => a.g.due.localeCompare(b.g.due))[0]; if (!g) return '';
+  return `<div class="card"><h2>${tr('Objectif de ton enseignant')}</h2>
+    <p style="margin:0"><b>${esc(SN(g.g.surah))}</b> · ${dueLabel(g.g.due)} · ${g.i.x.pct} %</p><div class="bar" role="img" aria-label="${g.i.x.pct} %"><i style="width:${g.i.x.pct}%"></i></div>
+    <div class="row"><button class="pri" data-act="goal-go" data-v="${g.g.surah}">${tr('Réviser les versets restants')}</button><button data-act="tab" data-v="student">${tr('Voir mes objectifs')}</button></div></div>`;
 }
 function teachersCard(){
   const L = tch.links || [], fd = t => new Date(t).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short', year: 'numeric'});
