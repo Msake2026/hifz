@@ -111,7 +111,7 @@
   });
 
   /* ---- exercices à choix : de vrais clics, répétés (les tirages sont aléatoires) ---- */
-  const choice = [['which', ALL], ['mcq', ALL], ['mutash', ALL], ['order', ALL], ['which', MAT], ['mcq', MAT]];
+  const choice = [['which', ALL], ['mcq', ALL], ['mutash', ALL], ['mwhich', ALL], ['order', ALL], ['which', MAT], ['mcq', MAT]];
   for (const [mode, scope] of choice){
     const label = `${mode} (${scope === ALL ? 'Coran' : 'moutoun'})`;
     test(`QCM ${label} : bonne réponse → vert, mauvaise → rouge (30 tirages)`, () => {
@@ -121,7 +121,7 @@
         E("start()");
         noErr('start ' + label);
         const btns = $$q('.opt'); ok(btns.length >= 3, 'moins de 3 propositions');
-        const isGood = b => E(`(cur.m === 'which' || cur.m === 'order') ? (isQ(cur.correct) ? +"${b.dataset.v}" : "${b.dataset.v}") === cur.correct : cur.opts[+"${b.dataset.v}"] === cur.good`);
+        const isGood = b => E(`(cur.m === 'which' || cur.m === 'order' || cur.m === 'mwhich') ? (isQ(cur.correct) ? +"${b.dataset.v}" : "${b.dataset.v}") === cur.correct : cur.opts[+"${b.dataset.v}"] === cur.good`);
         const goods = btns.filter(isGood); eq(goods.length, 1, 'une seule bonne réponse attendue');
         const target = wantOk ? goods[0] : btns.find(b => !isGood(b));
         click(target); noErr('clic ' + label);

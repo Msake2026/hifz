@@ -533,6 +533,7 @@ const MODES = [
   ['which',  'Quelle sourate ?',   'Identifie d\'où vient le verset'],
   ['mcq',    'Suite en QCM',       'Choisis le bon verset suivant'],
   ['mutash', 'Versets proches',    'Ne confonds pas les versets qui se ressemblent', 'q'],
+  ['mwhich', 'Versets proches : quelle sourate ?', 'Retrouve la sourate d\'un verset qui ressemble à d\'autres', 'q'],
   ['start',  'Début de sourate',   'Récite le premier verset', 'q'],
   ['order',  'Ordre des sourates', 'Quelle sourate vient après ?', 'q'],
   ['end',    'Fin de sourate',     'Récite les derniers versets', 'q'],
@@ -891,7 +892,7 @@ function tabPlan(){
 /* -- Réviser : tout pour préparer une série -- */
 /* options utiles pour chaque exercice (n = nombre de questions : toujours) ; q = Coran seulement */
 const MODE_OPTS = {
-  mix: {level: 1, end: 'q', beg: 'q', input: 1}, next: {input: 1}, cloze: {level: 1, input: 1}, which: {}, mcq: {}, mutash: {}, start: {input: 1},
+  mix: {level: 1, end: 'q', beg: 'q', input: 1}, next: {input: 1}, cloze: {level: 1, input: 1}, which: {}, mcq: {}, mutash: {}, mwhich: {}, start: {input: 1},
   order: {}, tajweed: {tj: 1}, ahkam: {ah: 1}, madd: {md: 1}, makharij: {mk: 1}, sifat: {sf: 1}, end: {end: 'q', input: 1}, link: {end: 'q', beg: 'q', input: 1}, cont: {cont: 1, input: 1}, half: {input: 1}, phrase: {input: 1}
 };
 const modeHelp = {
@@ -902,7 +903,7 @@ const modeHelp = {
   tajweed: 'Plusieurs types de questions de tajwīd au choix : reconnaître la règle d\'une partie surlignée, trouver la partie d\'une règle, vrai ou faux (entraînement : annotation automatique non relue par un enseignant).',
   mix: 'Un mélange de tous les exercices.', next: 'On te donne un verset, tu donnes la suite.', cloze: 'Des mots du verset sont cachés : retrouve-les.',
   which: 'Tu identifies la sourate (ou le matn) d\'un verset en touchant la bonne réponse.', mcq: 'Tu touches le bon verset suivant parmi quatre.',
-  mutash: 'Tu touches la vraie suite d\'un verset qui ressemble à d\'autres.', start: 'Tu récites le premier verset d\'une sourate.',
+  mutash: 'Tu touches la vraie suite d\'un verset qui ressemble à d\'autres.', mwhich: 'Tu touches la sourate d\'un verset qui ressemble à d\'autres versets (seuls les versets qui n\'apparaissent qu\'une fois dans le Coran sont posés).', start: 'Tu récites le premier verset d\'une sourate.',
   order: 'Tu touches la sourate qui vient juste après.', end: 'Tu récites les derniers versets d\'une sourate.',
   link: 'Tu récites la fin d\'une sourate puis le début de la suivante.', cont: 'Tu récites un passage entier d\'une traite.',
   half: 'On te donne la première moitié, tu complètes la seconde.', phrase: 'On te donne une phrase, tu donnes la suivante.'
@@ -918,7 +919,7 @@ function setCat(c){ // change le type d'exercice : mémorisation, tajwīd, makh�
   if (from === 'memo') cfg.lastMemo = cfg.mode;
   if (c === 'memo') cfg.mode = cfg.lastMemo && catOf(cfg.lastMemo) === 'memo' ? cfg.lastMemo : 'mix';
   else cfg.mode = CATMODE[c];
-  if (cfg.scope.type === 'matn' && (c === 'tajwid' || (c === 'memo' && ['mutash', 'start', 'order', 'end', 'link'].includes(cfg.mode)))){ // le tajwīd ne porte que sur le Coran
+  if (cfg.scope.type === 'matn' && (c === 'tajwid' || (c === 'memo' && ['mutash', 'mwhich', 'start', 'order', 'end', 'link'].includes(cfg.mode)))){ // le tajwīd ne porte que sur le Coran
     if (c === 'tajwid'){ cfg.lastM = cfg.scope.id; cfg.scope = cfg.lastQ || DEF.scope; } else cfg.mode = 'mix';
   }
 }
@@ -1180,7 +1181,7 @@ function nextQ(){
   }   // révisions guidées (plan, versets dus…) : pas d'exercice de tajwīd
   if (m === 'mix'){
     const L = ['next', 'cloze', 'which', 'mcq'];
-    if (hasQ) L.push('mutash', 'start', 'order', 'end', 'link');
+    if (hasQ) L.push('mutash', 'mwhich', 'start', 'order', 'end', 'link');
     if (hasM) L.push('half', 'phrase');
     m = L[rnd(L.length)];
   }
@@ -1192,6 +1193,7 @@ function nextQ(){
   if (m === 'phrase') only(r => !isQ(r.s) && book(r.s).kind === 'prose' && clausesOf(r).length >= 2, 'half');
   if (m === 'half') only(r => !isQ(r.s), 'cloze');
   if (m === 'mutash') only(r => isQ(r.s) && mutashOk(r), 'mcq');
+  if (m === 'mwhich') only(r => isQ(r.s) && msUniq(r) && sibsOf(r).length, 'which');
   if (m === 'order') only(r => isQ(r.s) && r.s < 114, 'cloze');
   if (m === 'start') only(r => isQ(r.s) && slen(r.s) >= 2, 'cloze');
   if (m === 'next' || m === 'mcq') only(r => r.a < slen(r.s), 'cloze');
@@ -1204,7 +1206,7 @@ function nextQ(){
   if (!r) r = pickWeighted(cands);
   ses.used.add(key(r));
   cur = {m, r, done: false};
-  ({next: qNext, cloze: qCloze, which: qWhich, mcq: qMcq, half: qHalf, phrase: qPhrase, mutash: qMutash, start: qStart, order: qOrder, cont: qCont, end: qEnd, link: qLink, tajweed: qTajweed})[m]();
+  ({next: qNext, cloze: qCloze, which: qWhich, mcq: qMcq, half: qHalf, phrase: qPhrase, mutash: qMutash, mwhich: qMswhich, start: qStart, order: qOrder, cont: qCont, end: qEnd, link: qLink, tajweed: qTajweed})[m]();
 }
 function logError(r, score, info = {}){
   const e = {t: Date.now(), k: key(r), m: cur.m, sc: score};
@@ -1377,6 +1379,23 @@ function qWhich(){
   shell(`<p class="ref">${isQ(r.s) ? tr('De quelle sourate vient ce verset ?') : tr('De quel matn vient ce passage ?')}</p>
     <div class="ar">${esc(verse(r))}</div>
     ${cur.opts.map(s => `<button class="opt" data-act="opt" data-v="${s}">${esc(sname(s))}</button>`).join('')}
+    <div id="fb"></div>`);
+}
+
+/* 3 bis. Versets proches : de quelle sourate ? Seuls les versets dont le texte est unique dans le Coran sont posés (sinon la réponse serait ambiguë) ;
+   les mauvaises réponses sont les sourates des versets qui ressemblent. */
+const msUniq = (() => { let cnt = null; return r => {
+  if (!cnt){ cnt = new Map(); for (const S of Q) for (const a of S.a){ const k = norm(a.t); cnt.set(k, (cnt.get(k) || 0) + 1); } }
+  return cnt.get(norm(verse(r))) === 1; }; })();
+function qMswhich(){
+  const {r} = cur; cur.audio = [r]; cur.sibs = sibsOf(r);
+  const ss = [...new Set(cur.sibs.map(x => x.s).filter(s => s !== r.s))].slice(0, 3);
+  const rest = Q.map(x => x.n).filter(n => n !== r.s && !ss.includes(n));
+  while (ss.length < 3) ss.push(rest.splice(rnd(rest.length), 1)[0]);
+  cur.opts = shuffle([r.s, ...ss]); cur.correct = r.s;
+  shell(`<p class="ref">${tr("Attention, ce verset ressemble à d'autres. De quelle sourate vient-il ?")}</p>
+    <div class="ar">${esc(verse(r))}</div>
+    ${cur.opts.map(n => `<button class="opt" data-act="opt" data-v="${n}">${esc(sname(n))}</button>`).join('')}
     <div id="fb"></div>`);
 }
 
@@ -1831,11 +1850,11 @@ function onOpt(el){
     cur.info = {ans: el.textContent}; tjStat(cur.stat, ok);
     finish(ok ? 1 : 0, extra); return;
   }
-  if (cur.m === 'which' || cur.m === 'order'){
+  if (cur.m === 'which' || cur.m === 'order' || cur.m === 'mwhich'){
     const pv = x => isQ(cur.correct) ? +x : x;
     ok = pv(el.dataset.v) === cur.correct;
     btns.forEach(b => { const c = pv(b.dataset.v) === cur.correct ? 'c' : b === el ? 'w' : ''; if (c) b.classList.add(c); });
-    extra = ok ? '' : `<br>${tr('Bonne réponse :')} ${esc(sname(cur.correct))}`;
+    extra = (ok ? '' : `<br>${tr('Bonne réponse :')} ${esc(sname(cur.correct))}`) + (cur.m === 'mwhich' ? sibHtml() : '');
     cur.info = {ans: sname(pv(el.dataset.v))};
   } else {
     ok = cur.opts[+el.dataset.v] === cur.good;
@@ -2224,7 +2243,7 @@ const onClick = e => {
     case 'mode': cfg.mode = v; saveCfg(); home(); break;
     case 'corpus': {
       const m = cfg.scope.type === 'matn';
-      if (v === 'matn' && !m){ cfg.lastQ = cfg.scope; cfg.scope = {type: 'matn', id: cfg.lastM || 'all'}; if (['mutash', 'start', 'order', 'end', 'link', 'tajweed'].includes(cfg.mode)) cfg.mode = 'mix'; }
+      if (v === 'matn' && !m){ cfg.lastQ = cfg.scope; cfg.scope = {type: 'matn', id: cfg.lastM || 'all'}; if (['mutash', 'mwhich', 'start', 'order', 'end', 'link', 'tajweed'].includes(cfg.mode)) cfg.mode = 'mix'; }
       if (v === 'quran' && m){ cfg.lastM = cfg.scope.id; cfg.scope = cfg.lastQ || DEF.scope; if (['half', 'phrase'].includes(cfg.mode)) cfg.mode = 'mix'; }
       saveCfg(); home(); break;
     }
@@ -2613,7 +2632,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '21 oct. 2026 · v42';
+const APP_VERSION = '22 oct. 2026 · v43';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
