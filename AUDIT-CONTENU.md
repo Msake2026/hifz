@@ -1,0 +1,38 @@
+# Audit du contenu de Hifz (22 oct. 2026)
+
+Règle : aucun verset, vers ou règle n'est écrit de mémoire ; tout vient d'une source citée et vérifiable.
+
+## 1. Données générées depuis une source (recontrôlées le 22 oct. 2026)
+On a relancé chaque script `tools/build_*.py` sur une copie du dépôt, depuis les sources en ligne, puis comparé au fichier publié (hors date de génération).
+
+| Fichier | Source | Résultat |
+|---|---|---|
+| `quran.js` (6236 versets) | api.alquran.cloud, édition `quran-uthmani` (Tanzil) | identique, SHA-256 `58ab3a39…` |
+| `data/tajweed.js` | api.alquran.cloud, édition `quran-tajweed` | identique |
+| `data/tr-fr.js` | Tanzil, `fr.hamidullah` | identique |
+| `data/tr-en.js` | Tanzil, `en.sahih` ; 0 différence avec alquran.cloud | identique |
+| `data/tafsir-ar.js` | api.alquran.cloud, `ar.muyassar` | identique |
+| `huruf.js` | Wikisource (al-Jazariyya) recoupé avec 2 articles de Wikipédia arabe | identique |
+| `data/ahkam.js` | Wikipédia arabe + Wikisource, contrôlé contre les marques de tajwīd | identique |
+| `moutoun.js` | Wikisource arabe (Tuḥfat al-Aṭfāl 61 vers, Bayqūniyya 34 vers) + hadith-api (Arbaʿūn, 42 hadiths) | identique |
+| `mutashabihat.js` | calcul automatique sur le texte (pas la liste classique des savants ; dit dans l'application) | identique |
+
+Des tests automatiques contrôlent à chaque envoi les empreintes, l'alignement sur les 6236 versets, les sources et la cohérence des règles.
+
+## 2. Points relevés par les scripts
+- Tajwīd : 1 balise de la source sans code reconnu (6:61 environ), laissée sans couleur.
+- Aḥkām : sur 6236 versets, 6160 conservés ; 31 écartés parce que les décomptes diffèrent de la source ; 45 cas non tranchés jamais utilisés.
+- Makhārij/ṣifāt : le tableau « lettre par lettre » de l'article de Wikipédia contient des erreurs (ل, م) : il n'est pas utilisé, les attributs viennent des listes de lettres qui concordent avec le matn.
+- Légende des couleurs du tajwīd : les 15 couleurs de l'application sont identiques à celles de la légende officielle de la source (vérifié). Les noms français sont ma traduction des noms anglais de cette légende.
+- Mots d'exemple de l'idhhār muṭlaq (دنيا، بنيان، قنوان، صنوان) : confirmés par l'article de Wikipédia arabe « أحكام النون الساكنة والتنوين ».
+
+## 3. Ce qui n'est PAS une source vérifiée et doit être relu par une personne compétente
+1. **Traductions anglaise et arabe de l'interface** (~900 phrases, `i18n.js`) : écrites par moi, non relues. L'arabe surtout.
+2. **Explications et consignes en français** dans l'application (conseils, descriptions des exercices, corrections affichées).
+3. **Noms français de la légende du tajwīd** (« Madd nécessaire (6 temps) », etc.) : traduction des noms officiels, avec « temps » pour « vowels ».
+4. **Sources non savantes** : Wikisource et Wikipédia ne sont pas des éditions de référence ; les règles de tajwīd, les makhārij et les ṣifāt devraient être relus par un enseignant qualifié.
+5. **Annotation du tajwīd** : automatique (Islamic Network), non relue ; l'application le signale déjà.
+6. **Logique des exercices** (qalqala, līn, types de madd déduits du texte) : testée contre les marques de la source, mais pas validée par un savant.
+
+## 4. Engagement
+Si une source ne confirme pas un fait, il n'est pas mis dans l'application. Pour re-vérifier : `python3 -I tools/build_quran.py` puis les autres `build_*.py`, et comparer.
