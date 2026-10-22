@@ -192,7 +192,7 @@ begin
   perform t.as_super(); delete from public.teacher_messages; delete from public.teacher_links where teacher_id = f1;
 
   -- 7 sexies. notifications (la cloche) et message à toute la classe
-  perform t.as_super(); delete from public.notifications; delete from public.teacher_messages; delete from public.teacher_requests; delete from public.teacher_links where teacher_id in (f1, c1);
+  perform t.as_super(); delete from public.notifications; delete from public.teacher_messages; delete from public.teacher_requests; delete from public.teacher_classes; delete from public.teacher_links where teacher_id in (f1, c1);
   update public.profiles set role = 'teacher', blocked = false where id = f1; update public.profiles set role = 'user', blocked = false where id in (b, c1, a);
   perform t.as_user(b); select i.code into code2 from public.invite_create() i; perform t.as_user(f1); perform public.invite_accept(code2);
   perform t.as_user(b); assert (select count(*) from public.notifs_mine() where kind = 'linked' and read_at is null and actor = 'prof1@x.fr') = 1, 'l''élève est prévenu du lien';
