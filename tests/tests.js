@@ -617,6 +617,38 @@
     for (const L of ['en', 'ar']){ E(`setLang('${L}'); tch.detail = {id: 's1', data: {stats: {}, days: {}, errors: []}, goals: [{id: 1, surah: 2, due: '${day(3)}', note: 'x'}], thread: [{id: 1, body: 'b', created_at: new Date().toISOString(), from_student: false, read_at: null}]}; tch.uid = 't1'; tch.students = window.__S ? [] : []; cfg.tab = 'teacher'; home()`); await wait(300); E("tch.loaded = true; tch.msgs = [{id: 1, teacher_id: 't', teacher_email: 'p@x.fr', body: 'b', created_at: new Date().toISOString(), from_student: false, read_at: null}, {id: 2, teacher_id: 't', teacher_email: 'p@x.fr', body: 'r', created_at: new Date().toISOString(), from_student: true, read_at: null}]; cfg.tab = 'student'; home()"); eq(E('[...missingKeys]'), [], L); }
     E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; stats = {}; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: ''}");
   });
+  test('Cloche : notifications non traitées (nouveau message, objectif, demande…), ouvrir, traiter, tout traiter ; message à toute la classe', async () => {
+    reset(); const calls = []; W.__calls = calls; const iso = d => new Date(Date.now() + d * 864e5).toISOString();
+    W.__N = [{id: 5, kind: 'message', ref: 't1', actor: 'prof@x.fr', n: 2, created_at: iso(-0.1), read_at: null}, {id: 4, kind: 'goal', ref: '78', actor: 'prof@x.fr', n: 1, created_at: iso(-0.2), read_at: null}, {id: 3, kind: 'linked', ref: 't1', actor: 'prof@x.fr', n: 1, created_at: iso(-3), read_at: iso(-2)}];
+    E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; authReady = true; me = {user: {id: 's1', email: 'eleve@x.fr'}, profile: {role: 'user'}};
+      sb = {from(){ return {select(){ const p = Promise.resolve({data: [], error: null}); p.is = () => ({gt: () => p}); return p; }}; }, auth: {}, async rpc(n, a){ window.__calls.push(n + ' ' + JSON.stringify(a || {}));
+        if (n === 'notifs_mine') return {data: window.__N.map(x => ({...x})), error: null};
+        if (n === 'notif_read'){ window.__N.forEach(x => { if (x.id === a.p_id) x.read_at = new Date().toISOString(); }); return {data: null, error: null}; }
+        if (n === 'notifs_read_all'){ window.__N.forEach(x => { x.read_at = x.read_at || new Date().toISOString(); }); return {data: null, error: null}; }
+        if (n === 'teacher_message_all') return {data: 2, error: null};
+        if (n === 'teacher_students') return {data: [{id: 'a', email: 'a@x.fr', since: new Date().toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}, {id: 'b', email: 'b@x.fr', since: new Date().toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}], error: null};
+        if (n === 'admin_users') return {data: [], error: null};
+        return {data: [], error: null}; }};`);
+    E("go('home')"); for (let i = 0; i < 40 && !($q('#bell .badge')); i++) await wait(50);
+    ok($q('#bell') && !$q('#bell').hidden, 'cloche affichée'); eq($q('#bell .badge').textContent, '2', 'pastille : 2 notifications non traitées'); ok(/2 non traitées|2 not handled/.test($q('#bell').getAttribute('aria-label')), 'libellé accessible');
+    clickAct('bell'); await wait(300); const P = () => $q('#nf-panel'); ok(P() && !P().hidden, 'panneau ouvert'); let t = P().textContent;
+    ok(t.includes('2 nouveaux messages de prof@x.fr') && /Nouvel objectif de prof@x.fr : /.test(t) && t.includes('Déjà traitées') && t.includes('suit maintenant ta progression'), 'liste : messages regroupés, objectif, déjà traitées'); eq($q('#bell').getAttribute('aria-expanded'), 'true');
+    clickAct('nf-done', '4'); await wait(300); ok(calls.includes('notif_read {"p_id":4}'), 'marquer traitée'); eq($q('#bell .badge').textContent, '1', 'la pastille diminue');
+    clickAct('nf-open', '5'); await wait(500); ok(calls.includes('notif_read {"p_id":5}') && P().hidden, 'ouvrir traite la notification et ferme le panneau'); eq(E('cfg.tab'), 'student', 'ouvre l’espace élève'); ok(!$q('#bell .badge'), 'plus de pastille');
+    W.__N = [{id: 9, kind: 'reply', ref: 'a', actor: 'a@x.fr', n: 1, created_at: iso(0), read_at: null}, {id: 8, kind: 'request', ref: 'u', actor: 'futur@x.fr', n: 1, created_at: iso(0), read_at: null}]; E("nfLoad()"); await wait(300);
+    clickAct('bell'); await wait(200); clickAct('nf-all'); await wait(300); ok(calls.includes('notifs_read_all {}') && /Rien à traiter/.test(P().textContent) && !$q('#bell .badge'), 'tout marquer comme traité');
+    D.dispatchEvent(new W.KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); await wait(100); ok(P().hidden, 'Échap ferme le panneau');
+    E("sb.rpc('x')"); noErr('cloche');
+    // administrateur : demande d'enseignant
+    W.__N = [{id: 20, kind: 'request', ref: 'u', actor: 'futur@x.fr', n: 1, created_at: iso(0), read_at: null}]; E("me = {user: {id: 'ad', email: 'adm@x.fr'}, profile: {role: 'admin'}}; nf = {list: [], loaded: false}; go('home')"); for (let i = 0; i < 40 && !($q('#bell .badge')); i++) await wait(50);
+    ok($q('#bell .badge'), 'la cloche de l’administrateur'); clickAct('bell'); await wait(200); ok(P().textContent.includes('futur@x.fr demande à devenir enseignant'), 'demande d’enseignant'); clickAct('nf-open', '20'); await wait(500); eq(E('screen'), 'admin', 'ouvre l’espace admin');
+    // message à toute la classe
+    E("me = {user: {id: 't1', email: 'prof@x.fr'}, profile: {role: 'teacher'}}; nf = {list: [], loaded: false}; go('teacher')"); for (let i = 0; i < 40 && !$q('#tch-all'); i++) await wait(50);
+    ok($q('#tch-all'), 'carte message à toute la classe'); clickAct('tch-all'); await wait(200); ok(appText().includes('Écris un message.'), 'message vide refusé');
+    $q('#tch-all').value = 'Bonjour la classe'; clickAct('tch-all'); await wait(400); ok(calls.includes('teacher_message_all {"p_body":"Bonjour la classe"}') && appText().includes('Envoyé à 2 élèves.'), 'envoyé aux 2 élèves');
+    for (const L of ['en', 'ar']){ W.__N = [{id: 1, kind: 'message', ref: 't', actor: 'p@x.fr', n: 3, created_at: iso(0), read_at: null}, {id: 2, kind: 'role_teacher', ref: null, actor: null, n: 1, created_at: iso(0), read_at: null}, {id: 3, kind: 'unlinked', ref: 't', actor: 'p@x.fr', n: 1, created_at: iso(0), read_at: iso(0)}]; E(`setLang('${L}'); nfLoad()`); await wait(200); clickAct('bell'); await wait(200); ok(P().textContent.length > 40, L); eq(E('[...missingKeys]'), [], L + ' cloche'); clickAct('nf-close'); }
+    E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; nf = {list: [], loaded: false}; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: '', wk: false, unread: {}, loading: false, q: '', sort: 'activity', chatWith: null, openAfter: null}; bellSync()");
+  });
   test('Espace admin : surveillance des e-mails (calme, attention, alerte, nom de domaine)', async () => {
     const mk = (n, agoH) => Array.from({length: n}, (_, i) => ({id: 'u' + agoH + i, email: `u${agoH}-${i}@x.fr`, role: 'user', blocked: false, created_at: new Date(Date.now() - agoH * 36e5).toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}));
     reset(); E("me = {user: {id: 'a', email: 'admin@x.fr'}, profile: {role: 'admin'}}");
