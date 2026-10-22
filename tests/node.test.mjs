@@ -441,7 +441,11 @@ test('accessibilité : contrastes WCAG des couleurs du thème et du tajwīd (mod
 
 test('suivi par un enseignant : régularité, progression par sourate, erreurs fréquentes (fonctions pures)', () => {
   const html = read('index.html'), tc = html.slice(html.indexOf('/* TC:begin'), html.indexOf('/* TC:end */'));
-  const { tcRegularity, tcPerSurah, tcFrequent } = new Function(tc + '; return {tcRegularity, tcPerSurah, tcFrequent};')();
+  const { tcRegularity, tcPerSurah, tcFrequent, tcGoal } = new Function(tc + '; return {tcRegularity, tcPerSurah, tcFrequent, tcGoal};')();
+  // objectif : un verset compte quand il est réussi au moins une fois ; une tentative ratée seule ne fait pas avancer
+  assert.deepEqual(tcGoal({ '1:1': [1, 0], '1:2': [0, 3], '1:3': [2, 5], '2:1': [9, 0] }, 1, 7), { seen: 2, total: 7, pct: 29 });
+  assert.deepEqual(tcGoal({ '1:1': [1, 0], '1:2': [1, 0], '1:3': [1, 0], '1:4': [1, 0], '1:5': [1, 0], '1:6': [1, 0], '1:7': [1, 0] }, 1, 7), { seen: 7, total: 7, pct: 100 });
+  assert.deepEqual(tcGoal({}, 1, 7), { seen: 0, total: 7, pct: 0 });
   const now = new Date(2026, 9, 21, 12).getTime(), key = i => { const d = new Date(now - i * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   let R = tcRegularity({ [key(0)]: 5, [key(1)]: 3, [key(2)]: 8, [key(4)]: 1, [key(20)]: 2 }, now);
   assert.equal(R.bars.length, 14); assert.equal(R.bars[13].d, key(0)); assert.equal(R.bars[13].n, 5); assert.equal(R.bars[0].d, key(13));

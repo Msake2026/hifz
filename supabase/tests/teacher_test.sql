@@ -197,13 +197,13 @@ begin
   perform t.as_user(b); select i.code into code2 from public.invite_create() i; perform t.as_user(f1); perform public.invite_accept(code2);
   perform t.as_user(b); assert (select count(*) from public.notifs_mine() where kind = 'linked' and read_at is null and actor = 'prof1@x.fr') = 1, 'l''élève est prévenu du lien';
   perform t.as_user(f1); perform public.teacher_message_send(b, 'un'); perform public.teacher_message_send(b, 'deux');
-  perform t.as_user(b); assert (select count(*) from public.notifs_mine() where kind = 'message') = 1 and (select n from public.notifs_mine() where kind = 'message') = 2, 'les messages se regroupent';
+  perform t.as_user(b); assert (select count(*) from public.notifs_mine() where kind = 'message') = 1 and (select x.n from public.notifs_mine() x where x.kind = 'message') = 2, 'les messages se regroupent';
   perform t.as_user(c1); assert (select count(*) from public.notifs_mine()) = 0, 'les notifications des autres sont invisibles'; assert (select count(*) from public.notifications) = 0;
   perform t.fails('insert into public.notifications (user_id, kind) values (''' || c1 || ''', ''x'')'); perform t.fails('select public.notify(''' || c1 || ''', ''x'')');
   perform t.as_user(b); perform public.messages_mark_read(); assert (select read_at is not null from public.notifs_mine() where kind = 'message'), 'lire la conversation traite la notification';
   perform t.as_user(f1); perform public.teacher_message_send(b, 'trois'); perform t.as_user(b);
   assert (select count(*) from public.notifs_mine() where kind = 'message') = 2 and (select count(*) from public.notifs_mine() where kind = 'message' and read_at is null) = 1, 'un nouveau message crée une nouvelle notification non lue';
-  perform public.student_message_send(f1, 'ok'); perform t.as_user(f1); assert (select n from public.notifs_mine() where kind = 'reply' and read_at is null) = 1, 'l''enseignant est prévenu d''une réponse';
+  perform public.student_message_send(f1, 'ok'); perform t.as_user(f1); assert (select x.n from public.notifs_mine() x where x.kind = 'reply' and x.read_at is null) = 1, 'l''enseignant est prévenu d''une réponse';
   perform public.teacher_thread(b); assert (select count(*) from public.notifs_mine() where kind = 'reply' and read_at is null) = 0, 'ouvrir la conversation traite la réponse';
   perform public.teacher_goal_set(b, 78, current_date + 3); perform t.as_user(b); assert (select count(*) from public.notifs_mine() where kind = 'goal' and ref = '78') = 1, 'nouvel objectif';
   perform public.notif_read((select id from public.notifs_mine() where kind = 'goal')); assert (select read_at is not null from public.notifs_mine() where kind = 'goal'), 'marquer traitée';

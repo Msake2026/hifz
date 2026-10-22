@@ -2657,7 +2657,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '22 oct. 2026 · v45';
+const APP_VERSION = '22 oct. 2026 · v46';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2824,6 +2824,9 @@ function renderAccount(){
       <p class="ref" style="margin:0 0 8px">${isAdmin() ? tr('Rôle : administrateur') : tr('Rôle : utilisateur')} · ${tr('inscrit le {d}', {d: esc(new Date(me.profile.created_at).toLocaleDateString(LOCALE()))})}</p>
       <p class="ref" style="margin:0 0 10px">${acc.last ? tr('Dernière synchronisation :') + ' ' + fdate(Date.parse(acc.last)) : tr('Synchronisation automatique active')}${acc.syncErr ? ' · <span style="color:var(--ko)">' + esc(acc.syncErr) + '</span>' : ''}</p>
       <div class="row"><button class="pri" data-act="acc-sync">🔄 ${tr('Synchroniser maintenant')}</button>${isAdmin() ? `<button data-act="adm-open">🛡 ${tr('Espace admin')}</button>` : ''}</div></div>
+      ${flashHtml()}
+      ${tchStudentCard()}
+      ${roleCard()}
       ${wkCard()}
       <div class="card"><h2>${tr('Mot de passe')}</h2>${f('ac-pass', tr('Nouveau mot de passe (8 caractères minimum)'), 'password', 'new-password', 'data-enter="ac-go"')}
       <button id="ac-go" class="pri" style="margin-top:8px" data-act="acc-newpass">${tr('Changer le mot de passe')}</button></div>
@@ -3177,8 +3180,8 @@ function tcFrequent(errors, n = 10){ // versets les plus souvent ratés
   const c = {}; for (const e of errors || []){ const x = c[e.k] ||= {k: e.k, n: 0, last: 0}; x.n++; x.last = Math.max(x.last, e.t); }
   return Object.values(c).sort((a, b) => b.n - a.n || b.last - a.last).slice(0, n);
 }
-function tcGoal(stats, surah, total){ // avancement d'un objectif : versets déjà travaillés de la sourate
-  let seen = 0; for (const k of Object.keys(stats || {})) if (k.split(':')[0] === String(surah)) seen++;
+function tcGoal(stats, surah, total){ // avancement d'un objectif : versets de la sourate réussis au moins une fois (une tentative ratée ne compte pas)
+  let seen = 0; for (const [k, v] of Object.entries(stats || {})) if (k.split(':')[0] === String(surah) && v && v[0] > 0) seen++;
   return {seen, total, pct: total ? Math.min(100, Math.round(100 * seen / total)) : 0};
 }
 /* TC:end */
@@ -3336,39 +3339,49 @@ function goalsCard(){
   return `<div class="card"><h2>${tr('Mes objectifs')}</h2>${tch.goals.map(g => { const x = tcGoal(stats, g.surah, slen(g.surah));
     return `<div class="sib"><p style="margin:0"><b>${esc(SN(g.surah))}</b> · ${tr('pour le {d}', {d: fd(g.due)})} · ${dueLabel(g.due)}</p>
       <div class="bar" role="img" aria-label="${x.pct} %"><i style="width:${x.pct}%"></i></div>
-      <p class="ref" style="margin:0">${x.seen}/${x.total} ${tr('versets travaillés')} (${x.pct} %)${x.pct >= 100 ? ' 🎉' : ''}${g.note ? ` · ${esc(g.note)}` : ''}</p></div>`; }).join('')}</div>`;
+      <p class="ref" style="margin:0">${x.seen}/${x.total} ${tr('versets réussis')} (${x.pct} %)${x.pct >= 100 ? ' 🎉' : ''}${g.note ? ` · ${esc(g.note)}` : ''}</p></div>`; }).join('')}<p class="ref" style="margin:8px 0 0">${tr("Un verset compte quand tu l'as réussi au moins une fois dans un exercice (une réponse fausse ne fait pas avancer l'objectif).")}</p></div>`;
+}
+function teachersCard(){
+  const L = tch.links || [], fd = t => new Date(t).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short', year: 'numeric'});
+  return `<div class="card"><h2>${tr('Mes enseignants')}</h2>
+    ${L.length ? L.map(x => `<div class="weak"><span>${esc(x.email)} · ${tr('depuis le {d}', {d: fd(x.since)})}</span></div>`).join('') : `<p class="ref" style="margin:0 0 6px">${tr("Tu n'as pas encore d'enseignant.")}</p>`}
+    <p class="ref" style="margin:8px 0">${tr("Pour inviter un enseignant, rejoindre une classe ou voir qui a consulté tes données : ouvre Mon compte.")}</p>
+    <button data-act="acc-open">${tr('Mon compte')}</button></div>`;
 }
 function tabStudent(){
   const unseen = unreadStudent(), nT = (tch.links || []).length, nG = (tch.goals || []).length;
   const sum = tch.loaded ? [trp(nT, '{n} enseignant|{n} enseignants'), trp(nG, '{n} objectif en cours|{n} objectifs en cours'), unseen ? `<b>${trp(unseen, '{n} message non lu|{n} messages non lus')}</b>` : ''].filter(Boolean).join(' · ') : '';
   return `<h1 style="margin-top:8px">${tr('Espace élève')}</h1><p class="sub">${sum || tr('Ton enseignant, tes objectifs et tes messages.')}</p>
     ${tch.msg && cfg.tab === 'student' ? `<p class="fb tch-flash ${tch.ok ? 'ok' : 'ko'}">${esc(tch.msg)}</p>` : ''}
-    ${tch.loaded ? chatCard() + goalsCard() + tchStudentCard() : `<p class="sub">${tr('Chargement…')}</p>`}`;
+    ${tch.loaded ? chatCard() + goalsCard() + teachersCard() : `<p class="sub">${tr('Chargement…')}</p>`}`;
+}
+const flashHtml = () => tch.msg ? `<p class="fb tch-flash ${tch.ok ? 'ok' : 'ko'}">${esc(tch.msg)}</p>` : '';
+function roleCard(){   // demande du rôle enseignant : une affaire de compte (pas pour l'administrateur ni pour un enseignant)
+  if (!me || isAdmin() || !(me.profile && me.profile.role === 'user')) return '';
+  return `<div class="card"><h2>${tr('Devenir enseignant')}</h2>${tch.req
+    ? `<p class="ref" style="margin:0 0 6px">${tr("Demande envoyée : l'administrateur doit la valider.")}</p><button class="link" data-act="tch-req-cancel">${tr('Annuler ma demande')}</button>`
+    : `<p class="ref" style="margin:0 0 6px">${tr("Tu veux suivre des élèves ? Envoie une demande : l'administrateur la valide ou la refuse.")}</p><button data-act="tch-req" ${tch.busy ? 'disabled' : ''}>🎓 ${tr('Demander à devenir enseignant')}</button>`}</div>`;
 }
 function wkCard(){
   if (!me) return '';
   return `<div class="card"><h2>${tr('Résumé de la semaine')}</h2>
-    <label class="consent"><input type="checkbox" id="wk-on" ${tch.wk ? 'checked' : ''}><span>${tr("Recevoir chaque dimanche, par e-mail, un résumé de ma semaine (réponses, jours actifs). Je peux le désactiver à tout moment.")}</span></label>
-    ${tch.msg && screen === 'account' ? `<p class="fb tch-flash ${tch.ok ? 'ok' : 'ko'}" style="margin:8px 0 0">${esc(tch.msg)}</p>` : ''}</div>`;
+    <label class="consent"><input type="checkbox" id="wk-on" ${tch.wk ? 'checked' : ''}><span>${tr("Recevoir chaque dimanche, par e-mail, un résumé de ma semaine (réponses, jours actifs). Je peux le désactiver à tout moment.")}</span></label></div>`;
 }
 async function wkToggle(on){ try { const {error} = await sb.rpc('weekly_set', {p_on: on, p_lang: LANG}); if (error) throw error; tch.wk = on; tch.ok = true; tch.msg = on ? tr('Résumé hebdomadaire activé.') : tr('Résumé hebdomadaire désactivé.'); } catch (e){ tchErr(e); const c = $('wk-on'); if (c) c.checked = tch.wk; } if (screen === 'account') renderAccount(); tchFlash(); }
 function tchStudentCard(){
   if (!me) return '';
-  const L = tch.links, I = tch.invites, G = tch.log, fd = t => new Date(t).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short', year: 'numeric'});
+  const I = tch.invites, G = tch.log, fd = t => new Date(t).toLocaleDateString(LOCALE(), {day: 'numeric', month: 'short', year: 'numeric'});
   return `<div class="card"><h2>${tr('Mon enseignant')}</h2>
     <p class="ref" style="margin:0 0 8px">${tr("Tu peux inviter un enseignant à suivre ta progression. Il verra ton e-mail, ton total de réponses, tes statistiques par sourate, tes jours d'activité et tes erreurs (sans les réponses que tu as tapées). Il ne voit ni tes réglages, ni les textes que tu ajoutes. Tu génères un code, tu le lui donnes ; seul ton enseignant peut mettre fin au suivi (tu peux aussi supprimer ton compte à tout moment).")}</p>
     <button data-act="tch-invite" ${tch.busy ? 'disabled' : ''}>✉ ${tr('Inviter un enseignant')}</button>
     ${tch.code ? `<div class="fb ok" style="margin-top:8px"><b style="font-size:1.4rem;letter-spacing:.15em" id="tch-code-new">${esc(tch.code.code)}</b><br><span class="ref">${tr('Valable jusqu\'au {d}. Donne ce code à ton enseignant : il ne sert qu\'une fois.', {d: fd(tch.code.expires_at)})}</span>
       <br><button class="link" data-act="tch-copy">${tr('Copier le code')}</button></div>` : ''}
     ${I && I.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Invitations en attente')}</h3>${I.map(x => `<div class="weak"><span><b>${esc(x.code)}</b> · ${tr("jusqu'au {d}", {d: fd(x.expires_at)})}</span><button class="link" data-act="tch-cancel" data-v="${esc(x.code)}">${tr('Annuler')}</button></div>`).join('')}` : ''}
-    ${L && L.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Mes enseignants')}</h3>${L.map(x => `<div class="weak"><span>${esc(x.email)} · ${tr('depuis le {d}', {d: fd(x.since)})}</span></div>`).join('')}` : ''}
     ${G && G.length ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Consultations récentes de mes données')}</h3>${G.slice(0, 8).map(x => `<p class="ref" style="margin:0">${fdate(Date.parse(x.at))} · ${esc(x.teacher_email)}</p>`).join('')}` : ''}
     <h3 style="margin:12px 0 4px;font-size:1rem">${tr('Rejoindre une classe')}</h3>
     <p class="ref" style="margin:0 0 6px">${tr("Ton enseignant peut te donner un code de classe : en le saisissant, tu lui donnes accès à ta progression (comme avec une invitation).")}</p>
     <div class="row"><input type="text" id="tch-join" aria-label="${tr('Code de classe')}" autocomplete="off" autocapitalize="characters" maxlength="12" style="text-transform:uppercase" data-enter="tch-join-go"><button class="pri" data-act="tch-join-go" id="tch-join-go" style="flex:0 0 auto">${tr('Rejoindre')}</button></div>
-    ${me.profile && me.profile.role === 'user' ? `<h3 style="margin:12px 0 4px;font-size:1rem">${tr('Devenir enseignant')}</h3>${tch.req
-      ? `<p class="ref" style="margin:0 0 6px">${tr("Demande envoyée : l'administrateur doit la valider.")}</p><button class="link" data-act="tch-req-cancel">${tr('Annuler ma demande')}</button>`
-      : `<p class="ref" style="margin:0 0 6px">${tr("Tu veux suivre des élèves ? Envoie une demande : l'administrateur la valide ou la refuse.")}</p><button data-act="tch-req" ${tch.busy ? 'disabled' : ''}>🎓 ${tr('Demander à devenir enseignant')}</button>`}` : ''}</div>`;
+</div>`;
 }
 async function tchAct(fn, okMsg){
   tch.busy = true; tch.msg = ''; tchRefresh();

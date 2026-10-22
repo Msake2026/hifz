@@ -528,12 +528,14 @@
           if (n === 'invite_cancel'){ S.invites = S.invites.filter(x => x.code !== a.p_code); return {data: null, error: null}; }
           if (n === 'link_revoke'){ S.links = S.links.filter(x => x.other_id !== a.other); return {data: null, error: null}; }
           return {data: null, error: null}; }, auth: {}};`);
-    E("go('student')"); for (let i = 0; i < 40 && !appText().includes('Mon enseignant'); i++) await wait(50); await wait(200);
-    let t = appText(); ok(t.includes('Mon enseignant') && t.includes('OLDCODE2') && t.includes('prof@x.fr') && t.includes('Consultations récentes'), 'carte élève : invitation, enseignant, journal'); ok($q('[data-act="tab"][data-v="student"]') && !$q('[data-act="tab"][data-v="teacher"]'), 'menu Élève séparé de Mon compte ; pas de menu Enseignant pour un élève');
+    E("go('home')"); await wait(150); ok($q('[data-act="tab"][data-v="student"]') && !$q('[data-act="tab"][data-v="teacher"]'), 'menu Élève séparé de Mon compte ; pas de menu Enseignant pour un élève');
+    E("go('student')"); for (let i = 0; i < 40 && !appText().includes('Mes enseignants'); i++) await wait(50); await wait(200);
+    ok(!appText().includes('Inviter un enseignant') && !appText().includes('Rejoindre une classe') && !appText().includes('Devenir enseignant'), 'inviter, rejoindre une classe et devenir enseignant ne sont pas dans l’espace élève'); ok(appText().includes('prof@x.fr') && !$q('[data-act="tch-revoke"]'), 'l’élève voit son enseignant mais ne peut pas le retirer');
+    E("openAccount()"); for (let i = 0; i < 40 && !appText().includes('Mon enseignant'); i++) await wait(50); await wait(300);
+    let t = appText(); ok(t.includes('Mon enseignant') && t.includes('OLDCODE2') && t.includes('prof@x.fr') && t.includes('Consultations récentes'), 'carte élève : invitation, enseignant, journal'); 
     ok(/sans les réponses que tu as tapées/.test(t), 'le consentement dit ce qui est vu'); noErr('carte élève');
     clickAct('tch-invite'); for (let i = 0; i < 40 && !$q('#tch-code-new'); i++) await wait(50); eq($q('#tch-code-new').textContent, 'ABCD2345'); ok(calls.includes('invite_create {}'), 'invite_create'); ok(appText().includes('une fois'), 'code à usage unique');
     clickAct('tch-cancel', 'OLDCODE2'); await wait(300); ok(calls.some(c => c === 'invite_cancel {"p_code":"OLDCODE2"}'), 'annulation'); ok(!appText().includes('OLDCODE2'));
-    ok(!$q('[data-act="tch-revoke"]') && appText().includes('Mes enseignants') && appText().includes('prof@x.fr'), 'l’élève ne peut pas retirer son enseignant : aucun bouton, le lien reste');
     ok(appText().includes('Devenir enseignant') && $q('[data-act="tch-req"]'), 'un simple utilisateur peut demander le rôle');
     clickAct('tch-req'); for (let i = 0; i < 40 && !$q('[data-act="tch-req-cancel"]'); i++) await wait(50); ok(calls.includes('teacher_request {}') && appText().includes('Demande envoyée'), 'demande envoyée, en attente');
     clickAct('tch-req-cancel'); for (let i = 0; i < 40 && !$q('[data-act="tch-req"]'); i++) await wait(50); ok(calls.includes('teacher_request_cancel {}'), 'demande annulée');
@@ -580,7 +582,7 @@
         if (n === 'goal_delete'){ S.tgoals = S.tgoals.filter(g => g.id !== a.p_id); return {data: null, error: null}; }
         return {data: null, error: null}; }};`);
     E("go('student')"); for (let i = 0; i < 40 && !appText().includes('Mes objectifs'); i++) await wait(50); await wait(200);
-    let t = appText(); ok(t.includes('Courage pour la sourate 78') && t.includes('prof@x.fr'), 'message de l’enseignant'); ok(t.includes('avant dimanche') && /2\/\d+ versets travaillés/.test(t), 'objectif et avancement : ' + t.slice(t.indexOf('Mes objectifs'), t.indexOf('Mes objectifs') + 140));
+    let t = appText(); ok(t.includes('Courage pour la sourate 78') && t.includes('prof@x.fr'), 'message de l’enseignant'); ok(t.includes('avant dimanche') && /2\/\d+ versets réussis/.test(t), 'objectif et avancement : ' + t.slice(t.indexOf('Mes objectifs'), t.indexOf('Mes objectifs') + 140));
     ok(!$q('[data-act="tch-goal-accept"]') && !/Accepter|Refuser/.test(t), 'aucune acceptation demandée à l’élève pour un objectif'); noErr('élève');
     ok(calls.includes('messages_mark_read {}'), 'les messages reçus sont marqués lus à l’ouverture');
     ok($q('#chat-thread .msg.them .b') && $q('#chat-thread .msg.them .b').textContent.includes('Courage'), 'bulle du message de l’enseignant (à gauche)');
@@ -589,9 +591,10 @@
     $q('#tch-reply').value = 'Merci !'; clickAct('tch-reply-send'); await wait(300); ok(calls.includes('student_message_send {"p_teacher":"t1","p_body":"Merci !"}'), 'l’élève répond à son enseignant');
     clickAct('tch-msg-del', '7'); await wait(300); ok(calls.some(c => c === 'message_delete {"p_id":7}') && !appText().includes('Courage pour'), 'message supprimé par l’élève');
     ok(appText().includes('Message supprimé.'), 'confirmation affichée'); await wait(3300); ok(!appText().includes('Message supprimé.'), 'la confirmation disparaît seule au bout de 3 s');
+    E("openAccount()"); await wait(500); ok($q('#tch-join') && !$q('#chat-thread'), 'rejoindre une classe : dans Mon compte');
     $q('#tch-join').value = 'badcode1'; clickAct('tch-join-go'); await wait(300); ok(appText().includes('Code invalide ou expiré.'), 'code de classe refusé');
     $q('#tch-join').value = 'classe22'; clickAct('tch-join-go'); await wait(300); ok(calls.includes('class_join {"p_code":"classe22"}') && appText().includes('Classe rejointe : prof@x.fr'), 'classe rejointe');
-    E("openAccount()"); await wait(400); ok($q('#wk-on') && !$q('#wk-on').checked, 'résumé hebdomadaire : case décochée par défaut'); $q('#wk-on').checked = true; $q('#wk-on').dispatchEvent(new W.Event('change', {bubbles: true})); await wait(300);
+    ok($q('#wk-on') && !$q('#wk-on').checked, 'résumé hebdomadaire : case décochée par défaut'); $q('#wk-on').checked = true; $q('#wk-on').dispatchEvent(new W.Event('change', {bubbles: true})); await wait(300);
     ok(calls.some(c => c === 'weekly_set {"p_on":true,"p_lang":"fr"}') && appText().includes('Résumé hebdomadaire activé.'), 'résumé hebdomadaire activé');
     E("cfg.theme = 'dark'; applyTheme()"); eq(D.documentElement.dataset.theme, 'dark', 'thème sombre forcé'); E("cfg.theme = 'light'; applyTheme()"); eq(D.documentElement.dataset.theme, 'light'); E("delete cfg.theme; applyTheme()"); ok(!D.documentElement.dataset.theme, 'thème automatique');
     // côté enseignant
