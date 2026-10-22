@@ -15,6 +15,53 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.profiles where id = auth.uid() and role = 'teacher' and not blocked)
 $$;
 
+-- Notifications (la cloche) : écrites uniquement par les fonctions ci-dessous, lues par leur destinataire ; « non lue » = pas encore traitée
+create table if not exists public.notifications (
+  id         bigint generated always as identity primary key,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  kind       text not null check (char_length(kind) <= 30),
+  ref        text,                       -- ce dont il s'agit (identifiant de la personne, numéro de sourate…)
+  actor      text,                       -- e-mail de la personne à l'origine
+  n          int  not null default 1,    -- nombre de messages regroupés
+  created_at timestamptz not null default now(),
+  read_at    timestamptz
+);
+create index if not exists notifications_user_idx on public.notifications (user_id, created_at desc);
+alter table public.notifications enable row level security;
+drop policy if exists "notification : lecture" on public.notifications;
+create policy "notification : lecture" on public.notifications for select to authenticated using (user_id = auth.uid());
+revoke all on public.notifications from anon, authenticated;
+grant select on public.notifications to authenticated;
+
+create or replace function public.notify(p_user uuid, p_kind text, p_ref text default null, p_actor text default null) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if p_kind in ('message', 'reply') then       -- les messages d'une même personne se regroupent tant qu'ils ne sont pas lus
+    update public.notifications set n = n + 1, created_at = now() where user_id = p_user and kind = p_kind and ref is not distinct from p_ref and read_at is null;
+    if found then return; end if;
+  end if;
+  insert into public.notifications (user_id, kind, ref, actor) values (p_user, p_kind, p_ref, p_actor);
+end $$;
+revoke all on function public.notify(uuid, text, text, text) from public, anon, authenticated;     -- appelée seulement par les autres fonctions
+
+create or replace function public.notifs_mine() returns table (id bigint, kind text, ref text, actor text, n int, created_at timestamptz, read_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'accès refusé' using errcode = '42501'; end if;
+  delete from public.notifications x where x.user_id = auth.uid() and x.created_at < now() - interval '60 days';
+  return query select x.id, x.kind, x.ref, x.actor, x.n, x.created_at, x.read_at from public.notifications x where x.user_id = auth.uid() order by x.created_at desc limit 50;
+end $$;
+create or replace function public.notif_read(p_id bigint) returns void
+language sql security definer set search_path = public as $$
+  update public.notifications set read_at = now() where id = p_id and user_id = auth.uid() and read_at is null
+$$;
+create or replace function public.notifs_read_all() returns void
+language sql security definer set search_path = public as $$
+  update public.notifications set read_at = now() where user_id = auth.uid() and read_at is null
+$$;
+revoke all on function public.notifs_mine(), public.notif_read(bigint), public.notifs_read_all() from public, anon;
+grant execute on function public.notifs_mine(), public.notif_read(bigint), public.notifs_read_all() to authenticated;
+
 -- Demandes pour devenir enseignant (l'utilisateur demande, l'administrateur accepte ou refuse)
 create table if not exists public.teacher_requests (
   user_id    uuid primary key references auth.users(id) on delete cascade,
@@ -36,6 +83,8 @@ begin
   if new_role = 'teacher' and exists (select 1 from public.profiles where id = target and role = 'admin') then raise exception 'Un administrateur ne peut pas être enseignant.'; end if;
   update public.profiles set role = new_role where id = target;
   delete from public.teacher_requests where user_id = target;       -- la demande est traitée
+  update public.notifications set read_at = now() where kind = 'request' and ref = target::text and read_at is null;
+  if new_role = 'teacher' then perform public.notify(target, 'role_teacher'); end if;
 end $$;
 
 -- 2. Tables (lecture seule pour les utilisateurs connectés, et seulement leurs propres lignes ; écritures par les fonctions)
@@ -95,9 +144,11 @@ language sql security definer set search_path = public as $$
 $$;
 
 create or replace function public.link_revoke(other uuid) returns void
-language sql security definer set search_path = public as $$
-  delete from public.teacher_links where teacher_id = auth.uid() and student_id = other      -- seul l'enseignant met fin au suivi
-$$;
+language plpgsql security definer set search_path = public as $$
+begin
+  delete from public.teacher_links where teacher_id = auth.uid() and student_id = other;      -- seul l'enseignant met fin au suivi
+  if found then perform public.notify(other, 'unlinked', auth.uid()::text, (select p.email from public.profiles p where p.id = auth.uid())); end if;
+end $$;
 
 create or replace function public.links_mine() returns table (as_role text, other_id uuid, email text, since timestamptz)
 language sql stable security definer set search_path = public as $$
@@ -128,6 +179,7 @@ begin
   if not found then raise exception 'Code invalide ou expiré.' using errcode = 'P0001'; end if;
   insert into public.teacher_links (teacher_id, student_id) values (auth.uid(), inv.student_id) on conflict do nothing;
   update public.teacher_invites t set used_by = auth.uid() where t.code = inv.code;
+  perform public.notify(inv.student_id, 'linked', auth.uid()::text, (select p.email from public.profiles p where p.id = auth.uid()));
   return query select inv.student_id, v_email;
 end $$;
 
@@ -187,6 +239,9 @@ begin
   if public.is_admin() then raise exception 'Un administrateur ne peut pas être enseignant.'; end if;
   if exists (select 1 from public.profiles where id = auth.uid() and role = 'teacher') then raise exception 'Tu as déjà ce rôle.'; end if;
   insert into public.teacher_requests (user_id) values (auth.uid()) on conflict do nothing;
+  if found then
+    perform public.notify(a.id, 'request', auth.uid()::text, (select p.email from public.profiles p where p.id = auth.uid())) from public.profiles a where a.role = 'admin' and not a.blocked;
+  end if;
 end $$;
 
 create or replace function public.teacher_request_cancel() returns void
@@ -209,6 +264,8 @@ language plpgsql security definer set search_path = public as $$
 begin
   if not public.is_admin() then raise exception 'accès refusé' using errcode = '42501'; end if;
   delete from public.teacher_requests where user_id = target;
+  update public.notifications set read_at = now() where kind = 'request' and ref = target::text and read_at is null;
+  perform public.notify(target, 'request_declined');
 end $$;
 
 revoke all on function public.teacher_request(), public.teacher_request_cancel(), public.admin_teacher_requests(), public.admin_teacher_decline(uuid) from public, anon;
@@ -270,6 +327,7 @@ begin
     raise exception 'Trop de messages aujourd''hui : réessaie demain.' using errcode = 'P0001';
   end if;
   insert into public.teacher_messages (teacher_id, student_id, body) values (auth.uid(), target, trim(p_body));
+  perform public.notify(target, 'message', auth.uid()::text, (select p.email from public.profiles p where p.id = auth.uid()));
 end $$;
 
 drop function if exists public.messages_mine();
@@ -296,6 +354,7 @@ begin
     raise exception 'Cet élève a déjà 5 objectifs en cours : supprime-en un.' using errcode = 'P0001';
   end if;
   insert into public.teacher_goals (teacher_id, student_id, surah, due, note) values (auth.uid(), target, p_surah, p_due, nullif(trim(coalesce(p_note, '')), ''));
+  perform public.notify(target, 'goal', p_surah::text, (select p.email from public.profiles p where p.id = auth.uid()));
 end $$;
 
 create or replace function public.goal_delete(p_id bigint) returns void
@@ -358,7 +417,10 @@ begin
   if not found then raise exception 'Code invalide ou expiré.' using errcode = 'P0001'; end if;
   insert into public.teacher_links (teacher_id, student_id) values (cl.teacher_id, auth.uid()) on conflict do nothing;
   get diagnostics n = row_count;
-  if n > 0 then update public.teacher_classes c set uses = c.uses + 1 where c.code = cl.code; end if;
+  if n > 0 then
+    update public.teacher_classes c set uses = c.uses + 1 where c.code = cl.code;
+    perform public.notify(cl.teacher_id, 'student_joined', auth.uid()::text, (select p.email from public.profiles p where p.id = auth.uid()));
+  end if;
   return query select cl.teacher_id, v_email;
 end $$;
 
@@ -409,11 +471,13 @@ begin
     raise exception 'Trop de messages aujourd''hui : réessaie demain.' using errcode = 'P0001';
   end if;
   insert into public.teacher_messages (teacher_id, student_id, body, from_student) values (p_teacher, auth.uid(), trim(p_body), true);
+  perform public.notify(p_teacher, 'reply', auth.uid()::text, (select p.email from public.profiles p where p.id = auth.uid()));
 end $$;
 
 create or replace function public.messages_mark_read() returns void
 language sql security definer set search_path = public as $$
-  update public.teacher_messages set read_at = now() where student_id = auth.uid() and not from_student and read_at is null
+  update public.teacher_messages set read_at = now() where student_id = auth.uid() and not from_student and read_at is null;
+  update public.notifications set read_at = now() where user_id = auth.uid() and kind = 'message' and read_at is null
 $$;
 
 create or replace function public.teacher_thread(target uuid) returns table (id bigint, body text, created_at timestamptz, from_student boolean, read_at timestamptz)
@@ -421,6 +485,7 @@ language plpgsql security definer set search_path = public as $$
 begin
   if not public.teacher_has(target) then raise exception 'accès refusé' using errcode = '42501'; end if;
   update public.teacher_messages m set read_at = now() where m.teacher_id = auth.uid() and m.student_id = target and m.from_student and m.read_at is null;
+  update public.notifications x set read_at = now() where x.user_id = auth.uid() and x.kind = 'reply' and x.ref = target::text and x.read_at is null;
   return query select m.id, m.body, m.created_at, m.from_student, m.read_at from public.teacher_messages m
     where m.teacher_id = auth.uid() and m.student_id = target order by m.created_at desc limit 30;
 end $$;
@@ -435,3 +500,23 @@ $$;
 
 revoke all on function public.messages_mine(), public.student_message_send(uuid, text), public.messages_mark_read(), public.teacher_thread(uuid), public.teacher_unread() from public, anon;
 grant execute on function public.messages_mine(), public.student_message_send(uuid, text), public.messages_mark_read(), public.teacher_thread(uuid), public.teacher_unread() to authenticated;
+
+-- 13. Message à toute la classe : le même message à chacun de ses élèves (10 messages par jour et par élève au plus : les élèves déjà servis aujourd'hui sont sautés)
+create or replace function public.teacher_message_all(p_body text) returns int
+language plpgsql security definer set search_path = public as $$
+declare u record; n int := 0;
+begin
+  if not public.is_teacher() then raise exception 'accès refusé' using errcode = '42501'; end if;
+  if char_length(trim(coalesce(p_body, ''))) = 0 or char_length(p_body) > 280 then raise exception 'Message vide ou trop long (280 caractères).' using errcode = 'P0001'; end if;
+  for u in select l.student_id from public.teacher_links l join public.profiles p on p.id = l.student_id where l.teacher_id = auth.uid() and not p.blocked loop
+    if (select count(*) from public.teacher_messages m where m.teacher_id = auth.uid() and m.student_id = u.student_id and not m.from_student and m.created_at > now() - interval '1 day') < 10 then
+      insert into public.teacher_messages (teacher_id, student_id, body) values (auth.uid(), u.student_id, trim(p_body));
+      perform public.notify(u.student_id, 'message', auth.uid()::text, (select p.email from public.profiles p where p.id = auth.uid()));
+      n := n + 1;
+    end if;
+  end loop;
+  if n = 0 then raise exception 'Aucun élève à qui écrire.' using errcode = 'P0001'; end if;
+  return n;
+end $$;
+revoke all on function public.teacher_message_all(text) from public, anon;
+grant execute on function public.teacher_message_all(text) to authenticated;

@@ -191,6 +191,39 @@ begin
   perform t.fails('select public.student_message_send(''' || f1 || ''', ''x'')', '42501');
   perform t.as_super(); delete from public.teacher_messages; delete from public.teacher_links where teacher_id = f1;
 
+  -- 7 sexies. notifications (la cloche) et message à toute la classe
+  perform t.as_super(); delete from public.notifications; delete from public.teacher_messages; delete from public.teacher_requests; delete from public.teacher_links where teacher_id in (f1, c1);
+  update public.profiles set role = 'teacher', blocked = false where id = f1; update public.profiles set role = 'user', blocked = false where id in (b, c1, a);
+  perform t.as_user(b); select i.code into code2 from public.invite_create() i; perform t.as_user(f1); perform public.invite_accept(code2);
+  perform t.as_user(b); assert (select count(*) from public.notifs_mine() where kind = 'linked' and read_at is null and actor = 'prof1@x.fr') = 1, 'l''élève est prévenu du lien';
+  perform t.as_user(f1); perform public.teacher_message_send(b, 'un'); perform public.teacher_message_send(b, 'deux');
+  perform t.as_user(b); assert (select count(*) from public.notifs_mine() where kind = 'message') = 1 and (select n from public.notifs_mine() where kind = 'message') = 2, 'les messages se regroupent';
+  perform t.as_user(c1); assert (select count(*) from public.notifs_mine()) = 0, 'les notifications des autres sont invisibles'; assert (select count(*) from public.notifications) = 0;
+  perform t.fails('insert into public.notifications (user_id, kind) values (''' || c1 || ''', ''x'')'); perform t.fails('select public.notify(''' || c1 || ''', ''x'')');
+  perform t.as_user(b); perform public.messages_mark_read(); assert (select read_at is not null from public.notifs_mine() where kind = 'message'), 'lire la conversation traite la notification';
+  perform t.as_user(f1); perform public.teacher_message_send(b, 'trois'); perform t.as_user(b);
+  assert (select count(*) from public.notifs_mine() where kind = 'message') = 2 and (select count(*) from public.notifs_mine() where kind = 'message' and read_at is null) = 1, 'un nouveau message crée une nouvelle notification non lue';
+  perform public.student_message_send(f1, 'ok'); perform t.as_user(f1); assert (select n from public.notifs_mine() where kind = 'reply' and read_at is null) = 1, 'l''enseignant est prévenu d''une réponse';
+  perform public.teacher_thread(b); assert (select count(*) from public.notifs_mine() where kind = 'reply' and read_at is null) = 0, 'ouvrir la conversation traite la réponse';
+  perform public.teacher_goal_set(b, 78, current_date + 3); perform t.as_user(b); assert (select count(*) from public.notifs_mine() where kind = 'goal' and ref = '78') = 1, 'nouvel objectif';
+  perform public.notif_read((select id from public.notifs_mine() where kind = 'goal')); assert (select read_at is not null from public.notifs_mine() where kind = 'goal'), 'marquer traitée';
+  perform public.notifs_read_all(); assert (select count(*) from public.notifs_mine() where read_at is null) = 0, 'tout marquer comme lu';
+  perform t.as_user(c1); perform public.teacher_request(); perform t.as_user(ad); assert (select count(*) from public.notifs_mine() where kind = 'request' and read_at is null and actor = 'user@x.fr') = 1, 'l''admin est prévenu d''une demande';
+  perform public.admin_set_role(c1, 'teacher'); assert (select count(*) from public.notifs_mine() where kind = 'request' and read_at is null) = 0, 'accepter traite la demande';
+  perform t.as_user(c1); assert (select count(*) from public.notifs_mine() where kind = 'role_teacher') = 1, 'le nouvel enseignant est prévenu';
+  perform t.as_user(b); perform public.teacher_request(); perform t.as_user(ad); perform public.admin_teacher_decline(b); perform t.as_user(b); assert (select count(*) from public.notifs_mine() where kind = 'request_declined') = 1, 'refus notifié';
+  perform t.as_user(f1); select c.code into code2 from public.class_create() c; perform t.as_user(a); perform public.class_join(code2); perform t.as_user(f1);
+  assert (select count(*) from public.notifs_mine() where kind = 'student_joined' and actor = 'eleve.a@x.fr') = 1, 'l''enseignant est prévenu d''une arrivée en classe';
+  -- message à toute la classe : b et a sont liés à f1
+  perform t.as_user(f1); assert public.teacher_message_all('  Bonjour la classe  ') = 2, 'envoyé aux 2 élèves';
+  perform t.as_user(a); assert (select count(*) from public.messages_mine() where body = 'Bonjour la classe') = 1 and (select count(*) from public.notifs_mine() where kind = 'message') = 1, 'chaque élève reçoit le message et une notification';
+  perform t.as_user(f1); perform t.fails('select public.teacher_message_all('''')', 'P0001'); perform t.fails('select public.teacher_message_all(''' || repeat('x', 281) || ''')', 'P0001');
+  perform t.as_user(c1); perform t.fails('select public.teacher_message_all(''x'')', 'P0001');                  -- enseignant sans élève
+  perform t.as_user(ad); perform t.fails('select public.teacher_message_all(''x'')', '42501');
+  perform t.as_user(f1); perform public.link_revoke(b); perform t.as_user(b); assert (select count(*) from public.notifs_mine() where kind = 'unlinked') = 1, 'fin du suivi notifiée';
+  perform t.as_user(f1); assert public.teacher_message_all('encore') = 1, 'seuls les élèves encore liés';
+  perform t.as_super(); delete from public.notifications; delete from public.teacher_messages; delete from public.teacher_links where teacher_id in (f1, c1); update public.profiles set role = 'user' where id = c1;
+
   -- 8. suppression d'un compte élève : le lien et le journal partent avec lui
   perform t.as_super(); update public.profiles set blocked = false where id = f1; delete from auth.users where id = a;
   assert (select count(*) from public.teacher_access_log where student_id = a) = 0 and (select count(*) from public.teacher_links where student_id = a) = 0, 'cascade à la suppression';
