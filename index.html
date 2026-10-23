@@ -718,7 +718,7 @@ function setLang(l){ // change la langue de l'interface (le texte du Coran ne ch
   if (me && sb && remState().on) pushResync().catch(() => {});
   if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else home();
 }
-function go(tab){ cfg.tab = tab; if (tab === 'student') tch.loaded = false; if (tab === 'teacher'){ tch.students = null; tch.detail = null; } tch.msg = ''; saveCfg(); home(); window.scrollTo(0, 0); }
+function go(tab){ homeNotice = ''; cfg.tab = tab; if (tab === 'student') tch.loaded = false; if (tab === 'teacher'){ tch.students = null; tch.detail = null; } tch.msg = ''; saveCfg(); home(); window.scrollTo(0, 0); }
 
 /* -- Accueil : l'essentiel du jour -- */
 function weakCard(full){
@@ -736,6 +736,7 @@ function tabHome(){
   const due = dueRefs(), td = days[today()] || 0, st = streak();
   const top = aggErrors(errors.filter(e => e.t >= Date.now() - 7 * 864e5)).slice(0, 3);
   return `
+  ${homeNotice ? `<div class="fb ok" role="status">${esc(homeNotice)}</div>` : ''}
   <div class="hero"><div class="logo">تثبيت</div><div><h1>Tathbīt</h1><p class="tag">${tr('Coran et moutoun')}</p><p>${me ? esc(me.user.email) + ' ' + roleChips() : tr('Que ta mémorisation soit bénie.')}</p></div></div>
   ${cloudOn() && !me ? `<div class="card"><h2>${tr('Sauvegarde ta progression')}</h2><p class="sub" style="margin:0 0 8px">${tr('Crée un compte gratuit pour retrouver tes séries, tes erreurs et ton historique sur tous tes appareils.')}</p>
     <div class="row"><button class="pri" data-act="acc-open" data-v="signup">${tr('Créer un compte')}</button><button data-act="acc-open" data-v="login">${tr('Se connecter')}</button></div></div>` : ''}
@@ -2711,7 +2712,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v58';
+const APP_VERSION = '23 oct. 2026 · v59';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2763,6 +2764,17 @@ function loadSupabase(){
     document.head.appendChild(sc);
   });
 }
+/* AL:begin — lien reçu par e-mail : Supabase renvoie vers le site avec « #access_token=…&type=signup » (succès) ou « #error=…&error_code=otp_expired&error_description=… » (lien expiré, déjà utilisé ou refusé) */
+function authLinkNotice(hash, search){
+  const p = new URLSearchParams(String(hash || '').replace(/^#/, '') + '&' + String(search || '').replace(/^\?/, ''));
+  const code = p.get('error_code') || p.get('error');
+  if (code){ const d = p.get('error_description') || code; return {err: /expired|otp|used|invalid/i.test(code + ' ' + d) ? 'expired' : 'other', detail: d.replace(/\+/g, ' ')}; }
+  if (p.get('access_token') || p.get('code') || p.get('token_hash')) return {ok: p.get('type') || 'link'};
+  return null;
+}
+/* AL:end */
+const LINK_NOTICE = authLinkNotice(location.hash, location.search);   // lu avant que la bibliothèque de comptes n'efface l'adresse
+let homeNotice = '';
 let authReady = !cloudOn(); // sans comptes configurés, l'accès est libre ; sinon on attend de savoir si une session existe
 async function cloudInit(){
   try { await loadSupabase(); } catch (e){ acc.msg = friendly(e); authReady = true; return home(); }
@@ -2771,10 +2783,17 @@ async function cloudInit(){
     if (!authReady) return;
     if (ev === 'SIGNED_OUT'){ me = null; refreshAccount(); return; }
     if (ev === 'PASSWORD_RECOVERY'){ await loadMe(sess); acc.mode = 'newpass'; openAccount('newpass'); return; }
-    if (sess && ev === 'SIGNED_IN' && !me) await loadMe(sess);
+    if (sess && ev === 'SIGNED_IN' && !me){ await loadMe(sess); if (me && LINK_NOTICE && LINK_NOTICE.ok === 'signup'){ homeNotice = tr('Adresse e-mail confirmée, bienvenue !'); if (screen === 'tab') home(); } }
   }, 0));
   try { const {data: {session}} = await sb.auth.getSession(); if (session) await loadMe(session); } catch {}
-  authReady = true; home();
+  authReady = true;
+  if (LINK_NOTICE && LINK_NOTICE.err){   // lien de confirmation inutilisable : on l'explique au lieu de ne rien afficher
+    try { history.replaceState(null, '', location.pathname); } catch { /* sans effet */ }
+    acc.ok = false; acc.mode = 'login';
+    acc.msg = LINK_NOTICE.err === 'expired' ? tr("Ce lien n'est plus valable : il a déjà été utilisé ou il a expiré (certaines messageries l'ouvrent à ta place pour le vérifier). Connecte-toi avec ton e-mail et ton mot de passe ; si ton adresse n'est pas encore confirmée, demande un nouvel e-mail de confirmation.")
+      : tr("Le lien n'a pas pu être validé ({e}). Demande un nouvel e-mail de confirmation.", {e: LINK_NOTICE.detail});
+    openAccount('login');
+  } else home();
   setTimeout(maybeAutoAudio, 4000); if (navigator.connection && navigator.connection.addEventListener) navigator.connection.addEventListener('change', () => setTimeout(maybeAutoAudio, 1500));
 }
 function renderLoading(){ setNav(false); $app.innerHTML = `<p class="sub" style="margin-top:40vh;text-align:center">${tr('Chargement…')}</p>`; }

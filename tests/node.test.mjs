@@ -514,3 +514,14 @@ test('notifications : chaque notification a sa propre étiquette (le 2e rappel n
   assert.match(ts, /tag: 'rappel-' \+ d\.date \+ \(d\.second \? '-2' : '-1'\)/, 'rappel 1 et rappel 2 : étiquettes différentes');
   assert.match(ts, /tag: 'message-' \+ m\.id/); assert.match(ts, /tag: 'demande-' \+ r\.user_id/);
 });
+
+test('lien de confirmation reçu par e-mail : succès, lien expiré ou refusé sont reconnus (et expliqués à l’utilisateur)', () => {
+  const html = read('index.html'), { authLinkNotice } = new Function(html.slice(html.indexOf('/* AL:begin'), html.indexOf('/* AL:end */')) + '; return {authLinkNotice};')();
+  assert.deepEqual(authLinkNotice('#access_token=abc&refresh_token=x&type=signup', ''), { ok: 'signup' });
+  assert.deepEqual(authLinkNotice('', '?code=123'), { ok: 'link' });
+  assert.equal(authLinkNotice('#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired', '').err, 'expired');
+  assert.equal(authLinkNotice('#error=server_error&error_code=unexpected_failure&error_description=Oups', '').err, 'other');
+  assert.equal(authLinkNotice('#error=server_error&error_description=Oups+ca+casse', '').detail, 'Oups ca casse');
+  assert.equal(authLinkNotice('', ''), null); assert.equal(authLinkNotice('#/plan', '?r=3'), null);
+  assert.ok(html.includes("LINK_NOTICE.err === 'expired'") && html.includes("history.replaceState(null, '', location.pathname)"), 'un lien inutilisable affiche une explication sur l’écran de connexion');
+});
