@@ -7,7 +7,7 @@
 -- 0. E-mail de l'administrateur initial : le compte qui CONFIRME cet e-mail devient admin.
 --    (À changer ici si besoin. Garde « Confirm email » activé dans Authentication → Providers → Email.)
 create or replace function public.bootstrap_admin_email() returns text
-language sql immutable as $$ select 'hifz.app.contact@gmail.com'::text $$;
+language sql immutable as $$ select 'tathbit.app.contact@gmail.com'::text $$;
 
 -- 1. Tables
 create table if not exists public.profiles (
