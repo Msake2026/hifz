@@ -507,3 +507,10 @@ test('PWA : écrans de lancement iPhone et captures du manifeste existent, avec 
   for (const s of man.screenshots) { assert.deepEqual(dims(s.src), s.sizes.split('x').map(Number), s.src); assert.equal(s.form_factor, 'narrow'); }
   assert.ok(man.id, 'identifiant de l’application');
 });
+
+test('notifications : chaque notification a sa propre étiquette (le 2e rappel ne remplace plus le 1er sans alerte)', () => {
+  const sw = read('sw.js'), ts = read('supabase/functions/send-reminders/index.ts');
+  assert.ok(!/tag: 'tathbit-reminder'/.test(sw) && /tag: d\.tag \|\| undefined/.test(sw), 'le service worker utilise l’étiquette envoyée par le serveur');
+  assert.match(ts, /tag: 'rappel-' \+ d\.date \+ \(d\.second \? '-2' : '-1'\)/, 'rappel 1 et rappel 2 : étiquettes différentes');
+  assert.match(ts, /tag: 'message-' \+ m\.id/); assert.match(ts, /tag: 'demande-' \+ r\.user_id/);
+});

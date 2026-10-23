@@ -62,7 +62,7 @@ async function notifyRequests(db: ReturnType<typeof createClient>) {
     let ok = false;
     for (const sub of subs ?? []) {
       const m = (REQ[sub.lang as keyof typeof REQ] ?? REQ.fr)(email);
-      try { await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify({ ...m, url: './' }), { TTL: 24 * 3600, urgency: 'normal' }); ok = true; }
+      try { await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify({ ...m, url: './', tag: 'demande-' + r.user_id }), { TTL: 24 * 3600, urgency: 'normal' }); ok = true; }
       catch (e) { const c = (e as { statusCode?: number }).statusCode; if (c === 404 || c === 410) await db.from('push_subs').delete().eq('id', sub.id); else console.error('push admin', c, (e as Error).message); }
     }
     if (smtpUser && smtpPass) {
@@ -134,7 +134,7 @@ async function notifyMessages(db: ReturnType<typeof createClient>) {
     const { data: subs } = await db.from('push_subs').select('id, endpoint, p256dh, auth, lang').eq('user_id', to);
     for (const sub of subs ?? []) {
       const t = (MSGN[sub.lang as keyof typeof MSGN] ?? MSGN.fr)(prof?.email ?? '');
-      try { await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify({ ...t, url: './' }), { TTL: 24 * 3600, urgency: 'normal' }); n++; }
+      try { await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify({ ...t, url: './', tag: 'message-' + m.id }), { TTL: 24 * 3600, urgency: 'normal' }); n++; }
       catch (e) { const c = (e as { statusCode?: number }).statusCode; if (c === 404 || c === 410) await db.from('push_subs').delete().eq('id', sub.id); else console.error('push message', c, (e as Error).message); }
     }
     await db.from('teacher_messages').update({ notified_at: new Date().toISOString() }).eq('id', m.id);
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
     const m = MSG[s.lang] ?? MSG.fr;
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-        JSON.stringify({ title: m.title, body: d.second ? m.late : due > 0 ? m.due(due) : m.plain, url: './' }), { TTL: 6 * 3600, urgency: 'normal' });
+        JSON.stringify({ title: m.title, body: d.second ? m.late : due > 0 ? m.due(due) : m.plain, url: './', tag: 'rappel-' + d.date + (d.second ? '-2' : '-1') }), { TTL: 6 * 3600, urgency: 'normal' });
       await db.from('push_subs').update(mark).eq('id', s.id); sent++;
       // même rappel dans la cloche de l'application, tant que la personne ne l'a pas traité (un seul rappel non traité à la fois)
       await db.from('notifications').delete().eq('user_id', s.user_id).eq('kind', 'reminder').is('read_at', null);

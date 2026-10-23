@@ -43,7 +43,7 @@ self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch { d = {body: e.data ? e.data.text() : ''}; }
   e.waitUntil(self.registration.showNotification(d.title || 'Tathbīt', {
-    body: d.body || '', icon: './icons/icon-192.png', badge: './icons/icon-192.png', tag: 'tathbit-reminder', data: {url: d.url || './'}}));
+    body: d.body || '', icon: './icons/icon-192.png', badge: './icons/icon-192.png', tag: d.tag || undefined, data: {url: d.url || './'}}));   // une étiquette PAR notification (rappel 1, rappel 2, message…) : avec une étiquette commune, la seconde remplaçait la première sans alerte
 });
 self.addEventListener('notificationclick', e => {
   e.notification.close();
