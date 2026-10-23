@@ -3,7 +3,7 @@
 1. Crée un compte gratuit sur https://supabase.com puis **New project** (région Europe, mot de passe de base de données à garder).
 2. **SQL Editor → New query** : colle tout le fichier `schema.sql` et clique **Run**.
 3. **Authentication → Providers → Email** : laisse **Confirm email** activé (c'est ce qui protège le compte admin) et mets un mot de passe minimum de 8 caractères.
-4. **Authentication → URL Configuration** : *Site URL* = `https://msake2026.github.io/hifz/` ; ajoute la même adresse dans *Redirect URLs*.
+4. **Authentication → URL Configuration** : *Site URL* = `https://msake2026.github.io/tathbit/` ; ajoute la même adresse dans *Redirect URLs*.
 5. **Project Settings → API** : copie **Project URL** et la clé **anon / publishable** dans `config.js` (jamais la clé `service_role`), puis publie (git push).
 6. Sur le site : **Réglages → Compte → Créer un compte** avec `hifz.app.contact@gmail.com`, clique le lien reçu par e-mail : ce compte devient **admin** automatiquement (e-mail confirmé). Le menu « Espace admin » apparaît alors.
 
@@ -63,7 +63,7 @@ Avec **Resend** (recommandé par Supabase ; plan gratuit : 3 000 e-mails/mois et
    - Sender email : une adresse de ton domaine, ex. `noreply@mail.ton-domaine.fr` · Sender name : `Tathbīt`
    - Host : `smtp.resend.com` · Port : `465` · Username : `resend` · Password : la clé API.
 4. Supabase → **Authentication → Rate Limits** : avec un SMTP personnalisé, la limite démarre à 30 e-mails/heure ; relève-la si besoin.
-5. **Authentication → URL Configuration** : *Site URL* = `https://msake2026.github.io/hifz/` ; ajoute la même adresse dans *Redirect URLs*.
+5. **Authentication → URL Configuration** : *Site URL* = `https://msake2026.github.io/tathbit/` ; ajoute la même adresse dans *Redirect URLs*.
 6. **Authentication → Emails → Templates** : colle le contenu de `supabase/emails/confirm-signup.html` (modèle « Confirm sign up », sujet : `Confirm your email · Tathbīt`) et de `supabase/emails/reset-password.html` (modèle « Reset password », sujet : `Reset your password · Tathbīt`). Le message contient les trois langues (français, anglais, arabe) et le sujet est toujours en anglais (Supabase n'accepte qu'un seul sujet par modèle).
 7. Test : crée un compte avec une adresse qui n'est pas dans l'équipe Supabase ; l'e-mail doit arriver (regarde les courriers indésirables). Dans l'application, le bouton « Renvoyer l'e-mail de confirmation » apparaît après l'inscription ou si la connexion est refusée parce que l'e-mail n'est pas confirmé (une relance toutes les 60 s au plus).
 
