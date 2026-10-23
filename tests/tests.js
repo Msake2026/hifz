@@ -56,6 +56,20 @@
   test('Moutoun : Tuhfa 61, Bayquniyya 34, Ibn ʿĀshir 315, Arbain 42 unités', () => {
     eq(E("MT.tuhfa.a.length"), 61); eq(E("MT.bayquniyya.a.length"), 34); eq(E("MT.ibnachir.a.length"), 315); eq(E("MT.arbain.a.length"), 42);
   });
+  test('Moutoun : groupés par thème, avec choix d’un bloc (chapitre) dont les exercices ne portent que sur ce bloc', async () => {
+    reset(); E("cfg.scope = {type: 'matn', id: 'tuhfa'}; cfg.tab = 'train'; go('train')");
+    const groups = [...$q('#smatn').querySelectorAll('optgroup')].map(g => g.label);
+    eq(groups.length, 4, 'un groupe par discipline : ' + groups.join(' | '));
+    ok($q('#ssec') && $q('#ssec').options.length === 11, 'choix du bloc : « tout le matn » + 10 blocs de la Tuhfa');
+    eq(E("buildPool({type: 'matn', id: 'tuhfa', sec: 1}).length"), 11, 'bloc 2 (nūn sākina et tanwīn) = vers 6 à 16');
+    eq(E("buildPool({type: 'matn', id: 'tuhfa', sec: 9}).map(r => r.a).join()"), '58,59,60,61', 'dernier bloc = jusqu’au dernier vers');
+    eq(E("buildPool({type: 'matn', id: 'tuhfa'}).length"), 61, 'sans bloc : tout le matn');
+    eq(E("buildPool({type: 'matn', id: 'all'}).length"), 61 + 34 + 315 + 42, 'tous les moutoun');
+    $q('#ssec').value = '1'; $q('#ssec').dispatchEvent(new Event('change'));
+    eq(E("cfg.scope.sec"), 1, 'le bloc choisi est retenu'); ok(E("scopeLabel(cfg.scope)").includes('Nūn sākina'), 'le bloc apparaît dans le libellé de la portée');
+    E("cfg.scope = {type: 'matn', id: 'bayquniyya'}; go('train')"); ok(!$q('#ssec'), 'un matn sans titres de chapitres dans sa source n’a pas de choix de bloc');
+    E("openReader('m:ibnachir')"); await wait(300); eq($$q('.rblk').length, 27, 'le lecteur affiche les titres des 27 blocs d’Ibn ʿĀshir'); noErr('blocs');
+  });
   test('Versets proches : toutes les références existent', () => {
     const bad = []; const MS = E('MS');
     for (const [k, v] of Object.entries(MS)){ const [s, a] = k.split(':').map(Number); if (!E(`Q[${s - 1}] && ${a} <= Q[${s - 1}].a.length`)) bad.push(k);

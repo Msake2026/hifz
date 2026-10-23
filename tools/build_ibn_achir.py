@@ -26,6 +26,38 @@ B_SPLIT = [("مقدمه لكتاب الاعتقاد", "معينه لقاريها
            ("مقدمه من الاصول", "معينه في فروعها علي الوصول")]
 
 
+# Titres français = ma traduction des titres arabes de la source (à signaler comme rédigée par l'IA)
+FR = {"مقدمه": "Introduction",
+      "مقدمه لكتاب الاعتقاد": "Introduction au livre du credo",
+      "كتاب ام القواعد": "La mère des fondements : les croyances (ʿaqāʾid)",
+      "فصل في قواعد الاسلام": "Les piliers de l'islam",
+      "مقدمه من الاصول": "Introduction aux fondements (uṣūl)",
+      "كتاب الطهاره": "Livre de la purification",
+      "فصل في فرايض الوضو": "Les obligations des ablutions",
+      "سنن الوضو": "Les sunan des ablutions",
+      "نواقض الوضو": "Ce qui annule les ablutions",
+      "فرايض الغسل": "Les obligations du grand lavage",
+      "سنن الغسل": "Les sunan du grand lavage",
+      "موجب الغسل": "Ce qui rend le grand lavage obligatoire",
+      "فصل في التيمم": "Le tayammum",
+      "فروض التيمم": "Les obligations du tayammum",
+      "سنن التيمم": "Les sunan du tayammum",
+      "كتاب الصلاه": "Livre de la prière",
+      "سنن الصلاه": "Les sunan de la prière",
+      "مندوبات الصلاه": "Les recommandations de la prière",
+      "فرض العين وفرض الكفايه": "Obligation individuelle et obligation collective",
+      "سجود السهو": "La prosternation de l'oubli",
+      "صلاه الجمعه": "La prière du vendredi",
+      "شروط الامام": "Les conditions de l'imam",
+      "كتاب الزكاه": "Livre de la zakât",
+      "فصل في زكاه الفطر": "La zakât al-fiṭr",
+      "كتاب الصيام": "Livre du jeûne",
+      "كتاب الحج": "Livre du ḥajj",
+      "كتاب مبادي التصوف وهوادي التعرف": "Les principes du taṣawwuf"}
+# Vers qui servent eux-mêmes de titre dans le texte (début de vers -> ouvre un bloc)
+VERSE_TITLES = ["مقدمه لكتاب الاعتقاد", "كتاب ام القواعد", "مقدمه من الاصول"]
+
+
 def http(url):
     for _ in range(4):
         try:
@@ -106,9 +138,10 @@ def ibn_ashir():
         n1 = sum(1 for t in toks if t[2] == toks[0][2])
         two = len({t[2] for t in toks}) == 2
         m = n1 if two else (len(toks) + 1) // 2  # vers sur une seule ligne : coupe au milieu
+        lid0.append(toks[0][2])
         return {"t": " ".join(ws), "m": m}
 
-    units = []
+    units, lid0 = [], []
     by = {}
     for j in intro: by.setdefault(S[j][2], []).append(j)
     ls = sorted(by); assert len(ls) == 10, len(ls)
@@ -122,7 +155,18 @@ def ibn_ashir():
     print("Ibn ʿĀshir :", len(units), "vers ; accord A/B", round(ratio, 4), "; divergences", len(sk_diffs), file=sys.stderr)
     assert ratio > 0.95 and 310 <= len(units) <= 320, (ratio, len(units))
     assert all(u["t"].strip() and 3 <= u["m"] for u in units)
-    return units, [(u, v) for u, v, _ in sk_diffs]
+    # Blocs : titres de la copie A (chapitres) + les trois vers qui font office de titre dans le texte
+    marks = []  # (n° du 1er vers du bloc, titre arabe, clé)
+    for hi, hl in [(i, l) for i, l in enumerate(a[a0:a1]) if sk(l) in HEADINGS and sk(l) in FR]:
+        n = next((k + 1 for k, x in enumerate(lid0) if x > hi), None)
+        if n: marks.append((n, " ".join(junk(hl).split()), sk(hl)))
+    for key in VERSE_TITLES:
+        n = next(k + 1 for k, u in enumerate(units) if sk(u["t"]).startswith(key))
+        marks.append((n, units[n - 1]["t"], key))
+    marks.sort()
+    sections = [{"ar": "المقدمة", "fr": FR["مقدمه"], "from": 1}] + [{"ar": t, "fr": FR[k], "from": n} for n, t, k in marks]
+    assert all(x["from"] < y["from"] for x, y in zip(sections, sections[1:])), sections
+    return units, [(u, v) for u, v, _ in sk_diffs], sections
 
 
 def source():
@@ -133,5 +177,6 @@ def source():
 
 
 if __name__ == "__main__":
-    u, d = ibn_ashir()
+    u, d, sec = ibn_ashir()
     for x in d: print(x)
+    for x in sec: print(x)

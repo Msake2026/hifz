@@ -33,6 +33,16 @@ test('moutoun.js : 61 + 34 + 315 + 42 unités, chaque unité non vide, texte ara
     assert.ok(u.m >= 2 && u.m < u.t.split(' ').length, 'ibnachir vers ' + (i + 1) + ' : coupure');
   });
   assert.ok(ib.source.url && ib.source.note, 'source et mise en garde affichées');
+  const I = loadGlobal('i18n.js', 'I18N');
+  M.texts.filter(t => t.sec).forEach(t => {
+    assert.equal(t.sec[0].from, 1, t.id + ' : le 1er bloc commence au vers 1');
+    t.sec.forEach((b, k) => {
+      assert.ok(b.ar && b.fr && b.from <= t.a.length && (!k || b.from > t.sec[k - 1].from), t.id + ' bloc ' + k);
+      assert.ok(I.en[b.fr] && I.ar[b.fr], t.id + ' : titre « ' + b.fr + ' » traduit en anglais et en arabe');
+    });
+  });
+  assert.deepEqual(M.texts.filter(t => t.sec).map(t => [t.id, t.sec.length]), [['tuhfa', 10], ['ibnachir', 27]]);
+  M.texts.forEach(t => assert.ok(I.en[t.topic] && I.ar[t.topic], 'thème « ' + t.topic + ' » traduit'));
 });
 
 test('traductions : chaque texte tr()/trp() de index.html existe en anglais et en arabe', () => {

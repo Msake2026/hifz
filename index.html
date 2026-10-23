@@ -288,6 +288,7 @@ input[type=email],input[type=password],input[type=time]{direction:ltr;text-align
 .langs{display:flex;gap:6px;justify-content:center;margin:2px 0 12px}.langs button{padding:6px 12px;font-size:.85rem}.langs button.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--gold)}
 /* lecteur : plusieurs sections (Coran entier, tous les moutoun) */
 .rsec{margin:0 0 22px}
+.rblk{margin:22px 0 4px;padding:6px 12px;border-radius:8px;background:var(--line-soft);font-size:1rem;font-weight:700}
 .rtitle{margin:0 0 6px;text-align:center;border-top:1px solid var(--gold-soft);border-bottom:1px solid var(--gold-soft);padding:10px 0;font-family:inherit;font-weight:400}
 .rtitle .ar{display:block;font-size:2.1rem;line-height:1.7;padding:0}
 .rtitle small{display:block;color:var(--muted);font-family:Inter,"Noto Sans Arabic",sans-serif;font-size:.8rem}
@@ -530,10 +531,25 @@ function streak(){
   return n;
 }
 
+/* blocs d'un matn (MT[id].sec = [{ar, fr, from}], titres de la source) : n° du premier et du dernier vers du bloc k */
+const secRange = (id, k) => { const S = MT[id] && MT[id].sec; if (!S || k == null || !S[k]) return [1, Infinity]; return [S[k].from, S[k + 1] ? S[k + 1].from - 1 : Infinity]; };
+const THEMES = [['Tajwīd'], ['ʿAqīda, fiqh mālikī, taṣawwuf'], ['Muṣṭalaḥ al-ḥadīth'], ['Ḥadīth']];
+function matnOpts(sel){ // liste des moutoun groupés par thème (discipline) ; les matns ajoutés à la main à part
+  const opt = t => `<option value="${t.id}" ${sel === t.id ? 'selected' : ''}>${esc(MN(t.id))}${LANG === 'ar' ? '' : ' · ' + esc(t.ar)} (${t.a.length})</option>`;
+  const all = Object.values(MT), seen = new Set();
+  const g = (label, L) => L.length ? `<optgroup label="${esc(label)}">${L.map(opt).join('')}</optgroup>` : '';
+  const out = THEMES.map(([th]) => { const L = all.filter(t => !t.custom && t.topic === th); L.forEach(t => seen.add(t.id)); return g(tr(th), L); });
+  return out.join('') + g(tr('Autres moutoun'), all.filter(t => !seen.has(t.id)));
+}
+const secSize = (id, k) => { const [f, t] = secRange(id, k); return Math.min(t, MT[id].a.length) - f + 1; };
+const secName = s => LANG === 'ar' ? s.ar : tr(s.fr);
 function buildPool(sc){
   const p = [];
   if (sc.type === 'matn'){
-    for (const id of Object.keys(MT)) if (sc.id === 'all' || sc.id === id) MT[id].a.forEach((_, i) => p.push({s: id, a: i + 1}));
+    for (const id of Object.keys(MT)) if (sc.id === 'all' || sc.id === id){
+      const [from, to] = secRange(id, sc.sec);
+      MT[id].a.forEach((_, i) => { if (i + 1 >= from && i + 1 <= to) p.push({s: id, a: i + 1}); });
+    }
     return p;
   }
   for (const S of Q){
@@ -706,7 +722,7 @@ function setNav(on){
   n.innerHTML = `<div class="in">${tabsNow().map(([id, t, ico]) => `<button class="${cfg.tab === id ? 'sel' : ''}" ${cfg.tab === id ? 'aria-current="page"' : ''} data-act="tab" data-v="${id}" aria-label="${tr(t)}"${cfg.tab === id ? ' aria-current="page"' : ''}>
     <svg viewBox="0 0 24 24" aria-hidden="true">${ico}</svg>${tr(t)}${id === 'home' && due ? `<span class="badge">${due > 99 ? '99+' : due}</span>` : ''}${id === 'student' && unreadStudent() ? `<span class="badge">${unreadStudent()}</span>` : ''}${id === 'teacher' && unreadTeacher() ? `<span class="badge">${unreadTeacher()}</span>` : ''}</button>`).join('')}</div>`;
 }
-const scopeLabel = sc => sc.type === 'matn' ? (sc.id === 'all' ? tr('Tous les moutoun') : (MT[sc.id] ? MN(sc.id) : tr('Matn')))
+const scopeLabel = sc => sc.type === 'matn' ? (sc.id === 'all' ? tr('Tous les moutoun') : (MT[sc.id] ? MN(sc.id) + (sc.sec != null && MT[sc.id].sec && MT[sc.id].sec[sc.sec] ? ' · ' + secName(MT[sc.id].sec[sc.sec]) : '') : tr('Matn')))
   : sc.type === 'all' ? tr('Tout le Coran')
   : sc.type === 'surah' ? (sc.from === sc.to ? tr('Sourate {n} · {name}', {n: sc.from, name: SN(sc.from)}) : tr('Sourates {a} {an} → {b} {bn}', {a: sc.from, an: SN(sc.from), b: sc.to, bn: SN(sc.to)}))
   : sc.type === 'juz' ? (sc.from === sc.to ? tr("Juz' {a}", {a: sc.from}) : tr("Juz' {a}–{b}", {a: sc.from, b: sc.to}))
@@ -722,7 +738,7 @@ function home(){ // affiche l'écran du menu courant (accès réservé aux compt
   $app.innerHTML = ({home: tabHome, plan: tabPlan, train: tabTrain, progress: tabProgress, errors: tabErrors, settings: tabSettings, student: tabStudent, teacher: tabTeacher})[cfg.tab]();
   setNav(true); tchEnter(); chatBottom(); if (cfg.tab === 'settings') setTimeout(audioSpace, 0);
   $app.querySelectorAll('select').forEach(el => { if (el.id.startsWith('cm-')) return;
-    el.onchange = () => { syncCfg(); if (['stype', 'sgoal', 'scat', 'srec', 'aud-from', 'aud-to', 'aud-cap', 'aud-q'].includes(el.id) || el.id.startsWith('pf-')) home(); }; });
+    el.onchange = () => { syncCfg(); if (['stype', 'smatn', 'sgoal', 'scat', 'srec', 'aud-from', 'aud-to', 'aud-cap', 'aud-q'].includes(el.id) || el.id.startsWith('pf-')) home(); }; });
   if ($('impfile')) $('impfile').onchange = e => importFile(e.target.files[0]);
   ['cm-f-cam', 'cm-f-img', 'cm-f-doc'].forEach(id => { if ($(id)) $(id).onchange = e => { queueAdd([...e.target.files]); e.target.value = ''; }; });
 }
@@ -730,7 +746,10 @@ function syncCfg(){
   const v = id => $(id) ? $(id).value : null;
   if ($('stype')){
     const isM = cfg.scope.type === 'matn', t = isM ? 'matn' : v('stype');
-    if (t === 'matn'){ cfg.scope = {type: 'matn', id: v('smatn') || 'all'}; }
+    if (t === 'matn'){
+      const id = v('smatn') || 'all', k = id === cfg.scope.id && $('ssec') && v('ssec') !== '' ? +v('ssec') : null;
+      cfg.scope = k != null && MT[id] && MT[id].sec && MT[id].sec[k] ? {type: 'matn', id, sec: k} : {type: 'matn', id};
+    }
     else {
       let f = +v('sfrom'), e = +v('sto');
       if (t !== cfg.scope.type){ [f, e] = {surah: [78, 114], juz: [30, 30], page: [582, 604], all: [1, 114]}[t]; }
@@ -1049,7 +1068,10 @@ function tabTrain(){
     </select>
     <div id="smatn-row" ${isM ? '' : 'hidden'}>
       <label class="f">${tr('Matn')}</label>
-      <select id="smatn"><option value="all">${tr('Tous les moutoun')}</option>${Object.values(MT).map(t => `<option value="${t.id}" ${sc.id === t.id ? 'selected' : ''}>${esc(MN(t.id))}${LANG === 'ar' ? '' : ' · ' + esc(t.ar)} (${t.a.length})</option>`).join('')}</select>
+      <select id="smatn"><option value="all">${tr('Tous les moutoun')}</option>${matnOpts(sc.id)}</select>
+      ${isM && MT[sc.id] && MT[sc.id].sec ? `<label class="f">${tr('Bloc (chapitre du matn)')}</label>
+      <select id="ssec"><option value="">${tr('Tout le matn')} (${MT[sc.id].a.length})</option>${MT[sc.id].sec.map((b, k) => `<option value="${k}" ${sc.sec === k ? 'selected' : ''}>${k + 1}. ${esc(secName(b))} (${secSize(sc.id, k)})</option>`).join('')}</select>
+      <p class="ref" style="margin:4px 0 0">${tr("Titres des blocs : ceux de la source ; le français est traduit par l'IA, pas une source officielle.")}</p>` : ''}
       ${isM ? srcNote(sc) : ''}
       <details style="margin-top:12px"><summary>➕ ${tr('Ajouter mon propre matn')}</summary>
         <p class="ref" style="margin:10px 0 6px">${tr('Importer le texte depuis une photo, un PDF ou un fichier Word :')}</p>
@@ -2632,9 +2654,10 @@ function secHtml(id){
   const unit = {vers: '{n} vers|{n} vers', hadith: '{n} hadith|{n} hadiths', passage: '{n} passage|{n} passages'}[B.unit] || '{n}';
   return `<section class="rsec" id="rs-${id}"><h2 class="rtitle"><span class="ar">${esc(B.ar)}</span><small>${esc(MN(id))} · ${trp(n, unit)}${B.author ? ' · ' + esc(tr(B.author)) : ''}</small></h2>${srcNote({id})}
     ${B.a.map((u, i) => {
-      const w = u.t.split(/\s+/), h = B.kind === 'poem' && u.m ? u.m : 0;
+      const w = u.t.split(/\s+/), h = B.kind === 'poem' && u.m ? u.m : 0, bk = (B.sec || []).findIndex(b => b.from === i + 1);
+      const head = bk >= 0 ? `<h3 class="rblk" id="rb-${id}-${bk}">${esc(secName(B.sec[bk]))}</h3>` : '';
       const txt = h ? `<span>${esc(w.slice(0, h).join(' '))}</span><span class="psep">✦</span><span>${esc(w.slice(h).join(' '))}</span>` : esc(u.t);
-      return `<div class="${h ? 'pl' : 'pp'} rd rv${cfg.rdHide ? ' hid' : ''}" style="font-size:${siz * 0.78}rem;line-height:2.1" data-act="rv" data-s="${id}" data-i="${i + 1}"><span class="pn">${i + 1}</span>${txt}</div>`;
+      return head + `<div class="${h ? 'pl' : 'pp'} rd rv${cfg.rdHide ? ' hid' : ''}" style="font-size:${siz * 0.78}rem;line-height:2.1" data-act="rv" data-s="${id}" data-i="${i + 1}"><span class="pn">${i + 1}</span>${txt}</div>`;
     }).join('')}</section>`;
 }
 function renderReader(){
@@ -2781,7 +2804,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v66';
+const APP_VERSION = '23 oct. 2026 · v67';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

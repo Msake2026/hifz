@@ -46,6 +46,14 @@ Un essai de « correction » de ma part, de mémoire, s'est révélé faux (ال
 
 **Manquant** : *Manẓūmat al-ʿAqāʾid ash-Sharnūbiyya* (ʿAbd al-Majīd ash-Sharnūbī) : aucune version texte fiable trouvée (seulement des scans PDF/EPUB illisibles à l'OCR). Non ajoutée. Pour l'ajouter : copier le texte depuis ton édition dans « Mes moutoun », ou m'en envoyer des photos lisibles.
 
+## 3 ter. Regroupement des moutoun par thème et par bloc (23 oct. 2026)
+- **Thèmes** (liste des moutoun) : Tajwīd, ʿAqīda-fiqh mālikī-taṣawwuf, Muṣṭalaḥ al-ḥadīth, Ḥadīth. C'est la discipline de chaque ouvrage, indiquée par son titre et son auteur.
+- **Blocs** (chapitres d'un matn) : uniquement quand la source les donne.
+  - Tuḥfat al-Aṭfāl : 10 blocs, titres de la page Wikisource (المقدمة، النون الساكنة والتنوين، … الخاتمة).
+  - Ibn ʿĀshir : 27 blocs ; titres des chapitres de la copie A (كتاب الطهارة، كتاب الصلاة… ) et trois vers du texte qui servent eux-mêmes de titre (مقدمة لكتاب الاعتقاد، كتاب أم القواعد، مقدمة من الأصول).
+  - Bayqūniyya et Arbaʿūn : aucun bloc, car leurs sources n'ont pas de titres ; je n'en invente pas.
+- Les titres arabes viennent de la source ; **les titres français et anglais sont traduits par l'IA** (mention affichée dans l'application). Le bloc « المقدمة » d'Ibn ʿĀshir (vers 1 à 5) est un nom que j'ai choisi.
+
 ## 4. Engagement
 Si une source ne confirme pas un fait, il n'est pas mis dans l'application. Pour re-vérifier : `python3 -I tools/build_quran.py` puis les autres `build_*.py`, et comparer.
 

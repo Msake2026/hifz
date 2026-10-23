@@ -57,6 +57,14 @@ def split_point(words):
     return best or (n + 1) // 2
 
 
+# Titres français = ma traduction des titres arabes de Wikisource (signalée comme rédigée par l'IA dans l'application)
+TUHFA_FR = {"المقدمة": "Introduction", "النون الساكنة والتنوين": "Nūn sākina et tanwīn", "الميم والنون المشددتين": "Mīm et nūn avec shadda",
+            "الميم الساكنة": "Mīm sākina", "لام آل ولام الفعل": "Lām de « al » et lām du verbe",
+            "المثلين والمتقاربين والمتجانسين": "Lettres identiques, proches et de même point de sortie",
+            "أقسام المد": "Les types de madd", "أحكام المد": "Les règles du madd", "أقسام المد اللازم": "Les types du madd lāzim",
+            "الخاتمة": "Conclusion"}
+
+
 def tuhfa():
     c, rev = wikisource("تحفة الأطفال")
     cells = [clean(x) for x in re.findall(r"<td[^>]*>(.*?)</td>", c, re.S)]
@@ -67,7 +75,15 @@ def tuhfa():
             nums.append(int(m.group(1)))
             units.append(poem_unit(cells[i + 1], cells[i + 2]))
     assert nums == list(range(1, 62)), nums
-    return units, rev
+    sec, n = [], 0  # chapitres de la page Wikisource : lignes à une seule cellule (titre), puis vers « (n) »
+    for row in re.findall(r"<tr[^>]*>(.*?)</tr>", c, re.S):
+        cs = [clean(x) for x in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
+        if len(cs) == 1:
+            sec.append({"ar": cs[0], "fr": TUHFA_FR[cs[0]], "from": n + 1})
+        elif cs and re.fullmatch(r"\((\d+)\)", cs[0]):
+            n += 1
+    assert [s["from"] for s in sec] == [1, 6, 17, 18, 24, 30, 35, 42, 48, 58] and n == 61, sec
+    return units, rev, sec
 
 
 def bayquniyya():
@@ -99,16 +115,16 @@ def wiki_src(title, rev):
 
 
 texts = []
-u, rev = tuhfa()
+u, rev, sec = tuhfa()
 texts.append({"id": "tuhfa", "ar": "تحفة الأطفال والغلمان", "fr": "Tuḥfat al-Aṭfāl", "author": "Sulaymān al-Jamzūrī",
-              "topic": "Tajwīd", "kind": "poem", "unit": "vers", "source": wiki_src("", rev), "a": u})
+              "topic": "Tajwīd", "kind": "poem", "unit": "vers", "source": wiki_src("", rev), "sec": sec, "a": u})
 u, rev = bayquniyya()
 texts.append({"id": "bayquniyya", "ar": "المنظومة البيقونية", "fr": "Al-Manẓūma al-Bayqūniyya", "author": "Al-Bayqūnī",
               "topic": "Muṣṭalaḥ al-ḥadīth", "kind": "poem", "unit": "vers", "source": wiki_src("", rev), "a": u})
-u, _ = build_ibn_achir.ibn_ashir()
+u, _, sec = build_ibn_achir.ibn_ashir()
 texts.append({"id": "ibnachir", "ar": "المرشد المعين على الضروري من علوم الدين", "fr": "Al-Murshid al-Muʿīn (Ibn ʿĀshir)",
               "author": "ʿAbd al-Wāḥid Ibn ʿĀshir", "topic": "ʿAqīda, fiqh mālikī, taṣawwuf", "kind": "poem", "unit": "vers",
-              "source": build_ibn_achir.source(), "a": u})
+              "source": build_ibn_achir.source(), "sec": sec, "a": u})
 u, _ = arbain()
 texts.append({"id": "arbain", "ar": "الأربعون النووية", "fr": "Al-Arbaʿūn an-Nawawiyya", "author": "Al-Nawawī",
               "topic": "Ḥadīth", "kind": "prose", "unit": "hadith",

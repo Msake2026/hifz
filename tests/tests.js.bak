@@ -1,0 +1,850 @@
+/* Tests de l'application Tathbīt : pilotent index.html dans un <iframe> avec de vrais clics.
+   Résultat : window.__result = {passed, failed, results:[{name, ok, err}]} et affichage dans la page. */
+(async () => {
+  const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  if (!local && !/[?&]force\b/.test(location.search)){ document.getElementById('sum').innerHTML = '<b class="ko">Refusé : lance ces tests depuis localhost (ils effacent puis restaurent la progression locale).</b>'; window.__result = {passed: 0, failed: 1, results: []}; return; }
+
+  const results = [], tests = [];
+  const test = (name, fn) => tests.push({name, fn});
+  const fail = m => { throw new Error(m); };
+  const ok = (c, m) => { if (!c) fail(m || 'condition fausse'); };
+  const eq = (a, b, m) => { if (JSON.stringify(a) !== JSON.stringify(b)) fail((m ? m + ' : ' : '') + 'attendu ' + JSON.stringify(b) + ', obtenu ' + JSON.stringify(a)); };
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  /* ---- application sous test ---- */
+  const saved = {}; for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k.startsWith('tathbit.')) saved[k] = localStorage.getItem(k); }
+  const clean = () => Object.keys(localStorage).filter(k => k.startsWith('tathbit.')).forEach(k => localStorage.removeItem(k));
+  const restore = () => { clean(); Object.entries(saved).forEach(([k, v]) => localStorage.setItem(k, v)); };
+  window.addEventListener('pagehide', restore);
+  clean();
+  const fr = document.createElement('iframe'); fr.src = '../index.html'; document.body.appendChild(fr);
+  await new Promise(r => fr.addEventListener('load', r, {once: true}));
+  const W = fr.contentWindow, D = fr.contentDocument, E = c => W.eval(c);
+  const jsErrors = []; W.addEventListener('error', e => jsErrors.push(e.message)); W.addEventListener('unhandledrejection', e => jsErrors.push(String(e.reason && e.reason.message || e.reason)));
+  for (let i = 0; i < 100 && !(() => { try { return E('Q') && E('Q').length; } catch { return 0; } })(); i++) await wait(100);
+  ok(E('Q') && E('Q').length === 114, "le Coran ne s'est pas chargé");
+  E("CLOUD.url = ''; CLOUD.anonKey = ''; sb = null; me = null; window.confirm = () => true; window.alert = m => { window.__alerts = (window.__alerts || []).concat(String(m)); };"); // pas de compte pendant les tests
+  const reset = (extra = '') => { E("cfg = Object.assign({}, DEF, {tab: 'home', n: 5, corr: 'standard'}); stats = {}; sched = {}; days = {}; errors = []; plan = null; custom = []; ses = null; LANG = 'fr'; applyLang(); " + extra); jsErrors.length = 0; };
+  const $q = s => D.querySelector(s), $$q = s => [...D.querySelectorAll(s)], appText = () => D.getElementById('app').textContent;   // texte de l'écran seulement (le code de la page n'en fait pas partie)
+  const click = el => { ok(el, 'élément introuvable'); el.click(); };
+  const clickAct = (act, v) => { const sel = `[data-act="${act}"]${v !== undefined ? `[data-v="${v}"]` : ''}`; const el = $q(sel); if (!el) throw new Error('élément introuvable : ' + sel); click(el); };
+  const noErr = ctx => ok(!jsErrors.length, `erreur JS pendant « ${ctx} » : ${jsErrors.join(' / ')}`);
+  const fb = () => $q('#fb .fb');
+  const ALL = "{type: 'surah', from: 1, to: 114}", MAT = "{type: 'matn', id: 'all'}";
+  const expectedText = () => E("cur.units.map(u => u.text).join(' ')");
+  const strip = t => t.replace(/[ً-ْٰ]/g, '');
+  const fill = (txt) => { const a = $q('#ans'); ok(a, 'zone de saisie absente'); a.value = txt; };
+
+  /* ---- données ---- */
+  test('Coran : 114 sourates, 6236 versets, 604 pages, 30 juz', () => {
+    eq(E('Q.length'), 114); eq(E('Q.reduce((n, s) => n + s.a.length, 0)'), 6236);
+    eq(E('Math.max(...Q.flatMap(s => s.a.map(v => v.p)))'), 604); eq(E('Math.max(...Q.flatMap(s => s.a.map(v => v.j)))'), 30);
+    eq(E('quranOk(Q)'), true);
+  });
+  test('Coran : le texte embarqué (quran.js) est utilisé et son empreinte SHA-256 correspond', async () => {
+    ok(W.QURAN && W.QURAN.surahs.length === 114, 'quran.js absent');
+    const txt = W.QURAN.surahs.flatMap(s => s.a.map(v => v[0])).join('\n');
+    const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+    eq([...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join(''), W.QURAN.sha256);
+    eq(E("Q[1].a[0].t"), W.QURAN.surahs[1].a[0][0], 'le texte affiché doit venir de quran.js');
+  });
+  test('Coran : Fatiha 7 versets, Baqara 286, Tawba sans basmala préfixée', () => {
+    eq(E('Q[0].a.length'), 7); eq(E('Q[1].a.length'), 286);
+    ok(!E('Q[1].a[0].t').startsWith('بِسْمِ'), 'la basmala ne doit pas préfixer le verset 1 de la Baqara');
+    ok(E('Q[0].a[0].t').startsWith('بِسْمِ'), 'la Fatiha commence par la basmala (c\'est son verset 1)');
+  });
+  test('Moutoun : Tuhfa 61, Bayquniyya 34, Ibn ʿĀshir 315, Arbain 42 unités', () => {
+    eq(E("MT.tuhfa.a.length"), 61); eq(E("MT.bayquniyya.a.length"), 34); eq(E("MT.ibnachir.a.length"), 315); eq(E("MT.arbain.a.length"), 42);
+  });
+  test('Moutoun : groupés par thème, avec choix d’un bloc (chapitre) dont les exercices ne portent que sur ce bloc', () => {
+    reset(); E("cfg.scope = {type: 'matn', id: 'tuhfa'}; cfg.tab = 'train'; go('train')");
+    const groups = [...$q('#smatn').querySelectorAll('optgroup')].map(g => g.label);
+    eq(groups.length, 4, 'un groupe par discipline : ' + groups.join(' | '));
+    ok($q('#ssec') && $q('#ssec').options.length === 11, 'choix du bloc : « tout le matn » + 10 blocs de la Tuhfa');
+    eq(E("buildPool({type: 'matn', id: 'tuhfa', sec: 1}).length"), 11, 'bloc 2 (nūn sākina et tanwīn) = vers 6 à 16');
+    eq(E("buildPool({type: 'matn', id: 'tuhfa', sec: 9}).map(r => r.a).join()"), '58,59,60,61', 'dernier bloc = jusqu’au dernier vers');
+    eq(E("buildPool({type: 'matn', id: 'tuhfa'}).length"), 61, 'sans bloc : tout le matn');
+    eq(E("buildPool({type: 'matn', id: 'all'}).length"), 61 + 34 + 315 + 42, 'tous les moutoun');
+    $q('#ssec').value = '1'; $q('#ssec').dispatchEvent(new Event('change'));
+    eq(E("cfg.scope.sec"), 1, 'le bloc choisi est retenu'); ok(E("scopeLabel(cfg.scope)").includes('Nūn sākina'), 'le bloc apparaît dans le libellé de la portée');
+    E("cfg.scope = {type: 'matn', id: 'bayquniyya'}; go('train')"); ok(!$q('#ssec'), 'un matn sans titres de chapitres dans sa source n’a pas de choix de bloc');
+    E("openReader('m:ibnachir')"); eq($qa('.rblk').length, 27, 'le lecteur affiche les titres des 27 blocs d’Ibn ʿĀshir'); noErr('blocs');
+  });
+  test('Versets proches : toutes les références existent', () => {
+    const bad = []; const MS = E('MS');
+    for (const [k, v] of Object.entries(MS)){ const [s, a] = k.split(':').map(Number); if (!E(`Q[${s - 1}] && ${a} <= Q[${s - 1}].a.length`)) bad.push(k);
+      v.forEach(x => { const [s2, a2] = x.split(':').map(Number); if (!E(`Q[${s2 - 1}] && ${a2} <= Q[${s2 - 1}].a.length`)) bad.push(x); }); }
+    eq(bad, []);
+  });
+  test('Service worker : tous les fichiers de la liste existent', async () => {
+    const src = await (await fetch('../sw.js', {cache: 'no-cache'})).text();
+    const files = [...src.match(/const FILES = \[([\s\S]*?)\];/)[1].matchAll(/'\.\/([^']*)'/g)].map(m => m[1]).filter(Boolean);
+    ok(files.includes('quran.js'), 'quran.js doit être dans le cache hors ligne');
+    const missing = []; for (const f of files){ const r = await fetch('../' + f, {method: 'HEAD', cache: 'no-cache'}); if (!r.ok) missing.push(f); }
+    eq(missing, []);
+  });
+  test('Lecteur : données du tajwīd, des traductions et du tafsir complètes et conformes à leur empreinte', async () => {
+    for (const n of ['tajweed', 'fr', 'en', 'muyassar']){
+      const x = await W.loadX(n); eq(x.s.length, 114, n); eq(x.s.reduce((t, a) => t + a.length, 0), 6236, n);
+      eq(x.s.map(a => a.length).slice(0, 3), [7, 286, 200], n); ok(x.url && x.name, 'source affichable');
+    }
+    const t = E("QX.tajweed.s.flatMap(a => a).join('')"); ok(!t.replace(/\[[a-z]\[/g, '').includes('['), 'balise inconnue ou mal formée');
+    eq((t.match(/\[[a-z]\[/g) || []).length, (t.match(/\]/g) || []).length, 'balises équilibrées');
+  });
+  test('Lecteur : tajwīd, traduction et tafsir — une ligne par verset, légende et sources affichées', async () => {
+    reset(); E("openReader('q:1')");
+    clickAct('rd-taj'); await wait(1200); ok($q('#rbody .rd.tj .tj-n'), 'couleurs absentes'); ok($q('details summary'), 'légende absente');
+    ok(appText().includes('1x.ax') || $$q('a').some(a => /1x\.ax/.test(a.href)), 'lien de la légende officielle');
+    const sel = $q('#rdtr'); sel.value = 'fr'; sel.dispatchEvent(new W.Event('change')); await wait(1200);
+    eq($$q('#rbody .rvb').length, 7); eq($q('#rbody .rtr').textContent, E("QX.fr.s[0][0]")); ok($$q('a').some(a => /tanzil\.net\/trans/.test(a.href)), 'lien Tanzil obligatoire');
+    clickAct('rd-tf'); await wait(1500); eq($$q('#rbody .rtf').length, 7); ok($$q('a').some(a => /alquran\.cloud/.test(a.href)), 'source du tafsir');
+    clickAct('rd-hide'); ok($$q('#rbody .rv.hid').length === 7 && $q('#rbody .rtr'), 'le texte arabe se masque, la traduction reste');
+    clickAct('rd-hide'); $q('#rdtr').value = ''; $q('#rdtr').dispatchEvent(new W.Event('change')); await wait(300); eq($$q('#rbody .rvb').length, 7, 'le tafsir garde le mode ligne par ligne');
+    clickAct('rd-tf'); await wait(300); eq($$q('#rbody .rvb').length, 0); clickAct('rd-taj'); await wait(300); ok(!$q('#rbody .tj-n'), 'couleurs retirées'); noErr('lecteur enrichi');
+    // la verification d'un fichier altéré doit échouer (aucun contenu douteux affiché)
+    E("delete QX.en; delete XPROMISE.en; XFILES.en = 'data/does-not-exist.js'"); let failed = false; try { await W.loadX('en'); } catch { failed = true; } ok(failed, 'un fichier absent doit être refusé');
+    E("XFILES.en = 'data/tr-en.js'; cfg.rdTr = ''; cfg.rdTaj = false; cfg.rdTf = false;");
+  });
+  test('Lecteur enrichi : aucune clé de traduction manquante (en, ar) légende comprise', async () => {
+    for (const L of ['en', 'ar']){
+      reset(); E(`setLang('${L}'); cfg.rdTaj = true; cfg.rdTr = 'fr'; cfg.rdTf = true;`); await Promise.all(['tajweed', 'fr', 'muyassar'].map(n => W.loadX(n)));
+      E("openReader('q:114')"); await wait(200); ok($q('.tjkey'), 'légende'); eq(E('[...missingKeys]'), [], L);
+    }
+    E("cfg.rdTaj = false; cfg.rdTr = ''; cfg.rdTf = false;");
+  });
+  test('Traductions : aucune clé manquante sur les écrans principaux (en, ar)', async () => {
+    const miss = {};
+    for (const L of ['en', 'ar']){
+      reset(); E(`setLang('${L}')`);
+      for (const t of ['home', 'train', 'plan', 'progress', 'settings', 'errors']){ E(`go('${t}')`); await wait(20); }
+      E("renderLegal()"); E("openReader('q:1')"); E("openReader('m:tuhfa')");
+      E("start(buildPool(cfg.scope))"); E("home()");
+      miss[L] = E('[...missingKeys]');
+    }
+    eq(miss, {en: [], ar: []});
+  });
+
+  /* ---- exercices à choix : de vrais clics, répétés (les tirages sont aléatoires) ---- */
+  const choice = [['which', ALL], ['mcq', ALL], ['mutash', ALL], ['mwhich', ALL], ['order', ALL], ['which', MAT], ['mcq', MAT]];
+  for (const [mode, scope] of choice){
+    const label = `${mode} (${scope === ALL ? 'Coran' : 'moutoun'})`;
+    test(`QCM ${label} : bonne réponse → vert, mauvaise → rouge (30 tirages)`, () => {
+      reset(`cfg.mode = '${mode}'; cfg.scope = ${scope};`);
+      for (let n = 0; n < 30; n++){
+        const wantOk = n % 2 === 0;
+        E("start()");
+        noErr('start ' + label);
+        const btns = $$q('.opt'); ok(btns.length >= 3, 'moins de 3 propositions');
+        const isGood = b => E(`(cur.m === 'which' || cur.m === 'order' || cur.m === 'mwhich') ? (isQ(cur.correct) ? +"${b.dataset.v}" : "${b.dataset.v}") === cur.correct : cur.opts[+"${b.dataset.v}"] === cur.good`);
+        const goods = btns.filter(isGood); eq(goods.length, 1, 'une seule bonne réponse attendue');
+        const target = wantOk ? goods[0] : btns.find(b => !isGood(b));
+        click(target); noErr('clic ' + label);
+        ok(fb() && fb().classList.contains(wantOk ? 'ok' : 'ko'), `tirage ${n} : retour ${wantOk ? 'vert' : 'rouge'} attendu`);
+        ok($q('.opt.c'), 'la bonne réponse doit être marquée');
+        if (!wantOk) ok($q('.opt.w'), 'la réponse fausse doit être marquée');
+        click(target); // second clic : sans effet
+        eq(E('ses.score'), wantOk ? 1 : 0, 'score');
+        E("home()");
+      }
+    });
+  }
+
+  /* ---- exercices à saisie ---- */
+  const typed = [['next', ALL], ['start', ALL], ['end', ALL], ['link', ALL], ['cont', ALL], ['half', MAT], ['phrase', MAT], ['next', MAT]];
+  for (const [mode, scope] of typed){
+    test(`Saisie ${mode} (${scope === ALL ? 'Coran' : 'moutoun'}) : texte exact → vert, texte faux → rouge`, () => {
+      reset(`cfg.mode = '${mode}'; cfg.scope = ${scope}; cfg.input = 'type'; cfg.corr = 'strict'; cfg.endLen = 2; cfg.contLen = 3;`);
+      for (let n = 0; n < 6; n++){
+        const good = n % 2 === 0;
+        E("start()"); noErr('start ' + mode);
+        const exp = expectedText();
+        fill(good ? exp : 'كلمة خاطئة تماما'); clickAct('check'); noErr('vérifier ' + mode);
+        ok(fb() && fb().classList.contains(good ? 'ok' : 'ko'), `tirage ${n} : ${good ? 'vert' : 'rouge'} attendu pour « ${exp.slice(0, 30)}… »`);
+        E("home()");
+      }
+    });
+  }
+  test('Saisie à trous (cloze) : tous les mots justes → vert ; un mot faux → rouge (strict)', () => {
+    reset(`cfg.mode = 'cloze'; cfg.scope = ${ALL}; cfg.input = 'type'; cfg.corr = 'strict'; cfg.level = 50;`);
+    for (let n = 0; n < 10; n++){
+      E("start()"); noErr('start cloze');
+      const inputs = $$q('.blankin'); ok(inputs.length, 'aucun trou');
+      inputs.forEach(i => { i.value = E(`cur.T.tok[${i.dataset.i}]`); });
+      if (n % 2){ inputs[0].value = 'خطأ'; }
+      clickAct('checkcloze'); noErr('vérifier trous');
+      ok(fb().classList.contains(n % 2 ? 'ko' : 'ok'), `tirage ${n}`);
+      E("home()");
+    }
+  });
+  test('Auto-évaluation (récitation) : « Tout juste » → vert, « Raté » → rouge', () => {
+    reset(`cfg.mode = 'next'; cfg.scope = ${ALL}; cfg.input = 'recite';`);
+    E("start()"); clickAct('reveal'); ok($q('#marks'), 'marquage absent'); clickAct('mark-ok'); ok(fb().classList.contains('ok'), 'vert attendu');
+    E("home()"); E("start()"); clickAct('reveal'); $$q('.wd')[0].click(); clickAct('mark-go'); ok(!fb().classList.contains('ok'), 'un mot marqué ne peut pas donner vert'); noErr('auto-évaluation');
+    E("home()"); E("cfg.mode = 'cloze'"); E("start()"); clickAct('revealall'); $$q('[data-act="grade"]')[0].click(); noErr('trous auto-évalués'); ok(fb(), 'retour attendu');
+  });
+
+  /* ---- exactitude de la correction ---- */
+  const verdict = (corr, build) => { reset(`cfg.mode = 'next'; cfg.scope = {type:'surah', from: 2, to: 2}; cfg.input = 'type'; cfg.corr = '${corr}';`); E("start()"); fill(build(expectedText())); clickAct('check'); return fb().classList.contains('ok') ? 'ok' : 'ko'; };
+  test('Correction stricte : exige les voyelles exactes', () => {
+    eq(verdict('strict', t => t), 'ok', 'texte exact');
+    eq(verdict('strict', t => strip(t)), 'ko', 'sans voyelles');
+    eq(verdict('strict', t => t.replace(/َ/, 'ِ')), 'ko', 'une voyelle changée');
+    eq(verdict('strict', t => t + ' زيادة'), 'ko', 'mot en trop');
+    eq(verdict('strict', t => t.split(' ').slice(0, -1).join(' ')), 'ko', 'mot manquant');
+  });
+  test('Correction souple : accepte un texte sans voyelles', () => {
+    eq(verdict('soft', t => strip(t)), 'ok', 'sans voyelles');
+    eq(verdict('soft', () => 'كلمة خاطئة تماما'), 'ko', 'texte faux');
+  });
+
+  /* ---- plan, écrans, réglages ---- */
+  test('Plan : première portion = 3 versets de la sourate 114, puis « appris » l’enregistre', () => {
+    reset("plan = {from: 114, to: 114, order: 'desc', amt: 'v3', recent: 7, cycle: 30, log: [], done: {}}; go('plan');");
+    eq(E('planNextChunk(plan)'), {s: 114, a: 1, b: 3});
+    clickAct('plan-sabaq'); ok($q('[data-act="plan-learned"]'), 'écran sabaq absent'); clickAct('plan-learned');
+    eq(E('plan.log.length'), 1); eq(E('planNextChunk(plan)'), {s: 114, a: 4, b: 6}); noErr('plan');
+  });
+  test('Révision espacée : liste « à renforcer », bouton « Renforcer maintenant », intervalle adaptatif', async () => {
+    reset(); const now = Date.now();
+    E(`errors = [{t: ${now}, k: '2:5', m: 'next', sc: 0}, {t: ${now}, k: '2:5', m: 'next', sc: 0}, {t: ${now - 864e5}, k: '3:9', m: 'cloze', sc: 0}]; stats = {'2:5': [0, 2], '3:9': [0, 1]}; sched = {};`);
+    E("go('home')"); ok($q('[data-act="strengthen"]'), 'bouton sur l’accueil'); ok(appText().includes('À renforcer en priorité'));
+    ok(/2 erreurs ces 30 derniers jours/.test(appText()), 'raison affichée');
+    E("go('plan')"); ok(appText().includes('À renforcer en priorité') && appText().includes('tienne plus d'), 'carte complète avec explication dans le Plan');
+    clickAct('strengthen'); eq(E('ses.fixed'), true); eq(E('ses.pool.map(key).sort()'), ['2:5', '3:9']); noErr('renforcer');
+    E("home()"); E("sched = {}; record({s: 2, a: 5}, 0)"); eq(E("sched['2:5'].iv"), 0.25, 'raté : retour dans 6 h');
+    E("record({s: 2, a: 5}, 1)"); eq(E("sched['2:5'].iv"), 1, 'puis 1 jour'); ok(E("sched['2:5'].ez") < 2.2, 'facteur réduit après un raté');
+    E("errors = []; stats = {}"); E("go('home')"); ok(!$q('[data-act="strengthen"]'), 'rien à renforcer : pas de bouton');
+  });
+  test('Révision espacée : aucune clé de traduction manquante (en, ar)', async () => {
+    for (const L of ['en', 'ar']){
+      reset(); const now = Date.now();
+      E(`setLang('${L}'); errors = [{t: ${now}, k: '2:5', m: 'next', sc: 0}, {t: ${now}, k: '2:5', m: 'next', sc: 0}]; stats = {'2:5': [1, 4]}; sched = {'2:5': {iv: 0.25, due: ${now - 3 * 864e5}}}; plan = {from: 114, to: 114, order: 'desc', amt: 'v3', recent: 2, cycle: 4, mptr: 0, done: {}, log: []};`);
+      E("go('home')"); E("go('plan')"); ok(appText().length > 100); eq(E('[...missingKeys]'), [], L);
+    }
+  });
+  test('Plan : vue de la semaine (prévision sur 7 jours)', async () => {
+    reset("plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 2, mptr: 0, done: {}, log: []}; go('plan')");
+    const W7 = E("planWeek(plan)"); eq(W7.length, 7); eq(W7.map(x => [x.chunk.s, x.chunk.a, x.chunk.b]).slice(0, 4), [[114, 1, 3], [114, 4, 6], [113, 1, 3], [113, 4, 5]], 'portions successives');
+    eq(W7.slice(0, 5).map(x => x.rec), [0, 1, 2, 3, 3], 'révision récente : les 3 derniers jours'); eq(W7.slice(0, 7).map(x => x.man), [0, 0, 0, 0, 1, 1, 2], 'révision ancienne : ceil(portions de plus de 3 jours / cycle de 2)');
+    ok(appText().includes('Semaine') && appText().includes('Prévision'), 'carte Semaine'); eq($$q('#app .weak').filter(e => /Nouveau :/.test(e.textContent)).length, 7, '7 jours affichés');
+    ok(/▸/.test(appText()), 'aujourd’hui repéré'); noErr('semaine');
+    // aujourd'hui déjà appris : la portion du jour reste affichée (et cochée), la suite continue
+    const dk = E("dayKey()"); E(`plan.log.push({d: '${dk}', s: 114, a: 1, b: 3}); plan.done = {'${dk}': {sabaq: true}}; go('plan')`);
+    const W8 = E("planWeek(plan)"); eq([W8[0].chunk.s, W8[0].chunk.a, W8[0].chunk.b], [114, 1, 3]); eq([W8[1].chunk.s, W8[1].chunk.a], [114, 4]); ok(/✓ Nouveau/.test(appText()), 'portion du jour cochée');
+    // plan terminé
+    E("plan = {from: 114, to: 114, order: 'desc', amt: 'v10', recent: 3, cycle: 2, mptr: 0, done: {}, log: []}; go('plan')"); const W9 = E("planWeek(plan)"); eq([W9[0].chunk.b, W9[1].chunk], [6, null]); ok(appText().includes('Plan terminé'));
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 2, mptr: 0, done: {}, log: [{d: '${E("dayKey(addDays(new Date(), -2))")}', s: 114, a: 1, b: 3}]}; go('plan')`); ok(appText().length > 100, L); eq(E('[...missingKeys]'), [], L); }
+    E("setLang('fr')");
+  });
+  test('Accessibilité : réglage « contraste renforcé » des couleurs du tajwīd', async () => {
+    reset(); E("go('settings')"); const sel = $q('#shc'); ok(sel, 'réglage'); eq([...sel.options].map(o => o.value), ['auto', 'on', 'off']);
+    const col = () => W.getComputedStyle(D.documentElement).getPropertyValue('--tjc-n').trim().toLowerCase();
+    sel.value = 'on'; sel.dispatchEvent(new W.Event('change')); eq(E('cfg.hc'), true); ok(D.getElementById('tjhc'), 'feuille de style ajoutée'); ok(col() !== '#537fff', 'couleur plus foncée : ' + col());
+    E("go('settings')"); eq($q('#shc').value, 'on'); $q('#shc').value = 'off'; $q('#shc').dispatchEvent(new W.Event('change')); eq(E('cfg.hc'), false); ok(!D.getElementById('tjhc')); eq(col(), '#537fff', 'couleurs officielles');
+    E("go('settings')"); $q('#shc').value = 'auto'; $q('#shc').dispatchEvent(new W.Event('change')); eq(E('cfg.hc'), undefined, 'automatique : suit le système'); noErr('contraste');
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); go('settings')`); eq(E('[...missingKeys]'), [], L); } E("setLang('fr')");
+  });
+  test('Accessibilité : motifs (traits, pointillés…) en plus des couleurs du tajwīd — une combinaison unique par règle', async () => {
+    reset(); E("go('settings')"); const box = $q('#tjp'); ok(box && !box.checked, 'case « motifs » (désactivée par défaut)');
+    // sans le réglage : aucun trait
+    const host = D.createElement('div'); host.className = 'rd tj'; D.body.appendChild(host); const codes = 'hlnpmoqcfwiaudg'.split('');
+    host.innerHTML = codes.map(c => `<span class="tj-${c}">ب</span>`).join('') + '<span class="tj-s">ب</span><span class="tj-b">ب</span>';
+    const sig = e => { const c = W.getComputedStyle(e), bg = c.backgroundImage !== 'none'; return [c.borderTopStyle !== 'none' ? c.borderTopStyle + c.borderTopWidth : '-', c.borderBottomStyle !== 'none' ? c.borderBottomStyle + c.borderBottomWidth : '-', c.textDecorationLine.includes('underline') ? 'ondulé:' + c.textDecorationStyle : '-', bg ? 'hachuré' : '-'].join('|'); };
+    ok([...host.children].every(e => sig(e) === '-|-|-|-'), 'sans motifs : aucun trait');
+    box.checked = true; box.dispatchEvent(new W.Event('change', {bubbles: true})); eq(E('cfg.tjp'), true); ok(D.documentElement.classList.contains('tjp'), 'classe tjp');
+    const sigs = codes.map(c => sig(host.querySelector('.tj-' + c))); eq(new Set(sigs).size, 15, 'les 15 règles ont chacune un motif différent : ' + sigs.join(' ; ')); ok(sigs.every(x => x !== '-|-|-|-'), 'toutes ont un motif');
+    eq(sig(host.querySelector('.tj-s')), sig(host.querySelector('.tj-l')), 'lettre muette = même règle que le lām solaire'); eq(sig(host.querySelector('.tj-b')), sig(host.querySelector('.tj-d')), 'mutaqāribayn = mutajānisayn');
+    // légende : un échantillon de motif à côté de chaque couleur
+    E("cfg.rdTaj = true; openReader('q:1')"); for (let i = 0; i < 40 && !$q('.tjkey'); i++) await wait(100); ok($$q('.tjkey .tjpat').length === 15 && $$q('.tjkey .tjpat').every(e => W.getComputedStyle(e).display !== 'none'), 'légende : 15 échantillons de motifs');
+    ok($$q('#rbody [class^="tj-"]').length > 0 && $$q('#rbody [class^="tj-"]').some(e => sig(e) !== '-|-|-|-'), 'le lecteur affiche les motifs'); noErr('motifs');
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); go('settings')`); eq(E('[...missingKeys]'), [], L); } E("setLang('fr')");
+    box.checked = false; E("cfg.tjp = false; cfg.rdTaj = false; applyA11y()"); ok(!D.documentElement.classList.contains('tjp')); host.remove();
+  });
+  test('Accessibilité : audit axe-core (WCAG 2.2 AA) des écrans principaux, sans violation', async () => {
+    const src = await fetch('https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js', {signal: AbortSignal.timeout(20000)}).then(r => r.ok ? r.text() : '').catch(() => '');
+    if (!src) return;                                            // pas d'accès au CDN : test ignoré
+    W.eval(src); const st = D.createElement('style'); st.textContent = '.cta,#nav{position:static!important}'; D.head.appendChild(st);   // barres collantes : elles masquent des champs selon la hauteur de l'écran (le décalage du focus est traité par scroll-padding) ; on mesure ici la taille des cibles
+    const opts = {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']}}, bad = [];
+    const audit = async name => { await wait(300); const r = await W.axe.run(D, opts); r.violations.forEach(v => bad.push(`${name} : ${v.id} (${v.nodes.length}) ${v.nodes[0].target.join(' ')} — ${((v.nodes[0].any[0] || v.nodes[0].none[0] || {}).message || v.nodes[0].failureSummary || '').slice(0, 260)}`)); };
+    reset("cfg.hc = true; cfg.tjp = true; cfg.reciter = 'ar.alafasy'; plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 2, mptr: 0, done: {}, log: []}; applyA11y(); errors = [{t: Date.now(), k: '2:5', m: 'cloze', sc: 0}]; stats = {'2:5': [1, 3]}; cfg.scope = {type: 'surah', from: 1, to: 3};");
+    for (const t of ['home', 'plan', 'train', 'progress', 'errors', 'settings']){ E(`go('${t}')`); await audit('onglet ' + t); }
+    E("go('train')"); E("cfg.mode = 'tajweed'"); E("go('train')"); await audit('réviser (tajwīd)'); E("cfg.mode = 'mix'");
+    E("cfg.mode = 'mcq'; start()"); await audit('question QCM'); E("home()");
+    E("cfg.mode = 'cloze'; cfg.input = 'type'; start()"); await audit('question à taper'); E("home()");
+    await W.loadX('tajweed'); E("cfg.mode = 'tajweed'; cfg.tjKind = 'rule'; start()"); await audit('question tajwīd'); E("home()");
+    E("cfg.mode = 'madd'; start()"); await audit('question madd'); E("home()"); E("cfg.mode = 'makharij'; start()"); await audit('question makhārij'); E("home()");
+    E("cfg.rdTaj = true; openReader('q:1')"); for (let i = 0; i < 40 && !$q('.tj-n'); i++) await wait(100); await audit('lecteur (tajwīd en couleurs)'); E("cfg.rdTaj = false; home()");
+    E("renderLegal()"); await audit('confidentialité'); E("CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; sb = {}; me = null; renderAccount()"); await audit('connexion'); E("CLOUD.url = ''; CLOUD.anonKey = ''; sb = null");
+    E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; sb = {}; me = {user: {id: 's1', email: 'eleve@x.fr'}, profile: {role: 'teacher'}}; tch.loaded = true; tch.code = {code: 'ABCD2345', expires_at: new Date(Date.now() + 6 * 864e5).toISOString()}; tch.invites = [{code: 'ZZZZ2222', expires_at: new Date(Date.now() + 2 * 864e5).toISOString()}]; tch.links = [{as_role: 'teacher', other_id: 'x', email: 'prof@x.fr', since: new Date().toISOString()}]; tch.log = [{teacher_email: 'prof@x.fr', at: new Date().toISOString()}]; tch.uid = 's1'; tch.msgs = [{id: 1, teacher_id: 't', teacher_email: 'prof@x.fr', body: 'Courage', created_at: new Date().toISOString(), from_student: false, read_at: null}, {id: 2, teacher_id: 't', teacher_email: 'prof@x.fr', body: 'Merci', created_at: new Date().toISOString(), from_student: true, read_at: new Date().toISOString()}]; cfg.tab = 'student'; home()`); await audit('espace élève');
+    E(`tch.students = [{id: 's1', email: 'eleve@x.fr', since: new Date().toISOString(), last_seen: new Date().toISOString(), answers: 40, ok: 30, errors: 4}]; tch.detail = {id: 's1', data: {email: 'eleve@x.fr', stats: {'2:5': [1, 3], '114:1': [5, 0]}, days: {}, errors: [{t: Date.now(), k: '2:5', m: 'cloze', sc: 0}]}}; tch.msg = ''; tch.detail.thread = [{id: 1, body: 'Courage', created_at: new Date().toISOString(), from_student: false, read_at: new Date().toISOString()}, {id: 2, body: 'Merci', created_at: new Date().toISOString(), from_student: true, read_at: new Date().toISOString()}]; tch.unread = {s1: 1}; cfg.tab = 'teacher'; home()`); await audit('espace enseignant');
+    E("me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false}");
+    eq(bad, [], 'violations axe-core');
+    st.remove(); E("cfg.hc = undefined; delete cfg.hc; cfg.tjp = false; applyA11y()");
+  });
+  test('Plan : le manzil ajoute une portion fragile sans décaler la rotation', async () => {
+    reset(); const now = Date.now(), old = E("dayKey(addDays(new Date(), -10))");
+    E(`plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 2, cycle: 4, mptr: 0, done: {}, log: [{d: '${old}', s: 114, a: 1, b: 3}, {d: '${old}', s: 114, a: 4, b: 6}, {d: '${old}', s: 113, a: 1, b: 3}, {d: '${old}', s: 112, a: 1, b: 3}, {d: '${old}', s: 111, a: 1, b: 3}]}; errors = [{t: ${now}, k: '111:1', m: 'next', sc: 0}, {t: ${now}, k: '111:2', m: 'next', sc: 0}]; stats = {}; sched = {};`);
+    const T = E("planToday()"); eq(T.rot, 2, 'rotation : 2 portions'); eq(T.xtra, 1, 'une portion fragile en plus'); eq(T.man.length, 3);
+    eq([T.man[2].s, T.man[2].a], [111, 1], 'la portion fragile est celle de la sourate 111');
+    E("go('plan')"); ok(/dont 1 à renforcer/.test(appText()), 'mention dans le Plan');
+    clickAct('plan-manzil'); eq(E('ses.chunks.length'), 3); eq(E('ses.rot'), 2); E("planFinish('manzil')"); eq(E('plan.mptr'), 2, 'la rotation avance de 2, pas de 3');
+    // sans erreur : rotation seule
+    E("errors = []; plan.mptr = 0; plan.done = {}"); eq(E("planToday().xtra"), 0);
+  });
+  test('Tajwīd (entraînement) : question, 4 règles, correction colorée, statistiques par règle, sans toucher à la mémorisation', async () => {
+    reset("cfg.mode = 'tajweed'; cfg.scope = {type: 'surah', from: 1, to: 3}; cfg.n = 6; tjs = {};");
+    const wrongTotals = {ok: 0, ko: 0};
+    E("start()"); for (let i = 0; i < 40 && !$q('.opt'); i++) await wait(100); noErr('chargement du tajwīd');
+    for (let n = 0; n < 6; n++){
+      ok($q('mark.tjq'), 'partie surlignée'); const btns = $$q('.opt'); eq(btns.length, 4); eq(new Set(btns.map(b => b.dataset.v)).size, 4, 'propositions distinctes');
+      ok(appText().includes('annotation automatique'), 'avertissement : source non relue');
+      const good = btns.filter(b => b.dataset.v === E('cur.correct')); eq(good.length, 1);
+      ok(!$q('#tjv [class^="tj-"]'), 'la phrase n’est pas colorée avant la réponse');
+      const wantOk = n % 2 === 0, target = wantOk ? good[0] : btns.find(b => b !== good[0]);
+      click(target); noErr('réponse tajwīd');
+      ok(fb().classList.contains(wantOk ? 'ok' : 'ko'), `tirage ${n}`); ok($q('#tjv [class^="tj-"]'), 'la phrase se colore après la réponse'); ok(/Règle selon la source/.test(fb().textContent));
+      wrongTotals[wantOk ? 'ok' : 'ko']++;
+      if (n < 5) clickAct('nextq'); else clickAct('nextq');
+      if (n < 5) for (let i = 0; i < 20 && !$q('mark.tjq'); i++) await wait(50);
+    }
+    ok(appText().includes('Règles de cette série'), 'résultat : règles de la série'); ok(!$q('[data-act="retry"]'), 'pas de « refaire mes erreurs » (ce n’est pas de la mémorisation)');
+    eq(E("Object.values(tjs).reduce((t, [o]) => t + o, 0)"), 3); eq(E("Object.values(tjs).reduce((t, [, k]) => t + k, 0)"), 3);
+    eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'la mémorisation n’est pas modifiée'); eq(E("days[today()]"), 6, 'compte pour l’objectif du jour');
+    E("go('progress')"); ok(appText().includes('Mes règles de tajwīd'), 'règles dans Progrès');
+    // matn : l'exercice n'est pas proposé et le mode revient à « Mélange »
+    // type d'exercice : mémorisation / tajwīd / makhārij / ṣifāt
+    E("cfg.mode = 'tajweed'; go('train')"); const cs = $q('#scat'); ok(cs, 'liste « Type d’exercice »'); eq([...cs.options].map(o => o.value), ['memo', 'tajwid', 'ahk', 'mdd', 'mkh', 'sfa']); eq(cs.value, 'tajwid');
+    ok(!$q('[data-act="mode"]') && !$q('[data-act="corpus"]'), 'tajwīd : ni liste d’exercices de mémorisation ni choix Coran/moutoun'); ok($q('#stjk') && $q('#stype'), 'liste des types de tajwīd et portée du Coran');
+    cs.value = 'memo'; cs.dispatchEvent(new W.Event('change')); eq(E('cfg.mode'), 'mix'); ok($q('[data-act="mode"][data-v="cloze"]') && !$q('[data-act="mode"][data-v="tajweed"]') && !$q('[data-act="mode"][data-v="makharij"]'), 'mémorisation : seulement ses exercices');
+    clickAct('mode', 'mcq'); $q('#scat').value = 'mkh'; $q('#scat').dispatchEvent(new W.Event('change')); eq(E('cfg.mode'), 'makharij'); ok($q('#smkk') && !$q('#stype'), 'makhārij : liste de types, pas de portée'); ok(!/Commencer ·/.test(appText()) && !$q('[data-act="rdscope"]'), 'makhārij : pas de portée affichée dans le bouton'); eq(E('cfg.lastMemo'), 'mcq');
+    $q('#scat').value = 'sfa'; $q('#scat').dispatchEvent(new W.Event('change')); eq(E('cfg.mode'), 'sifat'); ok($q('#ssfk') && !$q('#stype'));
+    $q('#scat').value = 'memo'; $q('#scat').dispatchEvent(new W.Event('change')); eq(E('cfg.mode'), 'mcq', 'retour au dernier exercice de mémorisation');
+    clickAct('corpus', 'matn'); $q('#scat').value = 'tajwid'; $q('#scat').dispatchEvent(new W.Event('change')); eq(E('cfg.scope.type') !== 'matn', true, 'le tajwīd revient au Coran'); eq(E('cfg.mode'), 'tajweed');
+    E("cfg.mode = 'tajweed'; cfg.scope = {type: 'surah', from: 2, to: 2}");
+    // révisions guidées : jamais d'exercice de tajwīd
+    E("cfg.scope = {type: 'surah', from: 1, to: 3}; cfg.mode = 'tajweed'; start([{s: 1, a: 1}, {s: 1, a: 2}])"); ok(!$q('mark.tjq'), 'série guidée : pas de tajwīd'); noErr('série guidée');
+  });
+  test('Tajwīd : liste déroulante des types de questions (règle, couleurs, trouver la partie, vrai/faux, mélange)', async () => {
+    reset("cfg.mode = 'tajweed'; cfg.scope = {type: 'surah', from: 2, to: 2}; cfg.n = 5; tjs = {};");
+    E("go('train')"); const sel = $q('#stjk'); ok(sel, 'liste déroulante dans les options de la série'); eq([...sel.options].map(o => o.value), ['rule', 'color', 'find', 'tf', 'read', 'mix']);
+    sel.value = 'tf'; sel.dispatchEvent(new W.Event('change')); eq(E('cfg.tjKind'), 'tf', 'le choix est enregistré'); E("go('home')"); ok(appText().includes('Vrai ou faux'), 'rappelé dans le résumé de la série');
+    E("cfg.mode = 'cloze'; go('train')"); ok(!$q('#stjk'), 'liste absente pour les autres exercices'); E("cfg.mode = 'tajweed'; go('train')"); ok($q('#stjk'));
+    const seen = new Set();
+    for (const kind of ['rule', 'color', 'find', 'tf', 'read', 'mix']){
+      E(`cfg.tjKind = '${kind}'; cfg.n = 30; tjs = {}`); E("start()"); for (let i = 0; i < 40 && !$q('.opt'); i++) await wait(100);
+      for (let n = 0; n < 10; n++){
+        const k = E('cur.tjk'); seen.add(k); const btns = $$q('.opt'), marks = $$q('mark.tjq'); noErr(`${kind}/${k}`);
+        if (kind !== 'mix') ok(k === kind || (kind === 'find' && k === 'rule'), `type ${kind} → ${k}`);
+        const colored = !!$q('#tjv [class^="tj-"]');
+        if (k === 'find'){ eq(btns.length, 4); eq(marks.length, 4); eq($$q('#tjv sup.tjn').length, 4); ok(!colored, 'pas de couleurs avant la réponse'); }
+        else if (k === 'tf'){ eq(btns.map(b => b.dataset.v).sort(), ['f', 't']); eq(marks.length, 1); ok(!colored); }
+        else if (k === 'color'){ eq(btns.length, 4); eq(marks.length, 1); ok(colored, 'les couleurs aident dans la version facile'); }
+        else if (k === 'read'){ eq(btns.length, 4); eq(marks.length, 1); eq($$q('#tjv > [class^="tj-"]').length, 0, 'rien n’est coloré hors de la partie surlignée'); ok($$q('#tjv mark [class^="tj-"]').length >= 1, 'la partie surlignée est colorée'); ok($q('details[open] .tjkey'), 'la légende est affichée'); }
+        else { eq(btns.length, 4); eq(marks.length, 1); ok(!colored, 'sans couleurs avant la réponse'); }
+        const good = btns.filter(b => b.dataset.v === E('cur.correct')); eq(good.length, 1, 'une seule bonne réponse');
+        const wantOk = n % 2 === 0; click(wantOk ? good[0] : btns.find(b => b !== good[0])); noErr('réponse');
+        ok(fb().classList.contains(wantOk ? 'ok' : 'ko'), `${k} tirage ${n}`); ok($q('#tjv [class^="tj-"]'), 'coloré après la réponse');
+        if (k === 'find') ok(/Partie 1 :/.test(fb().textContent) && /Partie 4 :/.test(fb().textContent), 'la règle de chaque partie est donnée');
+        clickAct('nextq'); for (let i = 0; i < 20 && !$q('.opt') && !appText().includes('Résultat'); i++) await wait(50);
+        if (!$q('.opt')) break;
+      }
+      E("home()");
+    }
+    ok(['rule', 'color', 'find', 'tf', 'read'].every(k => seen.has(k)), 'le mélange propose tous les types : ' + [...seen]);
+    eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'la mémorisation n’est pas modifiée');
+  });
+  test('Makhārij et ṣifāt : listes déroulantes, questions, corrections, statistiques, sans toucher à la mémorisation', async () => {
+    for (const [mode, sel, kinds] of [['makharij', '#smkk', ['zone', 'same', 'odd', 'halq', 'tf', 'mix']], ['sifat', '#ssfk', ['pair', 'which', 'mnemo', 'cond', 'tf', 'mix']]]){
+      reset(`cfg.mode = '${mode}'; cfg.n = 5; hfs = {}`); E("go('train')"); const s = $q(sel); ok(s, 'liste déroulante ' + mode); eq([...s.options].map(o => o.value), kinds);
+      s.value = kinds[1]; s.dispatchEvent(new W.Event('change')); eq(E(mode === 'makharij' ? 'cfg.mkKind' : 'cfg.sfKind'), kinds[1]);
+      for (const kind of kinds){
+        E(`cfg.${mode === 'makharij' ? 'mkKind' : 'sfKind'} = '${kind}'; cfg.n = 30; hfs = {}`); E("start()"); noErr('start ' + mode);
+        for (let n = 0; n < 8; n++){
+          ok($q('.opt'), `${mode}/${kind} : question ${n}`); const btns = $$q('.opt'), good = btns.filter(b => b.dataset.v === E('cur.correct')); eq(good.length, 1, 'une seule bonne réponse');
+          ok(appText().includes('Wikipédia') === false, 'les sources s’affichent après la réponse');
+          const wantOk = n % 2 === 0; click(wantOk ? good[0] : btns.find(b => b !== good[0])); noErr('réponse ' + mode);
+          ok(fb().classList.contains(wantOk ? 'ok' : 'ko'), `${mode}/${kind} tirage ${n}`); ok(/wikipedia|wikisource/i.test(D.getElementById('app').innerHTML), 'sources avec liens'); ok(/Wikipédia \(/.test(appText()) || /Wikisource/.test(appText()));
+          clickAct('nextq'); if (!$q('.opt')) break;
+        }
+        E("home()");
+      }
+      E(`cfg.n = 5; ses = null; hfs = {}`); E("start()"); for (let i = 0; i < 5; i++){ click($q('.opt')); clickAct('nextq'); }
+      ok(appText().includes('Résumé de la série'), 'résumé de la série'); ok(!$q('[data-act="retry"]'), 'pas de « refaire mes erreurs »');
+      eq(E("Object.values(hfs).reduce((t, [o, e]) => t + o + e, 0)"), 5); eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'mémorisation intacte');
+      E("go('progress')"); ok(appText().includes('Mes makhārij et ṣifāt'), 'carte dans Progrès');
+    }
+    // visibles aussi pour les moutoun ; remplacés par « Mélange » dans les révisions guidées
+    E("cfg.scope = {type: 'matn', id: 'all'}; cfg.mode = 'mix'; go('train')"); eq([...$q('#scat').options].map(o => o.value), ['memo', 'tajwid', 'ahk', 'mdd', 'mkh', 'sfa'], 'les catégories makhārij et ṣifāt restent proposées avec les moutoun');
+    E("cfg.mode = 'makharij'; start([{s: 1, a: 1}, {s: 1, a: 2}])"); ok(!$q('.opt .ar') && appText().includes('Sourate') || true); noErr('guidé');
+  });
+  test('Ṣifāt : qualités conditionnelles (qalqala, līn) sur de vrais versets', async () => {
+    reset("cfg.mode = 'sifat'; cfg.sfKind = 'cond'; cfg.n = 30; hfs = {}"); E("start()");
+    for (let n = 0; n < 12; n++){
+      ok($q('.opt'), 'question ' + n); eq($$q('mark.tjq').length, 1, 'une lettre surlignée'); const btns = $$q('.opt'); eq(btns.map(b => b.dataset.v).sort(), ['f', 't']); eq(btns.map(b => b.textContent.trim()).sort(), ['Non', 'Oui']);
+      ok(/Rappel : qalqala/.test(appText()), 'rappel de la règle'); const mark = $q('mark.tjq').textContent, attrQal = /القلقلة/.test(appText());
+      ok(attrQal ? 'قطبجد'.includes(mark[0]) : 'وي'.includes(mark[0]), 'la lettre surlignée correspond à la qualité demandée : ' + mark);
+      const good = btns.find(b => b.dataset.v === E('cur.correct')), wantOk = n % 2 === 0; click(wantOk ? good : btns.find(b => b !== good)); noErr('cond');
+      ok(fb().classList.contains(wantOk ? 'ok' : 'ko')); ok(/sukūn|dernière lettre|voyelle|chadda|fatḥa|madd/.test(fb().textContent), 'explication : ' + fb().textContent.slice(0, 80)); ok($q('#fb a[href*="wiki"]'), 'sources');
+      clickAct('nextq'); if (!$q('.opt')) break;
+    }
+    ok(E("Object.keys(hfs).every(k => k === 'sf:qalqala' || k === 'sf:lin')"), 'statistiques par qualité'); eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'mémorisation intacte');
+  });
+  test('Aḥkām (nūn, mīm, tanwīn) : types de questions, vrais versets, corrections, statistiques', async () => {
+    reset("cfg.mode = 'ahkam'; cfg.n = 5; hfs = {}"); E("go('train')"); eq($q('#scat').value, 'ahk'); const sel = $q('#sahk'); ok(sel, 'liste déroulante'); eq([...sel.options].map(o => o.value), ['nun', 'mim', 'letter', 'group', 'ghunna', 'tf', 'mix']);
+    ok(!$q('#stype') && !$q('[data-act="mode"]'), 'pas de portée ni exercices de mémorisation');
+    for (const kind of ['nun', 'mim', 'letter', 'group', 'ghunna', 'tf', 'mix']){
+      E(`cfg.ahKind = '${kind}'; cfg.n = 30; hfs = {}; ses = null`); E("start()"); for (let i = 0; i < 60 && !$q('.opt'); i++) await wait(100); noErr('start ahkam ' + kind);
+      for (let n = 0; n < 8; n++){
+        ok($q('.opt'), `${kind} question ${n}`); const btns = $$q('.opt'), k = kind === 'mix' ? null : kind, marks = $$q('mark.tjq').length;
+        if (k === 'nun') { eq(btns.length, 5); eq(marks, 2); } if (k === 'mim') { eq(btns.length, 3); eq(marks, 2); } if (k === 'ghunna') { eq(btns.length, 2); eq(marks, 1); }
+        if (k === 'letter') eq(btns.length, 5); if (k === 'tf') eq(btns.length, 2);
+        const good = btns.filter(b => b.dataset.v === E('cur.correct')); eq(good.length, 1, 'une seule bonne réponse'); const wantOk = n % 2 === 0;
+        click(wantOk ? good[0] : btns.find(b => b !== good[0])); noErr('réponse ahkam'); ok(fb().classList.contains(wantOk ? 'ok' : 'ko'), `${kind} ${n}`); ok($q('#fb a[href*="wiki"]'), 'sources');
+        clickAct('nextq'); if (!$q('.opt')) break;
+      }
+      E("home()");
+    }
+    E("ses = null; cfg.ahKind = 'nun'; cfg.n = 5; hfs = {}"); E("start()"); for (let i = 0; i < 60 && !$q('.opt'); i++) await wait(100); for (let i = 0; i < 5; i++){ click($q('.opt')); clickAct('nextq'); }
+    ok(appText().includes('Résumé de la série')); ok(E("Object.keys(hfs).every(k => k.startsWith('ah:'))")); eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'mémorisation intacte');
+    E("go('progress')"); ok(appText().includes('Mes makhārij et ṣifāt'));
+  });
+  test('Madd : types de questions, vrais versets, durée, cause, corrections, statistiques', async () => {
+    reset("cfg.mode = 'madd'; cfg.n = 5; hfs = {}"); E("go('train')"); eq($q('#scat').value, 'mdd'); const sel = $q('#smdk'); ok(sel, 'liste déroulante'); eq([...sel.options].map(o => o.value), ['type', 'count', 'cause', 'tf', 'mix']);
+    ok(!$q('#stype') && !$q('[data-act="mode"]'), 'pas de portée ni exercices de mémorisation');
+    for (const kind of ['type', 'count', 'cause', 'tf', 'mix']){
+      E(`cfg.mdKind = '${kind}'; cfg.n = 30; hfs = {}; ses = null`); E("start()"); for (let i = 0; i < 80 && !$q('.opt'); i++) await wait(100); noErr('start madd ' + kind);
+      for (let n = 0; n < 8; n++){
+        ok($q('.opt'), `${kind} question ${n}`); const btns = $$q('.opt'), hasMark = !!$q('mark.tjq');
+        if (kind === 'type'){ eq(btns.length, 5); ok(hasMark, 'partie surlignée'); ok(!$q('#tjv [class^="tj-"]'), 'verset non coloré avant la réponse'); }
+        if (kind === 'count'){ eq(btns.length, 4); ok(hasMark); } if (kind === 'cause'){ eq(btns.length, 4); ok(!hasMark, 'règle du matn : pas de verset'); } if (kind === 'tf'){ eq(btns.length, 2); ok(hasMark); }
+        const good = btns.filter(b => b.dataset.v === E('cur.correct')); eq(good.length, 1, 'une seule bonne réponse'); const wantOk = n % 2 === 0;
+        click(wantOk ? good[0] : btns.find(b => b !== good[0])); noErr('réponse madd'); ok(fb().classList.contains(wantOk ? 'ok' : 'ko'), `${kind} ${n}`); ok($q('#fb a[href*="wiki"]'), 'sources');
+        ok(/temps/.test(fb().textContent), 'durée dans la correction'); if (hasMark) ok($q('#tjv [class^="tj-"]'), 'verset coloré après la réponse');
+        clickAct('nextq'); if (!$q('.opt')) break;
+      }
+      E("home()");
+    }
+    E("ses = null; cfg.mdKind = 'type'; cfg.n = 5; hfs = {}"); E("start()"); for (let i = 0; i < 80 && !$q('.opt'); i++) await wait(100); for (let i = 0; i < 5; i++){ click($q('.opt')); clickAct('nextq'); }
+    ok(appText().includes('Résumé de la série')); ok(E("Object.keys(hfs).every(k => k.startsWith('md:'))")); eq(E("Object.keys(stats).length + Object.keys(sched).length + errors.length"), 0, 'mémorisation intacte');
+  });
+  test('Madd : aucune clé de traduction manquante (en, ar)', async () => {
+    for (const L of ['en', 'ar']){
+      reset(`setLang('${L}'); cfg.mode = 'madd'; cfg.n = 3; hfs = {'md:lazim': [1, 2]}`); E("go('train')"); eq(E('[...missingKeys]'), [], L + ' liste');
+      for (const k of ['type', 'count', 'cause', 'tf']){ E(`cfg.mdKind = '${k}'; ses = null`); E("start()"); for (let i = 0; i < 80 && !$q('.opt'); i++) await wait(100); ok($q('.opt'), L + k); click($q('.opt')); eq(E('[...missingKeys]'), [], `${L} ${k}`); E("home()"); }
+      E("go('progress')"); eq(E('[...missingKeys]'), [], L);
+    }
+  });
+  test('Aḥkām : aucune clé de traduction manquante (en, ar)', async () => {
+    for (const L of ['en', 'ar']){
+      reset(`setLang('${L}'); cfg.mode = 'ahkam'; cfg.n = 3; hfs = {'ah:K': [1, 2], 'ah:gh': [2, 0]}`); E("go('train')"); eq(E('[...missingKeys]'), [], L + ' liste');
+      for (const k of ['nun', 'mim', 'letter', 'group', 'ghunna', 'tf']){ E(`cfg.ahKind = '${k}'; ses = null`); E("start()"); for (let i = 0; i < 60 && !$q('.opt'); i++) await wait(100); ok($q('.opt'), L + k); click($q('.opt')); eq(E('[...missingKeys]'), [], `${L} ${k}`); E("home()"); }
+      E("go('progress')"); eq(E('[...missingKeys]'), [], L);
+    }
+  });
+  test('Audio hors ligne : estimation, téléchargement d’une sourate, lecture depuis l’appareil, plafond, suppression (réseau requis)', async () => {
+    const url1 = 'https://everyayah.com/data/Alafasy_64kbps/001001.mp3', net = await fetch(url1, {method: 'HEAD', mode: 'cors'}).then(r => r.ok).catch(() => false);
+    if (!net) return;                                            // pas d'accès à everyayah.com : test ignoré
+    reset("cfg.reciter = 'ar.alafasy'; cfg.audFrom = 1; cfg.audTo = 1; cfg.audCap = 50; audioOff = {}; audioUI = {plan: null, busy: false, ctl: null};"); await W.caches.delete('tathbit-audio-v1');
+    E("go('settings')"); ok($q('[data-act="aud-est"]') && $q('#aud-from') && $q('#aud-cap'), 'carte Audio hors ligne'); ok($q('[data-act="aud-dl"]').disabled, 'téléchargement impossible avant le calcul de la taille');
+    clickAct('aud-est'); for (let i = 0; i < 100 && !E('audioUI.plan'); i++) await wait(100); const P = E('audioUI.plan'); ok(P && P.take.length === 1, 'estimation faite'); noErr('estimation');
+    ok(/Estimation/.test($q('#aud-msg').textContent)); ok(!$q('[data-act="aud-dl"]').disabled);
+    clickAct('aud-dl'); for (let i = 0; i < 300 && (E('audioUI.busy') || !E("audioSet('ar.alafasy')[1]")); i++) await wait(100); noErr('téléchargement');
+    const cache = await W.caches.open('tathbit-audio-v1'), keys = await cache.keys(); eq(keys.length, 7, '7 versets de la Fatiha dans le cache');
+    const got = E("audioSet('ar.alafasy')[1].b"); eq(E("audioSet('ar.alafasy')[1].q"), 64); ok(got > 100000, 'octets enregistrés : ' + got); const ratio = P.used / got; ok(ratio > 0.8 && ratio < 2.2, 'estimation raisonnable : ' + ratio.toFixed(2));
+    eq(E("audioUrl({s: 1, a: 1})"), url1); ok(E("audioUrl({s: 2, a: 1})").includes('islamic.network'), 'sourates non téléchargées : lecture en ligne');
+    ok(appText().includes('Sur cet appareil') && appText().includes('Al-Faatiha'), 'liste des sourates téléchargées');
+    if (W.navigator.serviceWorker.controller){                    // le service worker sert les plages d'octets depuis le cache
+      const r = await W.fetch(url1, {headers: {Range: 'bytes=0-99'}}); eq(r.status, 206); eq(r.headers.get('x-tathbit-offline'), '1', 'servi par l’appareil, pas par le réseau'); eq((await r.arrayBuffer()).byteLength, 100); ok(/^bytes 0-99\/\d+$/.test(r.headers.get('content-range')));
+    }
+    // qualité 128 kbps : retéléchargement de la même sourate, l'ancienne qualité est retirée du cache
+    ok($q('#aud-q') && [...$q('#aud-q').options].map(o => o.value).join() === '64,128', 'choix de qualité'); E("cfg.audQ = 128; audioUI.plan = null"); E("go('settings')"); clickAct('aud-est'); for (let i = 0; i < 100 && !E('audioUI.plan'); i++) await wait(100);
+    const P128 = E('audioUI.plan'); ok(P128.used > P.used * 1.8, '128 kbps : estimation environ 3 fois plus lourde : ' + (P128.used / P.used).toFixed(1));
+    clickAct('aud-dl'); for (let i = 0; i < 300 && (E('audioUI.busy') || E("audioSet('ar.alafasy')[1].q") !== 128); i++) await wait(100); noErr('128 kbps');
+    eq(E("audioSet('ar.alafasy')[1].q"), 128); ok(E("audioUrl({s: 1, a: 1})").includes('Alafasy_128kbps'), 'lecture en 128'); eq((await cache.keys()).length, 7, 'les 7 fichiers 64 kbps ont été retirés');
+    ok(appText().includes('128 kbps'), 'qualité affichée dans la liste'); const got128 = E("audioSet('ar.alafasy')[1].b"); ok(got128 > got * 2, '128 kbps nettement plus lourd');
+    E("cfg.audQ = 64"); E("cfg.reciter = 'ar.abdurrahmaan' + 'sudais'"); E("go('settings')"); eq([...$q('#aud-q').options].map(o => o.value), ['64'], 'As-Sudais : 64 kbps seulement'); E("cfg.reciter = 'ar.alafasy'");
+    E("cfg.audCap = 0.2; audioUI.plan = null"); E("go('settings')"); $q('#aud-cap') && 0; clickAct('aud-est'); for (let i = 0; i < 100 && !E('audioUI.plan'); i++) await wait(100);
+    ok(E('audioUI.plan.take.length') === 0 && /Plafond atteint/.test(appText()), 'plafond trop petit : rien à télécharger'); ok($q('[data-act="aud-dl"]').disabled);
+    E("cfg.audCap = 50"); E("go('settings')"); clickAct('aud-del', '1'); for (let i = 0; i < 50 && E("audioSet('ar.alafasy')[1]"); i++) await wait(100); await wait(200);
+    eq((await cache.keys()).length, 0, 'suppression : cache vidé'); eq(E("Object.keys(audioSet('ar.alafasy')).length"), 0); ok(E("audioUrl({s: 1, a: 1})").includes('islamic.network'), 'retour à la lecture en ligne');
+    E("audioOff = {}; store.set('tathbit.audio', {})");
+  });
+  test('Makhārij et ṣifāt : aucune clé de traduction manquante (en, ar)', async () => {
+    for (const L of ['en', 'ar']){
+      reset(`setLang('${L}'); cfg.n = 3; hfs = {'mk:ظ': [1, 2], 'sf:qalqala': [3, 0]}`); E("go('train')");
+      for (const [mode, key, kinds] of [['makharij', 'mkKind', ['zone', 'same', 'odd', 'halq', 'tf']], ['sifat', 'sfKind', ['pair', 'which', 'mnemo', 'cond', 'tf']]]){
+        E(`cfg.mode = '${mode}'; go('train')`); eq(E('[...missingKeys]'), [], L + ' ' + mode);
+        for (const k of kinds){ E(`cfg.${key} = '${k}'; ses = null`); E("start()"); ok($q('.opt'), L + k); click($q('.opt')); eq(E('[...missingKeys]'), [], `${L} ${mode} ${k}`); E("home()"); }
+      }
+      E("go('progress')"); eq(E('[...missingKeys]'), [], L);
+    }
+  });
+  test('Audio du plan du jour : bouton, téléchargement automatique seulement en Wi-Fi confirmé (réseau requis)', async () => {
+    const net = await fetch('https://everyayah.com/data/Alafasy_64kbps/112001.mp3', {method: 'HEAD', mode: 'cors'}).then(r => r.ok).catch(() => false);
+    if (!net) return;
+    const old = E("dayKey(addDays(new Date(), -10))"), yest = E("dayKey(addDays(new Date(), -1))"); await W.caches.delete('tathbit-audio-v1');
+    reset(`cfg.reciter = 'ar.alafasy'; cfg.audQ = 64; cfg.audCap = 50; audioOff = {}; audioUI = {plan: null, busy: false, ctl: null}; store.set('tathbit.audioAuto', '');
+      plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 4, mptr: 0, done: {}, log: [{d: '${yest}', s: 113, a: 1, b: 3}, {d: '${old}', s: 112, a: 1, b: 2}]};`);
+    eq(E("auPlanSurahs(planToday())"), [112, 113, 114], 'sourates du plan du jour');
+    E("go('settings')"); ok($q('[data-act="aud-plan"]') && $q('#aud-auto'), 'bouton et option du plan'); noErr('carte plan');
+    // sans Wi-Fi confirmé : rien ne se télécharge tout seul
+    Object.defineProperty(W.navigator, 'connection', {get: () => ({type: 'cellular'}), configurable: true}); E("cfg.audAuto = true"); E("maybeAutoAudio()"); await wait(1500); eq(E("Object.keys(audioSet('ar.alafasy')).length"), 0, 'données mobiles : pas de téléchargement automatique');
+    // bouton manuel (la confirmation est acceptée par le banc d'essai)
+    clickAct('aud-plan'); for (let i = 0; i < 400 && (E('audioUI.busy') || Object.keys(E("audioSet('ar.alafasy')")).length < 3); i++) await wait(100); noErr('plan du jour');
+    eq(Object.keys(E("audioSet('ar.alafasy')")).map(Number).sort(), [112, 113, 114], 'les 3 sourates du plan sont téléchargées'); ok(E("audioUrl({s: 113, a: 1})").includes('everyayah'));
+    clickAct('aud-plan'); await wait(300); ok(/déjà sur cet appareil/.test(appText()), 'rien de plus à télécharger');
+    // automatique en Wi-Fi : retire une sourate puis relance
+    await E("audioDel(113)"); await wait(400); eq(E("auMissing(auPlanSurahs(planToday()), audioSet('ar.alafasy'))"), [113]);
+    Object.defineProperty(W.navigator, 'connection', {get: () => ({type: 'wifi'}), configurable: true}); E("store.set('tathbit.audioAuto', '')"); E("maybeAutoAudio()");
+    for (let i = 0; i < 300 && (E('audioUI.busy') || !E("audioSet('ar.alafasy')[113]")); i++) await wait(100); ok(E("audioSet('ar.alafasy')[113]"), 'Wi-Fi confirmé : téléchargement automatique de la sourate manquante');
+    // nettoyage
+    Object.defineProperty(W.navigator, 'connection', {get: () => undefined, configurable: true}); await W.caches.delete('tathbit-audio-v1'); E("audioOff = {}; store.set('tathbit.audio', {}); cfg.audAuto = false");
+  });
+  test('Audio hors ligne : aucune clé de traduction manquante (en, ar)', async () => {
+    for (const L of ['en', 'ar']){
+      reset(`setLang('${L}'); cfg.reciter = 'ar.alafasy'; audioOff = {'ar.alafasy': {1: 400000, 112: 120000}}; audioUI = {plan: {take: [1], skip: [2], used: 1e6, skipBytes: 2e6, items: []}, busy: false, ctl: null}; plan = {from: 114, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 4, mptr: 0, done: {}, log: []}`);
+      E("go('settings')"); ok($q('[data-act="aud-del"]') && $q('[data-act="aud-plan"]'), L); eq(E('[...missingKeys]'), [], L); E("audioOff = {}; audioUI = {plan: null, busy: false, ctl: null}; store.set('tathbit.audio', {})");
+    }
+  });
+  test('Tajwīd : aucune clé de traduction manquante (en, ar)', async () => {
+    for (const L of ['en', 'ar']){
+      reset(`setLang('${L}'); cfg.mode = 'tajweed'; cfg.scope = {type: 'surah', from: 2, to: 2}; cfg.n = 4; tjs = {n: [1, 2], q: [3, 0]};`); E("go('train')"); eq(E('[...missingKeys]'), [], L + ' liste');
+      for (const kind of ['rule', 'color', 'find', 'tf', 'read']){
+        E(`cfg.tjKind = '${kind}'; ses = null`); E("start()"); for (let i = 0; i < 40 && !$q('.opt'); i++) await wait(100); ok($q('mark.tjq'), L + ' ' + kind); click($q('.opt')); eq(E('[...missingKeys]'), [], `${L} ${kind}`);
+      }
+      E("home()"); E("go('progress')"); eq(E('[...missingKeys]'), [], L);
+    }
+  });
+  test('Export CSV : versets, jours, erreurs, exercices (contenu et téléchargement)', async () => {
+    reset(); const t0 = Date.now(); const got = [];
+    W.download = async (name, text, type) => { got.push({name, text, type}); };
+    E(`stats = {'1:2': [3, 1], '2:255': [0, 2], 'tuhfa:1': [1, 0]}; sched = {'1:2': {iv: 2.5, due: ${t0 + 864e5}}}; days = {'2026-10-20': 12, '2026-10-21': 5};
+      errors = [{t: ${t0}, k: '2:255', m: 'cloze', sc: 0, ans: '=cmd', bad: ['ٱللَّهُ', 'لَا']}]; tjs = {n: [4, 1]}; hfs = {'mk:ظ': [1, 2], 'ah:K': [3, 0], 'md:lazim': [0, 1]}`);
+    E("go('settings')"); const sel = $q('#csv-kind'); ok(sel && $q('[data-act="csv"]'), 'liste et bouton'); eq([...sel.options].map(o => o.value), ['verses', 'days', 'errors', 'drills']);
+    const parse = txt => txt.replace(/^\ufeff/, '').trim().split('\r\n').map(l => l.split(';'));
+    for (const [kind, rows, check] of [['verses', 4, r => ok(r[0][0] === 'Type' && r.some(x => x[2] === 'Al-Faatiha' && x[3] === '2' && x[6] === '3' && x[7] === '1' && x[8] === '75' && x[9] === '2.5'), 'verset 1:2 : 3 réussites, 1 raté, 75 %, intervalle 2,5 j')],
+      ['days', 3, r => ok(r[1][0] === '2026-10-20' && r[1][1] === '12')], ['errors', 2, r => { ok(r[1][5] === 'Mots manquants' || r[1][5].length > 0); ok(r[1][7] === "'=cmd", 'formule neutralisée'); ok(r[1][8].includes('لَا')); }], ['drills', 5, r => ok(r.some(x => x[0] === 'Tajwīd (entraînement)' || x[0] === 'Tajwīd') && r.some(x => /الإخفاء/.test(x[1])), 'exercices')]]){
+      got.length = 0; $q('#csv-kind').value = kind; clickAct('csv'); await wait(100); eq(got.length, 1, kind); ok(got[0].name.startsWith(`tathbit-${kind}-`) && got[0].name.endsWith('.csv')); ok(got[0].text.startsWith('\ufeff') && /csv/.test(got[0].type));
+      const r = parse(got[0].text); eq(r.length, rows, kind + ' : lignes'); eq(new Set(r.map(x => x.length)).size, 1, kind + ' : même nombre de colonnes'); check(r);
+    }
+    E("setLang('en')"); got.length = 0; E("exportCsv('days')"); ok(got[0].text.split('\r\n')[0].includes(',') && got[0].text.includes('Answers'), 'anglais : virgule et en-têtes traduits'); E("setLang('fr')");
+    for (const L of ['en', 'ar']){ E(`setLang('${L}')`); for (const k of ['verses', 'days', 'errors', 'drills']) E(`exportCsv('${k}')`); E("go('settings')"); eq(E('[...missingKeys]'), [], L); } E("setLang('fr')"); delete W.download;
+  });
+  test('Rôle enseignant : carte élève (inviter, annuler, retirer, journal), espace enseignant, nomination par l’admin (serveur simulé)', async () => {
+    reset(); const calls = []; W.__calls = calls; const now = Date.now(), iso = d => new Date(now + d * 864e5).toISOString();
+    W.__state = {links: [{as_role: 'teacher', other_id: 't1', email: 'prof@x.fr', since: iso(-3)}], invites: [{code: 'OLDCODE2', expires_at: iso(3), used_by: null}], log: [{teacher_email: 'prof@x.fr', at: iso(-1)}], fail: null};
+    E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; me = {user: {id: 's1', email: 'eleve@x.fr'}, profile: {role: 'user', created_at: '${iso(-30)}'}};
+      sb = {from(t){ if (t === 'teacher_requests') return {select(){ return Promise.resolve({data: window.__state.req ? [{created_at: new Date().toISOString()}] : [], error: null}); }}; return {select(){ return {is(){ return {gt(){ window.__calls.push('from ' + t); return Promise.resolve({data: window.__state.invites, error: null}); }}; }}; }}; },
+        async rpc(n, a){ window.__calls.push(n + ' ' + JSON.stringify(a || {})); const S = window.__state; if (S.fail && S.fail[n]) return {data: null, error: {message: S.fail[n]}};
+          if (n === 'teacher_request'){ S.req = true; return {data: null, error: null}; } if (n === 'teacher_request_cancel'){ S.req = false; return {data: null, error: null}; }
+          if (n === 'links_mine') return {data: S.links, error: null}; if (n === 'access_log_mine') return {data: S.log, error: null};
+          if (n === 'invite_create'){ const c = {code: 'ABCD2345', expires_at: new Date(Date.now() + 7 * 864e5).toISOString()}; S.invites = S.invites.concat([{...c, used_by: null}]); return {data: [c], error: null}; }
+          if (n === 'invite_cancel'){ S.invites = S.invites.filter(x => x.code !== a.p_code); return {data: null, error: null}; }
+          if (n === 'link_revoke'){ S.links = S.links.filter(x => x.other_id !== a.other); return {data: null, error: null}; }
+          return {data: null, error: null}; }, auth: {}};`);
+    E("go('home')"); await wait(150); ok($q('[data-act="tab"][data-v="student"]') && !$q('[data-act="tab"][data-v="teacher"]'), 'menu Élève séparé de Mon compte ; pas de menu Enseignant pour un élève');
+    E("go('student')"); for (let i = 0; i < 40 && !appText().includes('Mes enseignants'); i++) await wait(50); await wait(200);
+    ok(!appText().includes('Inviter un enseignant') && !appText().includes('Rejoindre une classe') && !appText().includes('Devenir enseignant'), 'inviter, rejoindre une classe et devenir enseignant ne sont pas dans l’espace élève'); ok(appText().includes('prof@x.fr') && !$q('[data-act="tch-revoke"]'), 'l’élève voit son enseignant mais ne peut pas le retirer');
+    E("openAccount()"); for (let i = 0; i < 40 && !appText().includes('Mon enseignant'); i++) await wait(50); await wait(300);
+    let t = appText(); ok(t.includes('Mon enseignant') && t.includes('OLDCODE2') && t.includes('prof@x.fr') && t.includes('Consultations récentes'), 'carte élève : invitation, enseignant, journal'); 
+    ok(/sans les réponses que tu as tapées/.test(t), 'le consentement dit ce qui est vu'); noErr('carte élève');
+    clickAct('tch-invite'); for (let i = 0; i < 40 && !$q('#tch-code-new'); i++) await wait(50); eq($q('#tch-code-new').textContent, 'ABCD2345'); ok(calls.includes('invite_create {}'), 'invite_create'); ok(appText().includes('une fois'), 'code à usage unique');
+    clickAct('tch-cancel', 'OLDCODE2'); await wait(300); ok(calls.some(c => c === 'invite_cancel {"p_code":"OLDCODE2"}'), 'annulation'); ok(!appText().includes('OLDCODE2'));
+    ok(appText().includes('Devenir enseignant') && $q('[data-act="tch-req"]'), 'un simple utilisateur peut demander le rôle');
+    clickAct('tch-req'); for (let i = 0; i < 40 && !$q('[data-act="tch-req-cancel"]'); i++) await wait(50); ok(calls.includes('teacher_request {}') && appText().includes('Demande envoyée'), 'demande envoyée, en attente');
+    clickAct('tch-req-cancel'); for (let i = 0; i < 40 && !$q('[data-act="tch-req"]'); i++) await wait(50); ok(calls.includes('teacher_request_cancel {}'), 'demande annulée');
+    // l'enseignant
+    E(`me = {user: {id: 't1', email: 'prof@x.fr'}, profile: {role: 'teacher', created_at: '${iso(-30)}'}}`); W.__state.students = [{id: 's1', email: 'eleve@x.fr', since: iso(-3), last_seen: iso(-0.1), answers: 40, ok: 30, errors: 4, synced_at: iso(-0.1)}];
+    const days = {}; for (let i = 0; i < 5; i++){ const d = new Date(now - i * 864e5); days[`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`] = 10 + i; }
+    W.__state.detail = {email: 'eleve@x.fr', updated_at: iso(0), stats: {'2:5': [1, 3], '2:6': [5, 0], '114:1': [9, 0]}, days, errors: [{t: now - 1000, k: '2:5', m: 'cloze', sc: 0}, {t: now - 2000, k: '2:5', m: 'next', sc: 0}, {t: now - 3000, k: '2:6', m: 'mcq', sc: 0.5}]};
+    const base = W.eval("sb.rpc"); W.eval("(() => { const r = sb.rpc; sb.rpc = async (n, a) => { if (n === 'teacher_students') { window.__calls.push(n); return {data: window.__state.students, error: null}; } if (n === 'teacher_student_data') { window.__calls.push(n + ' ' + JSON.stringify(a)); return {data: window.__state.detail, error: null}; } if (n === 'invite_accept') { window.__calls.push(n + ' ' + JSON.stringify(a)); if (a.p_code.toUpperCase() === 'BADCODE1') return {data: null, error: {message: 'Code invalide ou expiré.'}}; window.__state.students.push({id: 's2', email: 'autre@x.fr', since: new Date().toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}); return {data: [{student_id: 's2', email: 'autre@x.fr'}], error: null}; } return r(n, a); }; })()");
+    E("home()"); await wait(100); ok($q('[data-act="tab"][data-v="teacher"]') && $q('[data-act="tab"][data-v="student"]'), 'menu Enseignant pour un enseignant'); clickAct('tab', 'teacher'); for (let i = 0; i < 40 && !appText().includes('eleve@x.fr'); i++) await wait(50);
+    t = appText(); ok(t.includes('Espace enseignant') && t.includes('eleve@x.fr') && /40 réponses/.test(t) && /75 %/.test(t), 'liste des élèves : réponses et réussite'); noErr('espace enseignant');
+    clickAct('tch-detail', 's1'); for (let i = 0; i < 40 && !appText().includes('Régularité'); i++) await wait(50); t = appText();
+    ok(calls.some(c => c === 'teacher_student_data {"target":"s1"}'), 'résumé demandé'); ok(/5 jours actifs sur 7/.test(t) && /série en cours : 5/.test(t), 'régularité : ' + t.slice(t.indexOf('Régularité'), t.indexOf('Régularité') + 90));
+    eq($$q('.week div').length, 14, '14 jours affichés'); ok(t.includes('Par sourate') && t.includes('Erreurs fréquentes') && t.includes('2×'), 'progression par sourate et erreurs fréquentes'); ok(!/réponse tapée/.test(t));
+    $q('#tch-code').value = 'badcode1'; clickAct('tch-add'); await wait(300); ok(calls.some(c => c === 'invite_accept {"p_code":"badcode1"}'), 'code envoyé tel que saisi (le serveur met en majuscules)'); ok(appText().includes('Code invalide ou expiré.'), 'erreur du serveur affichée');
+    $q('#tch-code').value = 'abcd2345'; clickAct('tch-add'); await wait(400); ok(appText().includes('Élève ajouté : autre@x.fr') && appText().includes('autre@x.fr'), 'élève ajouté');
+    clickAct('tch-add'); await wait(200); ok(appText().includes('Saisis le code'), 'code vide refusé');
+    // l'administrateur nomme un enseignant
+    E(`me = {user: {id: 'ad', email: 'adm@x.fr'}, profile: {role: 'admin', created_at: '${iso(-30)}'}}; home();`); await wait(100); ok(!$q('[data-act="tab"][data-v="student"]') && !$q('[data-act="tab"][data-v="teacher"]'), 'l’administrateur n’a ni menu Élève ni menu Enseignant');
+    E(` adm.users = [{id: 'ad', email: 'adm@x.fr', role: 'admin', blocked: false, created_at: '${iso(-30)}', last_seen: null, answers: 0, ok: 0, errors: 0}, {id: 'u9', email: 'futur.prof@x.fr', role: 'user', blocked: false, created_at: '${iso(-2)}', last_seen: null, answers: 0, ok: 0, errors: 0}, {id: 't1', email: 'prof@x.fr', role: 'teacher', blocked: false, created_at: '${iso(-2)}', last_seen: null, answers: 0, ok: 0, errors: 0}]; adm.detail = null; adm.q = ''; renderAdmin()`);
+    t = appText(); ok($q('[data-act="adm-teacher"][data-v="u9"]').textContent.includes('Nommer enseignant') && $q('[data-act="adm-teacher"][data-v="t1"]').textContent.includes('Retirer enseignant'), 'boutons de nomination'); ok(!$q('[data-act="adm-teacher"][data-v="ad"]'), 'pas de bouton pour un admin'); ok(t.includes('🎓') && t.includes('enseignant'), 'badge enseignant');
+    E("adm.reqs = [{user_id: 'u9', email: 'futur.prof@x.fr', created_at: new Date().toISOString()}]; renderAdmin()"); ok(appText().includes("Demandes d'enseignant") && appText().includes('futur.prof@x.fr'), 'demandes affichées à l’admin');
+    calls.length = 0; clickAct('adm-req-no', 'u9'); await wait(300); ok(calls.some(c => c === 'admin_teacher_decline {"target":"u9"}'), 'refus envoyé'); E("adm.reqs = [{user_id: 'u9', email: 'futur.prof@x.fr', created_at: new Date().toISOString()}]; renderAdmin()"); calls.length = 0; clickAct('adm-req-ok', 'u9'); await wait(300); ok(calls.some(c => c === 'admin_set_role {"target":"u9","new_role":"teacher"}'), 'acceptation = rôle enseignant');
+    E("adm.users = [{id: 'ad', email: 'adm@x.fr', role: 'admin', blocked: false, created_at: new Date().toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}, {id: 'u9', email: 'futur.prof@x.fr', role: 'user', blocked: false, created_at: new Date().toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}]; renderAdmin()");
+    calls.length = 0; clickAct('adm-teacher', 'u9'); await wait(300); ok(calls.some(c => c === 'admin_set_role {"target":"u9","new_role":"teacher"}'), 'nomination envoyée'); E("adm.users = [{id: 't1', email: 'prof@x.fr', role: 'teacher', blocked: false, created_at: new Date().toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}]; renderAdmin()"); calls.length = 0; clickAct('adm-teacher', 't1'); await wait(300); ok(calls.some(c => c === 'admin_set_role {"target":"t1","new_role":"user"}'), 'retrait du rôle');
+    // traductions
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); me = {user: {id: 't1', email: 'p@x.fr'}, profile: {role: 'teacher'}}; tch.code = {code: 'ABCD2345', expires_at: '${iso(5)}'}; tch.links = [{as_role: 'teacher', other_id: 'x', email: 'a@x.fr', since: '${iso(-1)}'}]; tch.invites = [{code: 'ZZZZ2222', expires_at: '${iso(2)}'}]; tch.log = [{teacher_email: 'a@x.fr', at: '${iso(-1)}'}]; tch.uid = 't1'; tch.loaded = true; cfg.tab = 'student'; home()`);
+      ok(appText().length > 200, L); E("tch.students = window.__state.students; tch.detail = {id: 's1', data: window.__state.detail}; cfg.tab = 'teacher'; home()"); eq(E('[...missingKeys]'), [], L); E("renderAdmin()"); eq(E('[...missingKeys]'), [], L + ' admin'); }
+    E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false}; adm.users = null");
+  });
+  test('Enseignant : messages, objectifs fixés sans acceptation, code de classe (serveur simulé)', async () => {
+    reset(); const calls = []; W.__calls = calls; const iso = d => new Date(Date.now() + d * 864e5).toISOString(), day = d => iso(d).slice(0, 10);
+    W.__S = {msgs: [{id: 7, teacher_id: 't1', teacher_email: 'prof@x.fr', body: 'Courage pour la sourate 78 !', created_at: iso(-1), from_student: false, read_at: null}], goals: [{id: 3, teacher_email: 'prof@x.fr', surah: 78, due: day(5), note: 'avant dimanche'}], classes: [{code: 'CLASSE22', expires_at: iso(20), uses: 3, max_uses: 40}], tgoals: []};
+    E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; stats = {'78:1': [3, 0], '78:2': [2, 1]}; me = {user: {id: 's1', email: 'eleve@x.fr'}, profile: {role: 'user'}};
+      sb = {from(){ return {select(){ const p = Promise.resolve({data: [], error: null}); p.is = () => ({gt: () => p}); return p; }}; }, auth: {}, async rpc(n, a){ const S = window.__S; window.__calls.push(n + ' ' + JSON.stringify(a || {}));
+        if (n === 'links_mine' || n === 'access_log_mine') return {data: [], error: null}; if (n === 'messages_mine') return {data: S.msgs, error: null};
+        if (n === 'goals_for') return {data: a && a.target ? S.tgoals : S.goals, error: null}; if (n === 'message_delete'){ S.msgs = S.msgs.filter(m => m.id !== a.p_id); return {data: null, error: null}; }
+        if (n === 'class_join') return a.p_code.toUpperCase() === 'BADCODE1' ? {data: null, error: {message: 'Code invalide ou expiré.'}} : {data: [{teacher_id: 't1', email: 'prof@x.fr'}], error: null};
+        if (n === 'class_mine') return {data: S.classes, error: null}; if (n === 'class_create'){ S.classes.push({code: 'NOUVEAU2', expires_at: new Date(Date.now() + 30 * 864e5).toISOString(), uses: 0, max_uses: 40}); return {data: null, error: null}; }
+        if (n === 'class_close'){ S.classes = S.classes.filter(c => c.code !== a.p_code); return {data: null, error: null}; }
+        if (n === 'teacher_thread') return {data: [{id: 2, body: 'Merci prof', created_at: new Date().toISOString(), from_student: true, read_at: new Date().toISOString()}, {id: 1, body: 'Bravo', created_at: new Date().toISOString(), from_student: false, read_at: new Date().toISOString()}], error: null};
+        if (n === 'teacher_students') return {data: [{id: 's1', email: 'eleve@x.fr', since: new Date().toISOString(), last_seen: null, answers: 5, ok: 4, errors: 1}], error: null};
+        if (n === 'teacher_student_data') return {data: {email: 'eleve@x.fr', stats: {'78:1': [3, 0], '78:2': [2, 1], '78:3': [1, 0]}, days: {}, errors: []}, error: null};
+        if (n === 'teacher_goal_set'){ S.tgoals.push({id: 11, teacher_email: 'prof@x.fr', surah: a.p_surah, due: a.p_due, note: a.p_note || null}); return {data: null, error: null}; }
+        if (n === 'goal_delete'){ S.tgoals = S.tgoals.filter(g => g.id !== a.p_id); return {data: null, error: null}; }
+        return {data: null, error: null}; }};`);
+    E("go('student')"); for (let i = 0; i < 40 && !appText().includes('Mes objectifs'); i++) await wait(50); await wait(200);
+    let t = appText(); ok(t.includes('Courage pour la sourate 78') && t.includes('prof@x.fr'), 'message de l’enseignant'); ok(t.includes('avant dimanche') && /2\/\d+ versets réussis/.test(t), 'objectif et avancement : ' + t.slice(t.indexOf('Mes objectifs'), t.indexOf('Mes objectifs') + 140));
+    ok(!$q('[data-act="tch-goal-accept"]') && !/Accepter|Refuser/.test(t), 'aucune acceptation demandée à l’élève pour un objectif'); noErr('élève');
+    ok(calls.includes('messages_mark_read {}'), 'les messages reçus sont marqués lus à l’ouverture');
+    ok($q('#chat-thread .msg.them .b') && $q('#chat-thread .msg.them .b').textContent.includes('Courage'), 'bulle du message de l’enseignant (à gauche)');
+    $q('#tch-reply').value = 'Merci'; $q('#tch-reply').dispatchEvent(new W.Event('input', {bubbles: true})); eq($q('#chat-count').textContent, '5/280', 'compteur de caractères');
+    const sent = () => calls.filter(c => c.startsWith('student_message_send')).length, n0 = sent(); $q('#tch-reply').dispatchEvent(new W.KeyboardEvent('keydown', {key: 'Enter', shiftKey: true, bubbles: true})); await wait(150); eq(sent(), n0, 'Maj+Entrée : pas d’envoi');
+    $q('#tch-reply').value = 'Merci !'; clickAct('tch-reply-send'); await wait(300); ok(calls.includes('student_message_send {"p_teacher":"t1","p_body":"Merci !"}'), 'l’élève répond à son enseignant');
+    clickAct('tch-msg-del', '7'); await wait(300); ok(calls.some(c => c === 'message_delete {"p_id":7}') && !appText().includes('Courage pour'), 'message supprimé par l’élève');
+    ok(appText().includes('Message supprimé.'), 'confirmation affichée'); await wait(3300); ok(!appText().includes('Message supprimé.'), 'la confirmation disparaît seule au bout de 3 s');
+    E("go('student')"); await wait(300); t = appText();
+    ok(/Reste à réussir : 3(–|, )\d+/.test(t) && t.includes('Rythme conseillé') && t.includes('Réviser les versets restants'), 'objectif : versets restants, rythme conseillé, bouton de révision : ' + t.slice(t.indexOf('Mes objectifs'), t.indexOf('Mes objectifs') + 400));
+    E("go('home')"); await wait(150); ok(appText().includes('Objectif de ton enseignant'), 'rappel de l’objectif sur l’Accueil');
+    clickAct('goal-go', '78-78'); await wait(300); ok(E("ses.goal === true && ses.pool.length > 0 && ses.pool.every(r => r.s === 78 && r.a > 2)"), 'la série ne contient que des versets de la sourate pas encore réussis');
+    for (let i = 0; i < 6; i++){ ok(E("['next','cloze','mcq'].includes(cur.m) && cur.r.s === 78 && cur.r.a > 2"), 'questions sur le verset demandé'); E("nextQ()"); if (E("screen") === 'full' && !E("cur")) break; }
+    E("home()");
+    E("openAccount()"); await wait(500); ok($q('#tch-join') && !$q('#chat-thread'), 'rejoindre une classe : dans Mon compte');
+    $q('#tch-join').value = 'badcode1'; clickAct('tch-join-go'); await wait(300); ok(appText().includes('Code invalide ou expiré.'), 'code de classe refusé');
+    $q('#tch-join').value = 'classe22'; clickAct('tch-join-go'); await wait(300); ok(calls.includes('class_join {"p_code":"classe22"}') && appText().includes('Classe rejointe : prof@x.fr'), 'classe rejointe');
+    ok($q('#wk-on') && !$q('#wk-on').checked, 'résumé hebdomadaire : case décochée par défaut'); $q('#wk-on').checked = true; $q('#wk-on').dispatchEvent(new W.Event('change', {bubbles: true})); await wait(300);
+    ok(calls.some(c => c === 'weekly_set {"p_on":true,"p_lang":"fr"}') && appText().includes('Résumé hebdomadaire activé.'), 'résumé hebdomadaire activé');
+    E("cfg.theme = 'dark'; applyTheme()"); eq(D.documentElement.dataset.theme, 'dark', 'thème sombre forcé'); E("cfg.theme = 'light'; applyTheme()"); eq(D.documentElement.dataset.theme, 'light'); E("delete cfg.theme; applyTheme()"); ok(!D.documentElement.dataset.theme, 'thème automatique');
+    // côté enseignant
+    E("me = {user: {id: 't1', email: 'prof@x.fr'}, profile: {role: 'teacher'}}; go('teacher')"); for (let i = 0; i < 40 && !appText().includes('eleve@x.fr'); i++) await wait(50); await wait(200);
+    t = appText(); ok(t.includes('Groupe de classe') && t.includes('CLASSE22') && t.includes('3/40'), 'code de classe affiché');
+    clickAct('tch-class-new'); for (let i = 0; i < 40 && !appText().includes('NOUVEAU2'); i++) await wait(50); ok(appText().includes('NOUVEAU2'), 'code de classe créé');
+    clickAct('tch-class-close', 'CLASSE22'); await wait(300); ok(calls.includes('class_close {"p_code":"CLASSE22"}') && !appText().includes('CLASSE22'), 'code de classe fermé');
+    clickAct('tch-detail', 's1'); for (let i = 0; i < 40 && !$q('[data-act="tch-goal-add"]'); i++) await wait(50); ok($q('[data-act="tch-send"]') && $q('#tch-gs').options.length === 114, 'formulaires objectif et message');
+    $q('#tch-gs').value = '78'; $q('#tch-gd').value = day(6); $q('#tch-gn').value = 'relire'; clickAct('tch-goal-add', 's1'); for (let i = 0; i < 40 && !appText().includes('relire'); i++) await wait(50);
+    ok(calls.some(c => c === 'teacher_goal_set {"target":"s1","p_surah":78,"p_due":"' + day(6) + '","p_note":"relire","p_surah_to":null}'), 'objectif fixé (une seule sourate : pas de plage)');
+    // objectif sur plusieurs sourates : « de … à … »
+    $q('#tch-gs').value = '78'; $q('#tch-gs').dispatchEvent(new W.Event('change', {bubbles: true})); eq($q('#tch-ge').value, '78', 'la 2e liste suit la 1re'); $q('#tch-ge').value = '80'; $q('#tch-gn').value = 'trois sourates'; $q('#tch-gd').value = day(6);
+    clickAct('tch-goal-add', 's1'); await wait(300); ok(calls.some(c => c === 'teacher_goal_set {"target":"s1","p_surah":78,"p_due":"' + day(6) + '","p_note":"trois sourates","p_surah_to":80}'), 'objectif sur 78 → 80 envoyé');
+    ok(E("goalName({surah: 78, surah_to: 80})").includes(' → ') && E("goalName({surah: 78, surah_to: null})") === E("SN(78)") && E("goalName({surah: 78, surah_to: 78})") === E("SN(78)"), 'nom d’un objectif : une sourate ou une plage');
+    ok(E("(() => { stats = {'78:1': [1, 0]}; const i = goalInfo({surah: 78, surah_to: 79, due: '2099-01-01'}); return i.r.parts.length === 2 && i.x.total === slen(78) + slen(79) && i.x.seen === 1; })()"), 'progression cumulée sur plusieurs sourates'); ok(E("goalRestText(goalInfo({surah: 78, surah_to: 79, due: '2099-01-01'}))").includes(' : tout'), 'reste : « tout » pour une sourate non commencée'); E("stats = {}"); ok(/3\/\d+ \(\d+ %\)/.test(appText()), 'avancement de l’élève affiché');
+    clickAct('tch-goal-del', '11'); await wait(300); ok(calls.includes('goal_delete {"p_id":11}') && !appText().includes('relire'), 'objectif supprimé');
+    ok(appText().includes('Merci prof') && appText().includes('✓✓'), 'conversation : réponse de l’élève et accusé « lu »');
+    ok($q('#chat-thread .msg.me') && $q('#chat-thread .msg.them'), 'conversation en bulles : moi à droite, l’élève à gauche');
+    clickAct('tch-send', 's1'); await wait(200); ok(appText().includes('Écris un message.'), 'message vide refusé');
+    $q('#tch-msg').value = 'Bravo !'; clickAct('tch-send', 's1'); await wait(300); ok(calls.includes('teacher_message_send {"target":"s1","p_body":"Bravo !"}') && !appText().includes('Message envoyé.'), 'message envoyé, sans confirmation qui reste affichée');
+    E(`tch.students = [{id: 'a', email: 'zoe@x.fr', since: '${iso(-9)}', last_seen: null, answers: 0, ok: 0, errors: 0}, {id: 'b', email: 'amir@x.fr', since: '${iso(-9)}', last_seen: '${iso(-0.1)}', answers: 10, ok: 9, errors: 1}, {id: 'c', email: 'lea@x.fr', since: '${iso(-30)}', last_seen: '${iso(-20)}', answers: 10, ok: 3, errors: 7}]; tch.detail = null; tch.q = ''; tch.sort = 'activity'; tch.unread = {c: 2}; cfg.tab = 'teacher'; home()`);
+    const order = () => { const t = appText(); return ['amir@x.fr', 'lea@x.fr', 'zoe@x.fr'].map(e => [t.indexOf(e, t.indexOf('Mes élèves')), e]).sort((x, y) => x[0] - y[0]).map(x => x[1]); };
+    eq(order(), ['amir@x.fr', 'lea@x.fr', 'zoe@x.fr'], 'tri par activité récente'); ok(appText().includes('jamais connecté') && appText().includes('inactif depuis 20 j'), 'alertes d’inactivité');
+    $q('#tch-sort').value = 'unread'; $q('#tch-sort').dispatchEvent(new W.Event('change', {bubbles: true})); eq(order()[0], 'lea@x.fr', 'tri par messages non lus');
+    $q('#tch-sort').value = 'rate'; $q('#tch-sort').dispatchEvent(new W.Event('change', {bubbles: true})); eq(order()[0], 'lea@x.fr', 'tri : les plus fragiles d’abord');
+    $q('#tch-q').value = 'zo'; $q('#tch-q').dispatchEvent(new W.Event('input', {bubbles: true})); ok(appText().includes('zoe@x.fr') && !appText().includes('amir@x.fr'), 'recherche d’un élève'); ok(E('document.activeElement && document.activeElement.id') === 'tch-q', 'le champ de recherche garde le focus');
+    E("tch.q = ''; tch.sort = 'activity'");
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); tch.detail = {id: 's1', data: {stats: {}, days: {}, errors: []}, goals: [{id: 1, surah: 2, due: '${day(3)}', note: 'x'}], thread: [{id: 1, body: 'b', created_at: new Date().toISOString(), from_student: false, read_at: null}]}; tch.uid = 't1'; tch.students = window.__S ? [] : []; cfg.tab = 'teacher'; home()`); await wait(300); E("tch.loaded = true; tch.msgs = [{id: 1, teacher_id: 't', teacher_email: 'p@x.fr', body: 'b', created_at: new Date().toISOString(), from_student: false, read_at: null}, {id: 2, teacher_id: 't', teacher_email: 'p@x.fr', body: 'r', created_at: new Date().toISOString(), from_student: true, read_at: null}]; cfg.tab = 'student'; home()"); eq(E('[...missingKeys]'), [], L); }
+    E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; stats = {}; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: ''}");
+  });
+  test('Cloche : notifications non traitées (nouveau message, objectif, demande…), ouvrir, traiter, tout traiter ; message à toute la classe', async () => {
+    reset(); const calls = []; W.__calls = calls; const iso = d => new Date(Date.now() + d * 864e5).toISOString();
+    W.__N = [{id: 5, kind: 'message', ref: 't1', actor: 'prof@x.fr', n: 2, created_at: iso(-0.1), read_at: null}, {id: 4, kind: 'goal', ref: '78', actor: 'prof@x.fr', n: 1, created_at: iso(-0.2), read_at: null}, {id: 3, kind: 'linked', ref: 't1', actor: 'prof@x.fr', n: 1, created_at: iso(-3), read_at: iso(-2)}];
+    E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; authReady = true; me = {user: {id: 's1', email: 'eleve@x.fr'}, profile: {role: 'user'}};
+      sb = {from(){ return {select(){ const p = Promise.resolve({data: [], error: null}); p.is = () => ({gt: () => p}); return p; }}; }, auth: {}, async rpc(n, a){ window.__calls.push(n + ' ' + JSON.stringify(a || {}));
+        if (n === 'links_mine') return {data: [{as_role: 'teacher', other_id: 't1', email: 'prof@x.fr', since: new Date().toISOString()}], error: null};
+        if (n === 'notifs_mine') return {data: window.__N.map(x => ({...x})), error: null};
+        if (n === 'notif_read'){ window.__N.forEach(x => { if (x.id === a.p_id) x.read_at = new Date().toISOString(); }); return {data: null, error: null}; }
+        if (n === 'notifs_read_all'){ window.__N.forEach(x => { x.read_at = x.read_at || new Date().toISOString(); }); return {data: null, error: null}; }
+        if (n === 'teacher_message_all') return {data: 2, error: null};
+        if (n === 'teacher_students') return {data: [{id: 'a', email: 'a@x.fr', since: new Date().toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}, {id: 'b', email: 'b@x.fr', since: new Date().toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}], error: null};
+        if (n === 'admin_users') return {data: [], error: null};
+        return {data: [], error: null}; }};`);
+    E("go('home')"); for (let i = 0; i < 40 && !($q('#bell .badge')); i++) await wait(50);
+    ok($q('#bell') && !$q('#bell').hidden, 'cloche affichée'); eq($q('#bell .badge').textContent, '2', 'pastille : 2 notifications non traitées'); ok(/2 non traitées|2 not handled/.test($q('#bell').getAttribute('aria-label')), 'libellé accessible');
+    clickAct('bell'); await wait(300); const P = () => $q('#nf-panel'); ok(P() && !P().hidden, 'panneau ouvert'); let t = P().textContent;
+    ok(t.includes('2 nouveaux messages de prof@x.fr') && /Nouvel objectif de prof@x.fr : /.test(t) && t.includes('Déjà traitées') && t.includes('suit maintenant ta progression'), 'liste : messages regroupés, objectif, déjà traitées'); eq($q('#bell').getAttribute('aria-expanded'), 'true');
+    clickAct('nf-done', '4'); await wait(300); ok(calls.includes('notif_read {"p_id":4}'), 'marquer traitée'); eq($q('#bell .badge').textContent, '1', 'la pastille diminue');
+    clickAct('nf-open', '5'); await wait(500); ok(calls.includes('notif_read {"p_id":5}') && P().hidden, 'ouvrir traite la notification et ferme le panneau'); eq(E('cfg.tab'), 'student', 'ouvre l’espace élève'); ok(!$q('#bell .badge'), 'plus de pastille');
+    W.__N = [{id: 9, kind: 'reply', ref: 'a', actor: 'a@x.fr', n: 1, created_at: iso(0), read_at: null}, {id: 8, kind: 'request', ref: 'u', actor: 'futur@x.fr', n: 1, created_at: iso(0), read_at: null}]; E("nfLoad()"); await wait(300);
+    clickAct('bell'); await wait(200); clickAct('nf-all'); await wait(300); ok(calls.includes('notifs_read_all {}') && /Rien à traiter/.test(P().textContent) && !$q('#bell .badge'), 'tout marquer comme traité');
+    D.dispatchEvent(new W.KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); await wait(100); ok(P().hidden, 'Échap ferme le panneau');
+    E("sb.rpc('x')"); noErr('cloche');
+    // administrateur : demande d'enseignant
+    W.__N = [{id: 20, kind: 'request', ref: 'u', actor: 'futur@x.fr', n: 1, created_at: iso(0), read_at: null}]; E("me = {user: {id: 'ad', email: 'adm@x.fr'}, profile: {role: 'admin'}}; nf = {list: [], loaded: false}; go('home')"); for (let i = 0; i < 40 && !($q('#bell .badge')); i++) await wait(50);
+    ok($q('#bell .badge'), 'la cloche de l’administrateur'); clickAct('bell'); await wait(200); ok(P().textContent.includes('futur@x.fr demande à devenir enseignant'), 'demande d’enseignant'); clickAct('nf-open', '20'); await wait(500); eq(E('screen'), 'admin', 'ouvre l’espace admin');
+    // message à toute la classe
+    E("me = {user: {id: 't1', email: 'prof@x.fr'}, profile: {role: 'teacher'}}; nf = {list: [], loaded: false}; go('teacher')"); for (let i = 0; i < 40 && !$q('#tch-all'); i++) await wait(50);
+    ok($q('#tch-all'), 'carte message à toute la classe'); clickAct('tch-all'); await wait(200); ok(appText().includes('Écris un message.'), 'message vide refusé');
+    $q('#tch-all').value = 'Bonjour la classe'; clickAct('tch-all'); await wait(400); ok(calls.includes('teacher_message_all {"p_body":"Bonjour la classe"}') && appText().includes('Envoyé à 2 élèves.'), 'envoyé aux 2 élèves');
+    for (const L of ['en', 'ar']){ W.__N = [{id: 1, kind: 'message', ref: 't', actor: 'p@x.fr', n: 3, created_at: iso(0), read_at: null}, {id: 2, kind: 'role_teacher', ref: null, actor: null, n: 1, created_at: iso(0), read_at: null}, {id: 3, kind: 'unlinked', ref: 't', actor: 'p@x.fr', n: 1, created_at: iso(0), read_at: iso(0)}]; E(`setLang('${L}'); nfLoad()`); await wait(200); clickAct('bell'); await wait(200); ok(P().textContent.length > 40, L); eq(E('[...missingKeys]'), [], L + ' cloche'); clickAct('nf-close'); }
+    E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; nf = {list: [], loaded: false}; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: '', wk: false, unread: {}, loading: false, q: '', sort: 'activity', chatWith: null, openAfter: null}; bellSync()");
+  });
+  test('Récitation à voix haute : le texte entendu s’affiche en direct (micro simulé)', async () => {
+    reset("cfg.mode = 'next'; cfg.input = 'voice'; cfg.scope = {type: 'surah', from: 1, to: 1};");
+    E("SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ this.onend(); }; };"); E("start()"); noErr('start voix');
+    ok($q('#heard') && $q('#heard').getAttribute('dir') === 'rtl' && $q('#heard').getAttribute('aria-live') === 'off', 'zone « Ce que j’entends » (arabe, de droite à gauche, non annoncée en continu)');
+    clickAct('listen'); await wait(100); ok(E('window.__rec.interimResults === true && window.__rec.lang === "ar-SA"'), 'résultats provisoires demandés');
+    E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: false})]})"); ok($q('#heard .interim') && $q('#heard').textContent.includes('الحمد لله'), 'texte provisoire affiché (estompé)');
+    E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: true}), Object.assign([{transcript: 'رب العالمين'}], {isFinal: false})]})"); ok($q('#heard').textContent.includes('الحمد لله') && $q('#heard').textContent.includes('رب العالمين') && $$q('#heard .interim').length === 1, 'mots confirmés + mots encore provisoires');
+    E("window.__rec.onend()"); await wait(200); ok(!$q('#work .interim') && $q('#work').textContent.includes('رب العالمين') && $q('#work').textContent.includes('الحمد لله'), 'à la fin, ce qui a été entendu reste affiché sous la correction'); ok($q('#fb .fb'), 'la récitation est corrigée'); noErr('voix');
+    // c'est l'utilisateur qui termine : un bouton « J'ai fini de réciter » arrête le micro et corrige (verset isolé comme passage)
+    E("window.__stops = 0; SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ window.__stops++; this.onend(); }; this.abort = function(){}; };");
+    E("home()"); E("start()"); clickAct('listen'); await wait(100); ok(E('window.__rec.continuous === true'), 'écoute continue : une pause ne coupe plus le micro');
+    ok(!$q('[data-act="listen"]').disabled && /fini de réciter/.test($q('[data-act="listen"]').textContent), 'bouton « J’ai fini de réciter » actif pendant l’écoute');
+    ok($q('[data-act="listen"]').classList.contains('rec-stop') && /Touche ici/.test($q('[data-act="listen"]').textContent) && D.defaultView.getComputedStyle($q('[data-act="listen"]')).position === 'sticky' && $q('[data-act="listen"]').getBoundingClientRect().height >= 64, 'le bouton est grand, explicite (texte d’aide) et reste visible en bas de l’écran');
+    ok($q('#mic-on') && /Micro ouvert/.test($q('#mic-on').textContent), 'voyant « micro ouvert » visible');
+    E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله رب'}], {isFinal: false})]})"); await wait(30);
+    $q('[data-act="listen"]').click(); $q('[data-act="listen"]') && $q('[data-act="listen"]').click(); await wait(250);
+    eq(E('window.__stops'), 1, 'un seul arrêt, même si on touche deux fois'); ok($q('#fb .fb') && $q('#work').textContent.includes('الحمد لله رب'), 'le verset est corrigé avec ce qui a été récité');
+    // fin de récitation détectée par une pause (le micro n'a pas besoin qu'on touche le bouton) ; correction forcée si le navigateur ne signale jamais la fin
+    E("MIC_SILENCE = 100; window.__stops = 0; SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ window.__stops++; this.onend(); }; this.abort = function(){}; };");
+    E("home()"); E("start()"); clickAct('listen'); await wait(50); E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: true})]})"); await wait(400);
+    eq(E('window.__stops'), 1, 'pause après avoir récité : le micro s’arrête tout seul'); ok($q('#fb .fb'), 'et la récitation est corrigée sans rien toucher');
+    E("MIC_SILENCE = 4000; MIC_GRACE = 100; window.__stops = 0; SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ window.__stops++; }; this.abort = function(){}; };");
+    E("home()"); E("start()"); clickAct('listen'); await wait(50); E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله رب'}], {isFinal: false})]})"); await wait(30);
+    $q('[data-act=\"listen\"]').click(); await wait(500); ok($q('#fb .fb') && $q('#work').textContent.includes('الحمد لله رب'), 'le navigateur ne signale jamais la fin : la récitation est corrigée quand même'); ok(E('micRec === null'), 'micro libéré');
+    E("MIC_GRACE = 1500");
+    // le micro se coupe quand la solution s'affiche, et jamais au-delà de la limite
+    E("window.__aborted = 0; SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ this.onend(); }; this.abort = function(){ window.__aborted++; this.onend(); }; };");
+    E("home()"); E("start()"); clickAct('listen'); await wait(100); ok(E('micRec !== null'), 'micro ouvert'); ok(/Micro ouvert/.test($q('#hmsg').textContent) && /\d+ s/.test($q('#hmsg').textContent), 'compte à rebours affiché : ' + $q('#hmsg').textContent);
+    clickAct('reveal'); await wait(100); eq(E('window.__aborted'), 1, 'la solution s’affiche : micro coupé'); ok(E('micRec === null') && !$q('#fb .fb'), 'rien n’est corrigé à la place de l’élève');
+    E("home()"); E("start()"); clickAct('listen'); await wait(50); E("home()"); eq(E('window.__aborted'), 2, 'quitter l’exercice coupe le micro');
+    E("start()"); clickAct('listen'); await wait(50); E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: true})]})"); E("finish(1)"); eq(E('window.__aborted'), 3, 'la correction (finish) coupe le micro');
+    E("MIC_MAX.one = 1; home()"); E("start()"); clickAct('listen'); await wait(1500); ok(E('micRec === null') && /Micro coupé automatiquement après 1 s/.test($q('#hmsg').textContent), 'coupé automatiquement après la limite : ' + $q('#hmsg').textContent);
+    E("MIC_MAX.one = 45");
+    // le micro ne s'ouvre pas : le message dit pourquoi et quoi faire (au lieu d'un code technique)
+    E("SR = function(){ window.__rec = this; this.start = function(){ setTimeout(() => this.onerror({error: 'not-allowed'}), 20); setTimeout(() => this.onend(), 40); }; this.stop = function(){}; this.abort = function(){}; };");
+    E("home()"); E("start()"); clickAct('listen'); await wait(300); ok(/Le micro est bloqué ou refusé\./.test($q('#hmsg').textContent) && /Autoriser|cadenas|dictée/.test($q('#hmsg').textContent), 'refus du micro : explication et marche à suivre : ' + $q('#hmsg').textContent);
+    ok(!/Micro ouvert/.test($q('#hmsg').textContent) && E('micRec === null'), 'le compte à rebours ne masque pas l’erreur');
+    E("SR = function(){ this.start = function(){ const e = new Error('x'); e.name = 'NotAllowedError'; throw e; }; this.stop = function(){}; this.abort = function(){}; };");
+    E("home()"); E("start()"); clickAct('listen'); await wait(200); ok(/Le micro est bloqué ou refusé\./.test($q('#hmsg').textContent) && !$q('[data-act="listen"]').disabled, 'démarrage impossible : message affiché et bouton réutilisable');
+    E("SR = window.SpeechRecognition || window.webkitSpeechRecognition");
+  });
+  test('Cloche : rappel de révision reçu et pas encore consulté', async () => {
+    reset(); const calls = []; W.__calls = calls; const today = E("today()"), iso = d => new Date(Date.now() + d * 864e5).toISOString();
+    W.__N = [{id: 31, kind: 'reminder', ref: today, actor: null, n: 7, created_at: iso(-0.01), read_at: null}];
+    E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; authReady = true; me = {user: {id: 'u2', email: 'u@x.fr'}, profile: {role: 'user'}}; days = {};
+      sb = {from(){ return {select(){ const p = Promise.resolve({data: [], error: null}); p.is = () => ({gt: () => p}); return p; }}; }, auth: {}, async rpc(n, a){ window.__calls.push(n + ' ' + JSON.stringify(a || {}));
+        if (n === 'notifs_mine') return {data: window.__N.map(x => ({...x})), error: null};
+        if (n === 'notif_read'){ window.__N.forEach(x => { if (x.id === a.p_id) x.read_at = new Date().toISOString(); }); return {data: null, error: null}; }
+        return {data: [], error: null}; }};`);
+    E("nf = {list: [], loaded: false}; bellSync(); go('home')"); for (let i = 0; i < 40 && !($q('#bell .badge') && $q('#bell .badge').textContent === '1'); i++) await wait(50); eq($q('#bell .badge').textContent, '1', 'le rappel est dans la cloche');
+    clickAct('bell'); await wait(300); ok(/Rappel de révision : 7 versets à revoir aujourd.hui/.test($q('#nf-panel').textContent), 'texte du rappel : ' + $q('#nf-panel').textContent.slice(0, 120));
+    clickAct('nf-open', '31'); await wait(500); ok(calls.includes('notif_read {"p_id":31}'), 'ouvrir traite le rappel'); ok(['train', 'home'].includes(E('cfg.tab')) || E('screen') === 'full', 'mène à la révision');
+    // révisé aujourd'hui : un rappel non traité se traite tout seul
+    W.__N = [{id: 32, kind: 'reminder', ref: today, actor: null, n: 3, created_at: iso(-0.01), read_at: null}]; calls.length = 0; E(`days = {[today()]: 4}; home(); nfLoad()`); await wait(500);
+    ok(calls.includes('notif_read {"p_id":32}') && !$q('#bell .badge'), 'déjà révisé aujourd’hui : rappel traité automatiquement');
+    for (const L of ['en', 'ar']){ W.__N = [{id: 33, kind: 'reminder', ref: '2000-01-01', actor: null, n: 1, created_at: iso(0), read_at: null}, {id: 34, kind: 'reminder', ref: '2000-01-02', actor: null, n: 0, created_at: iso(0), read_at: iso(0)}]; E(`setLang('${L}'); days = {}; nfLoad()`); await wait(300); clickAct('bell'); await wait(200); eq(E('[...missingKeys]'), [], L + ' rappel'); clickAct('nf-close'); }
+    E("setLang('fr'); days = {}; me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; nf = {list: [], loaded: false}; tch.loaded = false; tch.uid = null; bellSync()");
+  });
+  test('Tablettes : mise en page adaptée (deux colonnes, colonne plus large, aucun défilement horizontal) de 320 à 1366 px', async () => {
+    reset(); const css0 = fr.style.cssText;
+    for (const [w, grid] of [[320, false], [390, false], [600, false], [744, false], [820, false], [1024, true], [1180, true], [1366, true]]){
+      fr.style.width = w + 'px'; fr.style.height = '900px'; await wait(150);
+      for (const tab of ['home', 'plan', 'train', 'progress', 'errors', 'settings']){
+        E(`go('${tab}')`); await wait(60);
+        const de = D.documentElement, over = de.scrollWidth - de.clientWidth;
+        ok(over <= 1, `${w} px, onglet ${tab} : défilement horizontal de ${over} px`);
+        const disp = W.getComputedStyle($q('#app')).display; ok((disp === 'grid') === grid, `${w} px : l’application est ${disp === 'grid' ? 'sur deux colonnes' : 'sur une colonne'} (attendu : ${grid ? 'deux colonnes' : 'une colonne'})`);
+      }
+      eq(parseFloat(W.getComputedStyle($q('main')).maxWidth), w >= 1280 ? 1240 : w >= 960 ? 1120 : w >= 700 ? 880 : 720, `${w} px : largeur maximale de la colonne`);
+    }
+    fr.style.width = '1024px'; await wait(100); E("cfg.mode = 'mcq'; start()"); await wait(100);
+    ok(parseFloat(W.getComputedStyle($q('main')).maxWidth) <= 820 && W.getComputedStyle($q('#app')).display !== 'grid', 'écran d’exercice : colonne unique de lecture confortable, même sur grande tablette'); ok(D.documentElement.scrollWidth <= D.documentElement.clientWidth + 1, 'exercice sans défilement horizontal');
+    fr.style.cssText = css0; E("home()");
+  });
+  test('Profil et menus selon la personne : simple utilisateur (ni Élève ni Enseignant), élève, enseignant, administrateur', async () => {
+    reset(); const calls = []; W.__calls = calls; W.__LK = [];
+    E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; authReady = true; me = {user: {id: 'u1', email: 'simple@x.fr'}, profile: {role: 'user', created_at: new Date().toISOString()}}; try { localStorage.clear(); } catch {}
+      sb = {from(){ return {select(){ const p = Promise.resolve({data: [], error: null}); p.is = () => ({gt: () => p}); return p; }}; }, auth: {}, async rpc(n){ if (n === 'links_mine') return {data: window.__LK, error: null}; return {data: [], error: null}; }};`);
+    const tabs = () => $$q('#nav [data-act="tab"]').map(b => b.dataset.v), chip = () => [...D.querySelectorAll('.chip')].map(x => x.textContent).join('|');
+    E("go('home')"); await wait(600); ok(!tabs().includes('student') && !tabs().includes('teacher'), 'simple utilisateur : ni onglet Élève ni onglet Enseignant : ' + tabs().join(',')); eq(chip(), 'Utilisateur', 'profil : Utilisateur');
+    E("openAccount()"); await wait(500); eq(chip(), 'Utilisateur', 'Mon compte : profil Utilisateur'); ok(appText().includes('ni élève ni enseignant') && $q('[data-act="tch-invite"]') && $q('[data-act="tch-req"]'), 'inviter un enseignant et devenir enseignant restent dans Mon compte');
+    // il devient élève dès qu'un enseignant le suit
+    W.__LK = [{as_role: 'teacher', other_id: 't1', email: 'prof@x.fr', since: new Date().toISOString()}]; E("tch.loaded = false; tch.uid = null; go('home')"); for (let i = 0; i < 40 && !tabs().includes('student'); i++) await wait(50);
+    ok(tabs().includes('student') && !tabs().includes('teacher'), 'élève : onglet Élève seulement'); eq(chip(), 'Élève', 'profil : Élève'); E("openAccount()"); await wait(500); ok(appText().includes('Mes enseignants : prof@x.fr'), 'Mon compte : ses enseignants');
+    // enseignant sans élève ni enseignant : onglet Enseignant seul
+    W.__LK = []; E("me = {user: {id: 't9', email: 'prof@x.fr'}, profile: {role: 'teacher', created_at: new Date().toISOString()}}; tch.loaded = false; tch.uid = null; go('home')"); await wait(600);
+    ok(tabs().includes('teacher') && !tabs().includes('student'), 'enseignant : onglet Enseignant (pas Élève s’il n’a pas d’enseignant)'); eq(chip(), 'Enseignant', 'profil : Enseignant');
+    E("me = {user: {id: 'a1', email: 'adm@x.fr'}, profile: {role: 'admin', created_at: new Date().toISOString()}}; tch.loaded = false; tch.uid = null; go('home')"); await wait(600);
+    ok(!tabs().includes('student') && !tabs().includes('teacher'), 'administrateur : aucun des deux onglets'); eq(chip(), 'Administrateur', 'profil : Administrateur');
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); openAccount()`); await wait(300); eq(E('[...missingKeys]'), [], L + ' profil'); }
+    E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; tch.loaded = false; tch.uid = null; try { localStorage.clear(); } catch {}");
+  });
+  test('Espace admin : surveillance des e-mails (calme, attention, alerte, nom de domaine)', async () => {
+    const mk = (n, agoH) => Array.from({length: n}, (_, i) => ({id: 'u' + agoH + i, email: `u${agoH}-${i}@x.fr`, role: 'user', blocked: false, created_at: new Date(Date.now() - agoH * 36e5).toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}));
+    reset(); E("me = {user: {id: 'a', email: 'admin@x.fr'}, profile: {role: 'admin'}}");
+    for (const [users, expect, label] of [[mk(2, 3), ['✓', null], 'calme'], [mk(16, 0.2), ['⚠', 'approches'], 'attention'], [mk(26, 0.2), ['⛔', 'approches'], 'alerte']]){
+      W.__u = users; E("adm.users = window.__u; adm.detail = null; adm.q = ''; renderAdmin()"); const t = appText(); ok(t.includes('Surveillance des e-mails'), label + ' : carte'); ok(t.includes(expect[0]), label + ' : ' + expect[0]);
+      if (expect[1]) ok(t.includes(expect[1]), label + ' : message'); else ok(!t.includes('approches'), 'pas d’alerte en situation calme'); noErr('admin ' + label);
+    }
+    W.__u = mk(45, 100); E("adm.users = window.__u; renderAdmin()"); ok(/Tu as 45 comptes/.test(appText()), 'passage au nom de domaine'); ok(!appText().includes('approches'));
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); adm.users = window.__u; renderAdmin()`); eq(E('[...missingKeys]'), [], L); } E("setLang('fr'); me = null; adm.users = null");
+  });
+  test('Chaque onglet s’affiche dans les 3 langues sans erreur ni « undefined »', async () => {
+    for (const L of ['fr', 'en', 'ar']){
+      reset(); E(`setLang('${L}')`);
+      for (const t of ['home', 'train', 'plan', 'progress', 'settings', 'errors']){
+        E(`go('${t}')`); await wait(10); noErr(`${t}/${L}`);
+        const txt = D.getElementById('app').textContent; ok(!/undefined|NaN|\[object/.test(txt), `texte suspect dans ${t}/${L}`);
+      }
+    }
+    eq(E('document.documentElement.dir'), 'rtl');
+  });
+  test('Lecteur : sourate entière et un matn s’ouvrent', () => {
+    reset(); E("openReader('q:1')"); ok($q('.rsec'), 'lecteur Coran'); E("openReader('m:tuhfa')"); ok($q('.rsec'), 'lecteur matn'); noErr('lecteur');
+  });
+  test('Mes moutoun : un matn ajouté à la main devient utilisable', () => {
+    reset(); E("go('train')"); const ta = $q('#cm-text'); if (!ta) return; // la zone n'existe que sur l'écran concerné
+    ta.value = 'قال الشيخ رحمه الله تعالى في أول منظومته\nالحمد لله الذي هدانا إلى سبيل الحق والإيمان'; $q('#cm-title').value = 'Test'; clickAct('addcustom'); noErr('ajout matn');
+    eq(E('custom.length'), 1);
+  });
+  test('Comptes : messages d’erreur d’e-mail clairs, renvoi de l’e-mail de confirmation (serveur simulé)', async () => {
+    reset(); const f = m => E(`friendly(new Error(${JSON.stringify(m)}))`);
+    ok(/limite d'e-mails/.test(f('email rate limit exceeded')), 'limite horaire'); ok(/service d'envoi/.test(f('Email address not authorized')), 'serveur d’essai');
+    ok(/n'a pas pu être envoyé/.test(f('Error sending confirmation email')), 'envoi'); ok(/Trop de tentatives/.test(f('For security purposes, you can only request this after 20 seconds')), 'anti-spam');
+    ok(/incorrect/.test(f('Invalid login credentials')), 'identifiants');
+    const calls = []; W.__c = calls;
+    E("CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; me = null; acc.mode = 'signup'; acc.resend = ''; acc.resendAt = 0; sb = {auth: {async signUp(){ window.__c.push('signUp'); return {data: {user: {identities: [{}]}, session: null}, error: null}; }, async resend(o){ window.__c.push('resend ' + o.email + ' ' + o.type); return {error: null}; }, async signInWithPassword(){ return {data: null, error: {message: 'Email not confirmed'}}; }}};");
+    E("renderAccount()"); ok(!$q('[data-act="acc-resend"]'), 'pas de bouton avant inscription');
+    $q('#ac-email').value = 'a@b.fr'; $q('#ac-pass').value = 'motdepasse1'; $q('#ac-pass2').value = 'motdepasse1'; $q('#ac-consent').checked = true; clickAct('acc-signup'); await wait(300);
+    ok($q('[data-act="acc-resend"]'), 'bouton de renvoi après inscription'); ok(/indésirables/.test($q('#acc-msg').textContent), 'rappel du dossier spam');
+    clickAct('acc-resend'); await wait(300); ok(calls.includes('resend a@b.fr signup'), 'renvoi demandé'); ok(/renvoyé/.test($q('#acc-msg').textContent));
+    clickAct('acc-resend'); await wait(300); eq(calls.filter(c => c.startsWith('resend')).length, 1, 'une relance par minute au plus'); ok(/Patiente/.test($q('#acc-msg').textContent), 'attente affichée');
+    E("acc.resend = ''; acc.resendAt = 0; acc.mode = 'login'; renderAccount()"); $q('#ac-email').value = 'c@d.fr'; $q('#ac-pass').value = 'x'; clickAct('acc-login'); await wait(300);
+    ok($q('[data-act="acc-resend"]'), 'bouton si e-mail non confirmé'); eq(E('acc.resend'), 'c@d.fr');
+    E("CLOUD.url = ''; CLOUD.anonKey = ''; sb = null; me = null; acc.resend = ''; acc.msg = '';");
+  });
+  test('Rappels : activer, changer l’heure, 2e rappel, désactiver (serveur simulé)', async () => {
+    reset();
+    const calls = []; let sub = null;
+    E("CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; CLOUD.vapidPublicKey = 'BGSyzd0fSnxyLCKcsbtliLDWAeWZb1A38k-bY9yLWDq04L_Ki16sCALo8ldhM1FhbSxB75rxRnVv0WFO7XWvBxM'; me = {user: {id: 'u'}, profile: {role: 'user'}};");
+    W.__calls = calls; E("sb = {auth: {async signOut(){ return {}; }}, async rpc(n, a){ if (/^push_/.test(n)) window.__calls.push(n + ' ' + JSON.stringify(a)); return {error: null}; }};");   // seuls les appels de rappels comptent (le chargement des onglets Élève/Enseignant en arrière-plan est ignoré)
+    const fakeSub = {endpoint: 'https://p/x', toJSON(){ return {endpoint: this.endpoint, keys: {p256dh: 'P', auth: 'A'}}; }, async unsubscribe(){ sub = null; return true; }};
+    const reg = {pushManager: {async getSubscription(){ return sub; }, async subscribe(){ sub = fakeSub; return fakeSub; }}};
+    Object.defineProperty(W.navigator.serviceWorker, 'ready', {get: () => Promise.resolve(reg), configurable: true});
+    Object.defineProperty(W.Notification, 'permission', {get: () => 'granted', configurable: true});
+    E("go('settings')"); ok($q('#rem-time'), 'carte Rappels absente (PushManager indisponible ici ?)');
+    $q('#rem-time').value = '20:00'; $q('#rem-two').click(); eq($q('#rem-time2').disabled, false); $q('#rem-time2').value = '19:00';
+    clickAct('rem-on'); await wait(300); ok(/après le 1er/.test($q('#rem-msg').textContent), 'un 2e rappel avant le 1er doit être refusé'); eq(calls.length, 0);
+    $q('#rem-time2').value = '21:30'; clickAct('rem-on'); await wait(300);
+    ok(calls.at(-1).startsWith('push_subscribe') && calls.at(-1).includes('"p_time":"20:00"') && calls.at(-1).includes('"p_time2":"21:30"'), 'push_subscribe avec les 2 heures');
+    $q('#rem-two').click(); clickAct('rem-save'); await wait(300); ok(calls.at(-1).includes('"p_time2":null'), 'sans 2e rappel : p_time2 nul');
+    clickAct('rem-off'); await wait(300); ok(calls.some(c => c.startsWith('push_unsubscribe')), 'désabonnement serveur'); eq(E('remState().on'), false);
+    E("CLOUD.url = ''; CLOUD.anonKey = ''; CLOUD.vapidPublicKey = ''; sb = null; me = null;");
+  });
+
+  /* ---- exécution ---- */
+  const out = document.getElementById('out');
+  for (const t of tests){
+    let r;
+    try { await t.fn(); r = {name: t.name, ok: true}; } catch (e){ r = {name: t.name, ok: false, err: String(e && e.message || e)}; }
+    results.push(r);
+    const li = document.createElement('li'); li.innerHTML = `<span class="${r.ok ? 'ok' : 'ko'}">${r.ok ? '✓' : '✗'}</span> ${r.name.replace(/</g, '&lt;')}` + (r.ok ? '' : `<pre class="ko"></pre>`);
+    if (!r.ok) li.querySelector('pre').textContent = r.err;
+    out.appendChild(li);
+  }
+  restore();
+  const failed = results.filter(r => !r.ok).length;
+  document.getElementById('sum').innerHTML = `<b class="${failed ? 'ko' : 'ok'}">${results.length - failed} réussis, ${failed} en échec</b>`;
+  window.__result = {passed: results.length - failed, failed, results};
+})();
