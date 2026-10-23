@@ -12,8 +12,8 @@
   const wait = ms => new Promise(r => setTimeout(r, ms));
 
   /* ---- application sous test ---- */
-  const saved = {}; for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k.startsWith('hifz.')) saved[k] = localStorage.getItem(k); }
-  const clean = () => Object.keys(localStorage).filter(k => k.startsWith('hifz.')).forEach(k => localStorage.removeItem(k));
+  const saved = {}; for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k.startsWith('tathbit.')) saved[k] = localStorage.getItem(k); }
+  const clean = () => Object.keys(localStorage).filter(k => k.startsWith('tathbit.')).forEach(k => localStorage.removeItem(k));
   const restore = () => { clean(); Object.entries(saved).forEach(([k, v]) => localStorage.setItem(k, v)); };
   window.addEventListener('pagehide', restore);
   clean();
@@ -430,17 +430,17 @@
   test('Audio hors ligne : estimation, téléchargement d’une sourate, lecture depuis l’appareil, plafond, suppression (réseau requis)', async () => {
     const url1 = 'https://everyayah.com/data/Alafasy_64kbps/001001.mp3', net = await fetch(url1, {method: 'HEAD', mode: 'cors'}).then(r => r.ok).catch(() => false);
     if (!net) return;                                            // pas d'accès à everyayah.com : test ignoré
-    reset("cfg.reciter = 'ar.alafasy'; cfg.audFrom = 1; cfg.audTo = 1; cfg.audCap = 50; audioOff = {}; audioUI = {plan: null, busy: false, ctl: null};"); await W.caches.delete('hifz-audio-v1');
+    reset("cfg.reciter = 'ar.alafasy'; cfg.audFrom = 1; cfg.audTo = 1; cfg.audCap = 50; audioOff = {}; audioUI = {plan: null, busy: false, ctl: null};"); await W.caches.delete('tathbit-audio-v1');
     E("go('settings')"); ok($q('[data-act="aud-est"]') && $q('#aud-from') && $q('#aud-cap'), 'carte Audio hors ligne'); ok($q('[data-act="aud-dl"]').disabled, 'téléchargement impossible avant le calcul de la taille');
     clickAct('aud-est'); for (let i = 0; i < 100 && !E('audioUI.plan'); i++) await wait(100); const P = E('audioUI.plan'); ok(P && P.take.length === 1, 'estimation faite'); noErr('estimation');
     ok(/Estimation/.test($q('#aud-msg').textContent)); ok(!$q('[data-act="aud-dl"]').disabled);
     clickAct('aud-dl'); for (let i = 0; i < 300 && (E('audioUI.busy') || !E("audioSet('ar.alafasy')[1]")); i++) await wait(100); noErr('téléchargement');
-    const cache = await W.caches.open('hifz-audio-v1'), keys = await cache.keys(); eq(keys.length, 7, '7 versets de la Fatiha dans le cache');
+    const cache = await W.caches.open('tathbit-audio-v1'), keys = await cache.keys(); eq(keys.length, 7, '7 versets de la Fatiha dans le cache');
     const got = E("audioSet('ar.alafasy')[1].b"); eq(E("audioSet('ar.alafasy')[1].q"), 64); ok(got > 100000, 'octets enregistrés : ' + got); const ratio = P.used / got; ok(ratio > 0.8 && ratio < 2.2, 'estimation raisonnable : ' + ratio.toFixed(2));
     eq(E("audioUrl({s: 1, a: 1})"), url1); ok(E("audioUrl({s: 2, a: 1})").includes('islamic.network'), 'sourates non téléchargées : lecture en ligne');
     ok(appText().includes('Sur cet appareil') && appText().includes('Al-Faatiha'), 'liste des sourates téléchargées');
     if (W.navigator.serviceWorker.controller){                    // le service worker sert les plages d'octets depuis le cache
-      const r = await W.fetch(url1, {headers: {Range: 'bytes=0-99'}}); eq(r.status, 206); eq(r.headers.get('x-hifz-offline'), '1', 'servi par l’appareil, pas par le réseau'); eq((await r.arrayBuffer()).byteLength, 100); ok(/^bytes 0-99\/\d+$/.test(r.headers.get('content-range')));
+      const r = await W.fetch(url1, {headers: {Range: 'bytes=0-99'}}); eq(r.status, 206); eq(r.headers.get('x-tathbit-offline'), '1', 'servi par l’appareil, pas par le réseau'); eq((await r.arrayBuffer()).byteLength, 100); ok(/^bytes 0-99\/\d+$/.test(r.headers.get('content-range')));
     }
     // qualité 128 kbps : retéléchargement de la même sourate, l'ancienne qualité est retirée du cache
     ok($q('#aud-q') && [...$q('#aud-q').options].map(o => o.value).join() === '64,128', 'choix de qualité'); E("cfg.audQ = 128; audioUI.plan = null"); E("go('settings')"); clickAct('aud-est'); for (let i = 0; i < 100 && !E('audioUI.plan'); i++) await wait(100);
@@ -453,7 +453,7 @@
     ok(E('audioUI.plan.take.length') === 0 && /Plafond atteint/.test(appText()), 'plafond trop petit : rien à télécharger'); ok($q('[data-act="aud-dl"]').disabled);
     E("cfg.audCap = 50"); E("go('settings')"); clickAct('aud-del', '1'); for (let i = 0; i < 50 && E("audioSet('ar.alafasy')[1]"); i++) await wait(100); await wait(200);
     eq((await cache.keys()).length, 0, 'suppression : cache vidé'); eq(E("Object.keys(audioSet('ar.alafasy')).length"), 0); ok(E("audioUrl({s: 1, a: 1})").includes('islamic.network'), 'retour à la lecture en ligne');
-    E("audioOff = {}; store.set('hifz.audio', {})");
+    E("audioOff = {}; store.set('tathbit.audio', {})");
   });
   test('Makhārij et ṣifāt : aucune clé de traduction manquante (en, ar)', async () => {
     for (const L of ['en', 'ar']){
@@ -468,8 +468,8 @@
   test('Audio du plan du jour : bouton, téléchargement automatique seulement en Wi-Fi confirmé (réseau requis)', async () => {
     const net = await fetch('https://everyayah.com/data/Alafasy_64kbps/112001.mp3', {method: 'HEAD', mode: 'cors'}).then(r => r.ok).catch(() => false);
     if (!net) return;
-    const old = E("dayKey(addDays(new Date(), -10))"), yest = E("dayKey(addDays(new Date(), -1))"); await W.caches.delete('hifz-audio-v1');
-    reset(`cfg.reciter = 'ar.alafasy'; cfg.audQ = 64; cfg.audCap = 50; audioOff = {}; audioUI = {plan: null, busy: false, ctl: null}; store.set('hifz.audioAuto', '');
+    const old = E("dayKey(addDays(new Date(), -10))"), yest = E("dayKey(addDays(new Date(), -1))"); await W.caches.delete('tathbit-audio-v1');
+    reset(`cfg.reciter = 'ar.alafasy'; cfg.audQ = 64; cfg.audCap = 50; audioOff = {}; audioUI = {plan: null, busy: false, ctl: null}; store.set('tathbit.audioAuto', '');
       plan = {from: 111, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 4, mptr: 0, done: {}, log: [{d: '${yest}', s: 113, a: 1, b: 3}, {d: '${old}', s: 112, a: 1, b: 2}]};`);
     eq(E("auPlanSurahs(planToday())"), [112, 113, 114], 'sourates du plan du jour');
     E("go('settings')"); ok($q('[data-act="aud-plan"]') && $q('#aud-auto'), 'bouton et option du plan'); noErr('carte plan');
@@ -481,15 +481,15 @@
     clickAct('aud-plan'); await wait(300); ok(/déjà sur cet appareil/.test(appText()), 'rien de plus à télécharger');
     // automatique en Wi-Fi : retire une sourate puis relance
     await E("audioDel(113)"); await wait(400); eq(E("auMissing(auPlanSurahs(planToday()), audioSet('ar.alafasy'))"), [113]);
-    Object.defineProperty(W.navigator, 'connection', {get: () => ({type: 'wifi'}), configurable: true}); E("store.set('hifz.audioAuto', '')"); E("maybeAutoAudio()");
+    Object.defineProperty(W.navigator, 'connection', {get: () => ({type: 'wifi'}), configurable: true}); E("store.set('tathbit.audioAuto', '')"); E("maybeAutoAudio()");
     for (let i = 0; i < 300 && (E('audioUI.busy') || !E("audioSet('ar.alafasy')[113]")); i++) await wait(100); ok(E("audioSet('ar.alafasy')[113]"), 'Wi-Fi confirmé : téléchargement automatique de la sourate manquante');
     // nettoyage
-    Object.defineProperty(W.navigator, 'connection', {get: () => undefined, configurable: true}); await W.caches.delete('hifz-audio-v1'); E("audioOff = {}; store.set('hifz.audio', {}); cfg.audAuto = false");
+    Object.defineProperty(W.navigator, 'connection', {get: () => undefined, configurable: true}); await W.caches.delete('tathbit-audio-v1'); E("audioOff = {}; store.set('tathbit.audio', {}); cfg.audAuto = false");
   });
   test('Audio hors ligne : aucune clé de traduction manquante (en, ar)', async () => {
     for (const L of ['en', 'ar']){
       reset(`setLang('${L}'); cfg.reciter = 'ar.alafasy'; audioOff = {'ar.alafasy': {1: 400000, 112: 120000}}; audioUI = {plan: {take: [1], skip: [2], used: 1e6, skipBytes: 2e6, items: []}, busy: false, ctl: null}; plan = {from: 114, to: 114, order: 'desc', amt: 'v3', recent: 3, cycle: 4, mptr: 0, done: {}, log: []}`);
-      E("go('settings')"); ok($q('[data-act="aud-del"]') && $q('[data-act="aud-plan"]'), L); eq(E('[...missingKeys]'), [], L); E("audioOff = {}; audioUI = {plan: null, busy: false, ctl: null}; store.set('hifz.audio', {})");
+      E("go('settings')"); ok($q('[data-act="aud-del"]') && $q('[data-act="aud-plan"]'), L); eq(E('[...missingKeys]'), [], L); E("audioOff = {}; audioUI = {plan: null, busy: false, ctl: null}; store.set('tathbit.audio', {})");
     }
   });
   test('Tajwīd : aucune clé de traduction manquante (en, ar)', async () => {
@@ -510,7 +510,7 @@
     const parse = txt => txt.replace(/^\ufeff/, '').trim().split('\r\n').map(l => l.split(';'));
     for (const [kind, rows, check] of [['verses', 4, r => ok(r[0][0] === 'Type' && r.some(x => x[2] === 'Al-Faatiha' && x[3] === '2' && x[6] === '3' && x[7] === '1' && x[8] === '75' && x[9] === '2.5'), 'verset 1:2 : 3 réussites, 1 raté, 75 %, intervalle 2,5 j')],
       ['days', 3, r => ok(r[1][0] === '2026-10-20' && r[1][1] === '12')], ['errors', 2, r => { ok(r[1][5] === 'Mots manquants' || r[1][5].length > 0); ok(r[1][7] === "'=cmd", 'formule neutralisée'); ok(r[1][8].includes('لَا')); }], ['drills', 5, r => ok(r.some(x => x[0] === 'Tajwīd (entraînement)' || x[0] === 'Tajwīd') && r.some(x => /الإخفاء/.test(x[1])), 'exercices')]]){
-      got.length = 0; $q('#csv-kind').value = kind; clickAct('csv'); await wait(100); eq(got.length, 1, kind); ok(got[0].name.startsWith(`hifz-${kind}-`) && got[0].name.endsWith('.csv')); ok(got[0].text.startsWith('\ufeff') && /csv/.test(got[0].type));
+      got.length = 0; $q('#csv-kind').value = kind; clickAct('csv'); await wait(100); eq(got.length, 1, kind); ok(got[0].name.startsWith(`tathbit-${kind}-`) && got[0].name.endsWith('.csv')); ok(got[0].text.startsWith('\ufeff') && /csv/.test(got[0].type));
       const r = parse(got[0].text); eq(r.length, rows, kind + ' : lignes'); eq(new Set(r.map(x => x.length)).size, 1, kind + ' : même nombre de colonnes'); check(r);
     }
     E("setLang('en')"); got.length = 0; E("exportCsv('days')"); ok(got[0].text.split('\r\n')[0].includes(',') && got[0].text.includes('Answers'), 'anglais : virgule et en-têtes traduits'); E("setLang('fr')");

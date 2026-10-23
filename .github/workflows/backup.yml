@@ -32,7 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          D=hifz-backup-$(date -u +%Y%m%d-%H%M)
+          D=tathbit-backup-$(date -u +%Y%m%d-%H%M)
           mkdir "$D"
           /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" --schema=public --no-owner --no-privileges --format=plain --file="$D/public.sql"
           /usr/lib/postgresql/17/bin/psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "\copy (select id, email, created_at, email_confirmed_at from auth.users order by created_at) to '$D/auth_users_ids.csv' csv header"

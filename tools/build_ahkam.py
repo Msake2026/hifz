@@ -13,7 +13,7 @@ Usage : python3 -I tools/build_ahkam.py   (après tools/build_quran.py et tools/
 import json, os, re, time, collections, datetime, urllib.request, urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-UA = {"User-Agent": "HifzApp/1.0 (personal study app)"}
+UA = {"User-Agent": "TathbitApp/1.0 (personal study app)"}
 
 
 def wiki(host, title):

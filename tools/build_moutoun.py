@@ -10,7 +10,7 @@ Contrôles intégrés : nombre de vers attendu (61 / 34) et numérotation contin
 """
 import json, re, time, html, datetime, urllib.request, urllib.parse, os, sys
 
-UA = "HifzApp/1.0 (personal study app)"
+UA = "TathbitApp/1.0 (personal study app)"
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "moutoun.js")
 TATWEEL = re.compile("ـ")
 

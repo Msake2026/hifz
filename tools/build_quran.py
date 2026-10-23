@@ -11,7 +11,7 @@ import json, os, re, hashlib, datetime, urllib.request
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "quran.js")
 URL = "https://api.alquran.cloud/v1/quran/quran-uthmani"
 
-raw = json.loads(urllib.request.urlopen(urllib.request.Request(URL, headers={"User-Agent": "HifzApp/1.0"}), timeout=60).read())
+raw = json.loads(urllib.request.urlopen(urllib.request.Request(URL, headers={"User-Agent": "TathbitApp/1.0"}), timeout=60).read())
 assert raw["code"] == 200 and raw["data"]["edition"]["identifier"] == "quran-uthmani"
 surahs = []
 for s in raw["data"]["surahs"]:

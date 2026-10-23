@@ -15,7 +15,7 @@ import json, os, re, hashlib, datetime, urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "data")
-UA = {"User-Agent": "HifzApp/1.0 (personal study app)"}
+UA = {"User-Agent": "TathbitApp/1.0 (personal study app)"}
 TODAY = datetime.date.today().isoformat()
 
 

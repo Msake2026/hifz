@@ -13,7 +13,7 @@ Usage : python3 -I tools/build_huruf.py
 import json, os, re, time, datetime, urllib.request, urllib.parse
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "huruf.js")
-UA = {"User-Agent": "HifzApp/1.0 (personal study app)"}
+UA = {"User-Agent": "TathbitApp/1.0 (personal study app)"}
 
 
 def wiki(host, title):

@@ -271,6 +271,9 @@ input[type=email],input[type=password],input[type=time]{direction:ltr;text-align
 const $app = document.getElementById('app');
 const $ = id => document.getElementById(id);
 let cloudDirty = () => {}; // branché plus bas : envoie la progression au compte quand elle change
+// Renommage Hifz → Tathbīt : les réglages et la progression enregistrés sous « hifz.* » sont recopiés sous « tathbit.* » au premier lancement (rien n'est perdu), puis les anciennes clés sont supprimées
+(() => { try { const old = []; for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k && k.startsWith('hifz.')) old.push(k); }
+  for (const k of old){ const n = 'tathbit.' + k.slice(5); try { if (k !== 'hifz.quran.v2' && localStorage.getItem(n) === null) localStorage.setItem(n, localStorage.getItem(k)); localStorage.removeItem(k); } catch { /* quota : on garde l'ancienne clé */ } } } catch { /* stockage indisponible */ } })();
 const store = {
   get(k, d){ try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
   set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} cloudDirty(k); }
@@ -338,13 +341,13 @@ function splitPoint(words){ // prose : coupe près du milieu, de préférence ap
 /* ---------- données ---------- */
 let Q = null; // [{n, ar, en, a:[{t, j, p}]}]
 let MT = {};  // moutoun : id -> {ar, fr, author, kind, unit, source, a:[{t, m}]}
-let custom = store.get('hifz.custom', []); // moutoun ajoutés par l'utilisateur
+let custom = store.get('tathbit.custom', []); // moutoun ajoutés par l'utilisateur
 const MS = (window.MUTASHABIHAT && window.MUTASHABIHAT.pairs) || {}; // versets proches (calculés)
 let OFF = [], PAGE_LEN = [], PAGE_JUZ = [];
 const isQ = s => typeof s === 'number';
 const book = s => isQ(s) ? Q[s - 1] : MT[s];
 const pk = k => { const [s, a] = k.split(':'); return {s: /^\d+$/.test(s) ? +s : s, a: +a}; };
-const CACHE_KEY = 'hifz.quran.v2'; // ancien cache du navigateur (remplacé par quran.js) : supprimé pour libérer de la place
+const CACHE_KEY = 'tathbit.quran.v2'; // ancien cache du navigateur (remplacé par quran.js) : supprimé pour libérer de la place
 const quranOk = q => Array.isArray(q) && q.length === 114 && q.reduce((n, s) => n + s.a.length, 0) === 6236 && q.every((s, i) => s.n === i + 1 && s.a.every(v => v.t && v.p >= 1 && v.p <= 604));
 async function sha256hex(txt){
   const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
@@ -389,20 +392,20 @@ async function loadQuran(){
 const DEF = {mode: 'mix', scope: {type: 'surah', from: 78, to: 114}, n: 10, input: 'recite', level: 40,
   corr: 'standard', tjKind: 'rule', mkKind: 'zone', sfKind: 'pair', ahKind: 'nun', mdKind: 'type', audFrom: 78, audTo: 114, audCap: 100, audQ: 64, audAuto: false, lastMemo: 'mix', show: {s: true, v: true, p: true}, reciter: 'ar.alafasy', goal: 20, contLen: 5, endLen: 2, begLen: 1, map: 's', tab: 'home', rdHide: false, rdSize: 1.9, rdTaj: false, rdTr: '', rdTf: false,
   lang: ['fr', 'en', 'ar'].includes((navigator.language || '').slice(0, 2)) ? navigator.language.slice(0, 2) : 'fr'};
-const stored = store.get('hifz.cfg', {});
+const stored = store.get('tathbit.cfg', {});
 let cfg = Object.assign({}, DEF, stored);
 if (stored.strict === false && !stored.corr) cfg.corr = 'soft';   // ancien réglage
 if (stored.strict === true && !stored.corr) cfg.corr = 'strict';
 LANG = ['fr', 'en', 'ar'].includes(cfg.lang) ? cfg.lang : 'fr'; applyLang();
-let stats = store.get('hifz.stats', {}); // "s:a" -> [ok, ko]
-let errors = store.get('hifz.errors', []); // journal : {t, k, m, sc, ans?, bad?[]}
-let plan = store.get('hifz.plan', null);   // plan de mémorisation (voir plus bas)
-const savePlan = () => store.set('hifz.plan', plan);
-let sched = store.get('hifz.sched', {}); // "s:a" -> {iv: jours, due: timestamp}
-let hfs = store.get('hifz.hf', {});       // makhārij / ṣifāt : « mk:ظ » ou « sf:qalqala » -> [réussies, ratées]
-let tjs = store.get('hifz.tj', {});       // règle de tajwīd -> [réussies, ratées] (entraînement, séparé de la mémorisation)
-let days = store.get('hifz.days', {});   // "AAAA-MM-JJ" -> nb de réponses
-const saveCfg = () => store.set('hifz.cfg', cfg);
+let stats = store.get('tathbit.stats', {}); // "s:a" -> [ok, ko]
+let errors = store.get('tathbit.errors', []); // journal : {t, k, m, sc, ans?, bad?[]}
+let plan = store.get('tathbit.plan', null);   // plan de mémorisation (voir plus bas)
+const savePlan = () => store.set('tathbit.plan', plan);
+let sched = store.get('tathbit.sched', {}); // "s:a" -> {iv: jours, due: timestamp}
+let hfs = store.get('tathbit.hf', {});       // makhārij / ṣifāt : « mk:ظ » ou « sf:qalqala » -> [réussies, ratées]
+let tjs = store.get('tathbit.tj', {});       // règle de tajwīd -> [réussies, ratées] (entraînement, séparé de la mémorisation)
+let days = store.get('tathbit.days', {});   // "AAAA-MM-JJ" -> nb de réponses
+const saveCfg = () => store.set('tathbit.cfg', cfg);
 const today = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 let SR = window.SpeechRecognition || window.webkitSpeechRecognition;   // (let : les tests y mettent un faux micro)
 const key = r => r.s + ':' + r.a;
@@ -417,11 +420,11 @@ const rlabel = r => isQ(r.s) ? tr('Sourate {n} – {name}, verset {a}', {n: r.s,
 function record(r, score){
   const [ok, ko] = stats[key(r)] || [0, 0];
   stats[key(r)] = [ok + score, ko + (1 - score)];
-  store.set('hifz.stats', stats);
+  store.set('tathbit.stats', stats);
   const k = key(r); sched[k] = srsNext(sched[k], score, Date.now());   // répétition espacée adaptative (voir srsNext)
-  store.set('hifz.sched', sched);
+  store.set('tathbit.sched', sched);
   days[today()] = (days[today()] || 0) + 1;
-  store.set('hifz.days', days);
+  store.set('tathbit.days', days);
 }
 /* SRS:begin — répétition espacée adaptative : fonctions pures, testées dans tests/node.test.mjs */
 const SRS = {MAXIV: 180, EZ0: 2.2, EZMIN: 1.3, EZMAX: 2.8, HALF: 10, WINDOW: 45};
@@ -525,7 +528,7 @@ const auPlanSurahs = T => [...new Set([...(T.next ? [T.next.s] : []), ...(T.rec 
 const auMissing = (list, got) => list.filter(s => !got[s]);
 const auMo = b => b >= 1e9 ? (b / 1e9).toFixed(1) + ' Go' : Math.max(1, Math.round(b / 1e6)) + ' Mo';
 /* AU:end */
-let audioOff = store.get('hifz.audio', {});          // récitateur -> {numéro de sourate: octets} : sourates complètes enregistrées sur cet appareil
+let audioOff = store.get('tathbit.audio', {});          // récitateur -> {numéro de sourate: octets} : sourates complètes enregistrées sur cet appareil
 const audioSet = rec => audioOff[rec] || {};
 const audioUrl = r => {
   const got = audioSet(cfg.reciter)[r.s];
@@ -629,7 +632,7 @@ const TAB_STUDENT = ['student', 'Élève', '<path d="M12 3 2 8l10 5 10-5z"/><pat
 const TAB_TEACHER = ['teacher', 'Enseignant', '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 6h5M16 10h5M16 14h5"/>'];
 // Qui est la personne ? administrateur, enseignant (rôle donné par l'admin), élève (au moins un enseignant, message ou objectif), sinon simple utilisateur.
 // L'onglet Élève n'apparaît que pour un élève, l'onglet Enseignant que pour un enseignant ; un simple utilisateur n'a ni l'un ni l'autre (ses invitations sont dans Mon compte).
-const stuKey = () => 'hifz.stu.' + (me ? me.user.id : '');
+const stuKey = () => 'tathbit.stu.' + (me ? me.user.id : '');
 const isStudent = () => !!me && !isAdmin() && (tch.loaded ? !!((tch.links || []).length || (tch.msgs || []).length || (tch.goals || []).length) : !!store.get(stuKey(), false));
 const hasStudentTab = () => cloudOn() && !!me && !isAdmin() && (isStudent() || (cfg.tab === 'student' && !tch.loaded));
 const hasTeacherTab = () => cloudOn() && !!me && isTeacher();
@@ -1245,11 +1248,11 @@ function logError(r, score, info = {}){
   if (info.bad && info.bad.length) e.bad = info.bad.slice(0, 40);
   errors.push(e);
   if (errors.length > 2000) errors = errors.slice(-2000);
-  store.set('hifz.errors', errors);
+  store.set('tathbit.errors', errors);
 }
 function finish(score, extra = ''){
   if (cur.done) return; cur.done = true; stopMic();      // la solution s'affiche : le micro est coupé
-  if (cur.m === 'tajweed' || cur.hf){ days[today()] = (days[today()] || 0) + 1; store.set('hifz.days', days); }   // l'entraînement au tajwīd compte pour l'objectif du jour mais ne touche ni la révision espacée ni l'historique d'erreurs
+  if (cur.m === 'tajweed' || cur.hf){ days[today()] = (days[today()] || 0) + 1; store.set('tathbit.days', days); }   // l'entraînement au tajwīd compte pour l'objectif du jour mais ne touche ni la révision espacée ni l'historique d'erreurs
   else if (cur.perRef) cur.perRef.forEach(([x, sc], v) => { if (x.bas) return; record(x, sc); if (sc < 1){ ses.missed.push(x); logError(x, sc, {bad: cur.badV && cur.badV[v]}); } });
   else { record(cur.r, score); if (score < 1){ ses.missed.push(cur.r); logError(cur.r, score, cur.info); } }
   ses.score += score;
@@ -1696,7 +1699,7 @@ const hfAttrL = id => `${hfAttr(id).ar} · ${hfAttr(id).tr}`;
 const hfLet = c => `<span class="ar" style="font-size:1.25em">${c}</span>`;
 const hfGroup = a => a.map(hfLet).join(' ');
 function hfKeyLabel(k){ const [t, v] = k.split(':'); if (t === 'md') return `${tr('Madd')} · ${esc(MD_NAME[v] || v)}`; if (t === 'ah') return `${tr('Aḥkām')} · ${esc(AH_NAME[v] || v)}`; return t === 'mk' ? `${tr('Makhārij')} · ${hfLet(v)}` : `${tr('Ṣifāt')} · ${esc(hfAttrL(v))}`; }
-function hfStat(key, ok){ const x = hfs[key] || [0, 0]; hfs[key] = [x[0] + (ok ? 1 : 0), x[1] + (ok ? 0 : 1)]; store.set('hifz.hf', hfs);
+function hfStat(key, ok){ const x = hfs[key] || [0, 0]; hfs[key] = [x[0] + (ok ? 1 : 0), x[1] + (ok ? 0 : 1)]; store.set('tathbit.hf', hfs);
   const y = ((ses.hf ||= {})[key] ||= [0, 0]); y[ok ? 0 : 1]++; }
 const HFNOTE = () => { const S = window.HURUF.sources, a = (x, t) => `<a href="${x.url}" target="_blank" rel="noopener">${t}</a>`;
   return `<p class="ref" style="margin:8px 0 0">${tr("Sources : le texte d'Ibn al-Jazarī (« al-Jazariyya ») et deux articles de Wikipédia arabe, dont les listes de lettres concordent. Les 28 lettres de ء à ي sont traitées (l'alif est exclu).")} ${a(S[0], 'Wikisource')} · ${a(S[1], 'Wikipédia (makhārij)')} · ${a(S[2], 'Wikipédia (ṣifāt)')}</p>`; };
@@ -1809,7 +1812,7 @@ function qSifat(noCond){
   hfShow(q, tr('Vrai ou faux : la lettre ci-dessous a la qualité « {a} ».', {a: esc(hfAttrL(q.attr))}), q.letter, `${has ? tr('Vrai :') : tr('Faux :')} ${hfLet(q.letter)} : ${esc(per(q.letter))}`, 'sf:' + q.attr);
 }
 
-function tjStat(code, ok){ const x = tjs[code] || [0, 0]; tjs[code] = [x[0] + (ok ? 1 : 0), x[1] + (ok ? 0 : 1)]; store.set('hifz.tj', tjs); (ses.tj ||= {})[code] = [((ses.tj[code] || [0, 0])[0]) + (ok ? 1 : 0), ((ses.tj[code] || [0, 0])[1]) + (ok ? 0 : 1)]; }
+function tjStat(code, ok){ const x = tjs[code] || [0, 0]; tjs[code] = [x[0] + (ok ? 1 : 0), x[1] + (ok ? 0 : 1)]; store.set('tathbit.tj', tjs); (ses.tj ||= {})[code] = [((ses.tj[code] || [0, 0])[0]) + (ok ? 1 : 0), ((ses.tj[code] || [0, 0])[1]) + (ok ? 0 : 1)]; }
 const TJNOTE = () => `<p class="ref" style="margin:8px 0 0">${tr("Entraînement : les règles viennent d'une annotation automatique (Islamic Network), non relue par un enseignant. En cas de doute, fie-toi à ton professeur.")}</p>`;
 const TJUNIQ = 'npmoqcfwiaug';   // familles dont la couleur est unique dans la légende (h/l et d/b partagent un gris)
 const TJKINDS = [['rule', 'Reconnaître la règle'], ['color', 'Reconnaître la règle (avec les couleurs, plus facile)'], ['find', "Trouver la partie d'une règle"], ['tf', 'Vrai ou faux ?'], ['read', 'Lire la couleur (retrouver la règle avec la légende)'], ['mix', 'Mélange des types']];
@@ -2023,11 +2026,11 @@ function exportIcs(){
   const d = new Date(), p = n => String(n).padStart(2, '0');
   const ymd = d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate());
   const url = location.protocol.startsWith('http') ? '\\n' + location.href : '';
-  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Tathbīt//FR', 'BEGIN:VEVENT', 'UID:hifz-rappel-quotidien',
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Tathbit//FR', 'BEGIN:VEVENT', 'UID:tathbit-rappel-quotidien',
     'DTSTAMP:' + ymd + 'T000000Z', `DTSTART:${ymd}T${p(h)}${p(m)}00`, 'DURATION:PT15M', 'RRULE:FREQ=DAILY',
     'SUMMARY:' + tr('Révision du Coran (Tathbīt)'), 'DESCRIPTION:' + tr('Fais ta révision du jour.') + url,
     'BEGIN:VALARM', 'TRIGGER:PT0S', 'ACTION:DISPLAY', 'DESCRIPTION:' + tr('Révision du Coran'), 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
-  download('rappel-hifz.ics', ics, 'text/calendar');
+  download('rappel-tathbit.ics', ics, 'text/calendar');
 }
 const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const IOS_APP = navigator.standalone === true; // application installée sur l'écran d'accueil de l'iPhone
@@ -2087,22 +2090,22 @@ function csvRows(kind){
 }
 function exportCsv(kind){
   const k = CSVKINDS.some(x => x[0] === kind) ? kind : 'verses', sep = LANG === 'fr' ? ';' : ',';
-  download(`hifz-${k}-${today()}.csv`, toCsv(csvRows(k), sep), 'text/csv;charset=utf-8');
+  download(`tathbit-${k}-${today()}.csv`, toCsv(csvRows(k), sep), 'text/csv;charset=utf-8');
 }
 
 /* ---------- sauvegarde / restauration ---------- */
 function exportData(){
   const compte = me ? {email: me.user.email, role: me.profile && me.profile.role, enseignants: tch.links, invitations: tch.invites, messages: tch.msgs, objectifs: tch.goals, consultations: tch.log, resume_hebdo: tch.wk} : undefined;   // données de compte enregistrées sur le serveur (droit d'accès)
-  download('hifz-sauvegarde-' + today() + '.json', JSON.stringify({app: 'hifz', v: 1, cfg, stats, sched, days, custom, errors, plan, compte}), 'application/json');
+  download('tathbit-sauvegarde-' + today() + '.json', JSON.stringify({app: 'tathbit', v: 1, cfg, stats, sched, days, custom, errors, plan, compte}), 'application/json');
 }
 async function importFile(f){
   if (!f) return;
   try {
     const d = JSON.parse(await f.text());
-    if (d.app !== 'hifz' || typeof d.stats !== 'object') throw new Error('format');
+    if ((d.app !== 'tathbit' && d.app !== 'hifz') || typeof d.stats !== 'object') throw new Error('format');
     if (!confirm(tr('Remplacer ta progression actuelle par cette sauvegarde ?'))) return;
-    store.set('hifz.cfg', d.cfg || {}); store.set('hifz.stats', d.stats); store.set('hifz.sched', d.sched || {});
-    store.set('hifz.days', d.days || {}); store.set('hifz.custom', d.custom || []); store.set('hifz.errors', d.errors || []); store.set('hifz.plan', d.plan || null);
+    store.set('tathbit.cfg', d.cfg || {}); store.set('tathbit.stats', d.stats); store.set('tathbit.sched', d.sched || {});
+    store.set('tathbit.days', d.days || {}); store.set('tathbit.custom', d.custom || []); store.set('tathbit.errors', d.errors || []); store.set('tathbit.plan', d.plan || null);
     location.reload();
   } catch { alert(tr('Fichier non reconnu : choisis une sauvegarde exportée depuis Tathbīt.')); }
 }
@@ -2281,7 +2284,7 @@ function addCustom(){
   });
   const t = {id: 'u' + Date.now().toString(36), ar: title, fr: title, author: '', kind, unit: kind === 'poem' ? 'vers' : 'passage',
     source: {name: 'Saisi par toi', url: '', note: 'texte que tu as fourni : fais confiance à ton édition de référence'}, a, custom: true};
-  custom.push(t); store.set('hifz.custom', custom); MT[t.id] = t;
+  custom.push(t); store.set('tathbit.custom', custom); MT[t.id] = t;
   cfg.scope = {type: 'matn', id: t.id}; saveCfg(); home();
 }
 
@@ -2322,7 +2325,7 @@ const onClick = e => {
     case 'import': $('impfile').click(); break;
     case 'addcustom': addCustom(); break;
     case 'delcustom':
-      if (confirm(tr('Supprimer ce matn ?'))){ custom = custom.filter(t => t.id !== v); store.set('hifz.custom', custom); delete MT[v]; cfg.scope = {type: 'matn', id: 'all'}; saveCfg(); home(); } break;
+      if (confirm(tr('Supprimer ce matn ?'))){ custom = custom.filter(t => t.id !== v); store.set('tathbit.custom', custom); delete MT[v]; cfg.scope = {type: 'matn', id: 'all'}; saveCfg(); home(); } break;
     case 'listen': listen(); break;
     case 'play': playUrls(cur.audio.map(audioUrl)); break;
     case 'stopaudio': stopAudio(); break;
@@ -2444,7 +2447,7 @@ const onClick = e => {
     case 'hfilter': hf = v; home(); break;
     case 'hview': hv = v; home(); break;
     case 'hreview': if (hrefs.length) start(shuffle(hrefs)); break;
-    case 'hclear': if (confirm(tr("Effacer tout l'historique des erreurs ?"))){ errors = []; store.set('hifz.errors', errors); home(); } break;
+    case 'hclear': if (confirm(tr("Effacer tout l'historique des erreurs ?"))){ errors = []; store.set('tathbit.errors', errors); home(); } break;
     case 'nextq': nextQ(); break;
     case 'reveal': stopMic(); $('work').innerHTML = markUI(); break;
     case 'wd': el.classList.toggle('bad'); { const n = document.querySelectorAll('.wd.bad').length; $('mark-go').textContent = trp(n, 'Valider ({n} erreur)|Valider ({n} erreurs)'); } break;
@@ -2464,7 +2467,7 @@ const onClick = e => {
     case 'opt': onOpt(el); break;
     case 'retry': start(ses.missed.slice()); break;
     case 'again': start(); break;
-    case 'reset': if (confirm(tr("Effacer toutes tes statistiques et ton historique d'erreurs ?"))){ stats = {}; sched = {}; days = {}; errors = []; tjs = {}; hfs = {}; store.set('hifz.tj', tjs); store.set('hifz.hf', hfs); store.set('hifz.errors', errors); store.set('hifz.stats', stats); store.set('hifz.sched', sched); store.set('hifz.days', days); home(); } break;
+    case 'reset': if (confirm(tr("Effacer toutes tes statistiques et ton historique d'erreurs ?"))){ stats = {}; sched = {}; days = {}; errors = []; tjs = {}; hfs = {}; store.set('tathbit.tj', tjs); store.set('tathbit.hf', hfs); store.set('tathbit.errors', errors); store.set('tathbit.stats', stats); store.set('tathbit.sched', sched); store.set('tathbit.days', days); home(); } break;
   }
 };
 $app.addEventListener('click', onClick);
@@ -2691,7 +2694,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v52';
+const APP_VERSION = '23 oct. 2026 · v53';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2702,20 +2705,20 @@ async function forceUpdate(el){
   } catch {}
   location.reload();
 }
-const CLOUD = window.HIFZ_CLOUD || {};
+const CLOUD = window.TATHBIT_CLOUD || window.HIFZ_CLOUD || {};
 const cloudOn = () => !!(CLOUD.url && CLOUD.anonKey);
 let sb = null, me = null, screen = 'tab', loadingMe = false;
 let acc = {mode: 'login', msg: '', ok: false, busy: false, resend: '', resendAt: 0, last: '', syncErr: '', d: {email: '', pass: '', pass2: '', consent: false}}; // d : brouillon du formulaire (gardé en mémoire seulement)
 let adm = {users: null, q: '', detail: null, msg: '', reqs: []};
-const SYNC_KEYS = ['hifz.cfg', 'hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan', 'hifz.tj', 'hifz.hf'];
+const SYNC_KEYS = ['tathbit.cfg', 'tathbit.stats', 'tathbit.sched', 'tathbit.days', 'tathbit.errors', 'tathbit.custom', 'tathbit.plan', 'tathbit.tj', 'tathbit.hf'];
 let syncPause = false, pushTimer = null;
-const cmeta = () => store.get('hifz.cloud', {});
+const cmeta = () => store.get('tathbit.cloud', {});
 const isAdmin = () => !!(me && me.profile && me.profile.role === 'admin');
 const REDIRECT = () => location.origin + location.pathname;
 
 cloudDirty = k => {
   if (syncPause || !me || !SYNC_KEYS.includes(k)) return;
-  store.set('hifz.cloud', {...cmeta(), dirty: true});
+  store.set('tathbit.cloud', {...cmeta(), dirty: true});
   clearTimeout(pushTimer); pushTimer = setTimeout(cloudPush, 3000);
 };
 function friendly(e){
@@ -2770,11 +2773,11 @@ async function loadMe(sess){
     if (error) throw error;
     if (!prof) throw new Error('relation profiles does not exist (profil introuvable)');
     if (prof.blocked){ await sb.auth.signOut(); me = null; acc.msg = tr('Ce compte est suspendu.'); acc.ok = false; return; }
-    me = {user: {id: u.id, email: u.email}, profile: prof}; store.set('hifz.me', me);
+    me = {user: {id: u.id, email: u.email}, profile: prof}; store.set('tathbit.me', me);
     sb.rpc('touch');
     await cloudSyncOnLogin();
   } catch (e){
-    const c = store.get('hifz.me', null); // hors ligne : on reprend le dernier profil connu de cette session
+    const c = store.get('tathbit.me', null); // hors ligne : on reprend le dernier profil connu de cette session
     if (c && sess && c.user.id === sess.user.id && /Failed to fetch|NetworkError|Load failed/i.test(String(e && e.message))) me = c;
     else { acc.msg = friendly(e); acc.ok = false; }
   }
@@ -2790,9 +2793,9 @@ function applyRemote(d){
     stats = d.stats || {}; sched = d.sched || {}; days = d.days || {}; errors = d.errors || [];
     custom.forEach(t => { delete MT[t.id]; }); custom = d.custom || []; custom.forEach(t => { MT[t.id] = t; });
     if (d.cfg){ const keep = cfg.tab; Object.assign(cfg, d.cfg); cfg.tab = keep; }
-    store.set('hifz.stats', stats); store.set('hifz.sched', sched); store.set('hifz.days', days);
-    plan = d.plan || null; store.set('hifz.plan', plan); tjs = d.tj || {}; store.set('hifz.tj', tjs); hfs = d.hf || {}; store.set('hifz.hf', hfs);
-    store.set('hifz.errors', errors); store.set('hifz.custom', custom); saveCfg();
+    store.set('tathbit.stats', stats); store.set('tathbit.sched', sched); store.set('tathbit.days', days);
+    plan = d.plan || null; store.set('tathbit.plan', plan); tjs = d.tj || {}; store.set('tathbit.tj', tjs); hfs = d.hf || {}; store.set('tathbit.hf', hfs);
+    store.set('tathbit.errors', errors); store.set('tathbit.custom', custom); saveCfg();
   } finally { syncPause = false; }
 }
 function mergeData(a, b){ // a = cet appareil, b = compte : on ne perd rien
@@ -2816,7 +2819,7 @@ async function cloudPush(){
     const t = new Date().toISOString();
     const {error} = await sb.from('user_data').upsert({user_id: me.user.id, data: snap(), updated_at: t});
     if (error) throw error;
-    store.set('hifz.cloud', {uid: me.user.id, t, dirty: false}); acc.last = t; acc.syncErr = '';
+    store.set('tathbit.cloud', {uid: me.user.id, t, dirty: false}); acc.last = t; acc.syncErr = '';
   } catch (e){ acc.syncErr = friendly(e); }
   if (screen === 'account') renderAccount();
 }
@@ -2824,7 +2827,7 @@ async function cloudSyncOnLogin(){
   const meta = cmeta(), uid = me.user.id;
   const {data: remote, error} = await sb.from('user_data').select('data,updated_at').eq('user_id', uid).maybeSingle();
   if (error) throw error;
-  const stamp = () => { acc.last = new Date().toISOString(); store.set('hifz.cloud', {uid, t: acc.last, dirty: false}); };
+  const stamp = () => { acc.last = new Date().toISOString(); store.set('tathbit.cloud', {uid, t: acc.last, dirty: false}); };
   if (!remote){ if (hasLocal()) await cloudPush(); else stamp(); return; }
   if (meta.uid === uid){
     if (meta.dirty) await cloudPush();                                                // modifications locales non envoyées : elles gagnent
@@ -2953,20 +2956,20 @@ const doLogout = async () => {
   clearTimeout(pushTimer); await cloudPush();
   if (remState().on) await pushDrop();
   if (acc.syncErr && !confirm(tr('La dernière synchronisation a échoué : te déconnecter perdra les changements non envoyés. Continuer ?'))) return;
-  await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.me'); } catch {}
+  await sb.auth.signOut(); me = null; try { localStorage.removeItem('tathbit.me'); } catch {}
   syncPause = true; stats = {}; sched = {}; days = {}; errors = []; plan = null; tjs = {}; hfs = {}; custom.forEach(t => { delete MT[t.id]; }); custom = [];
-  ['hifz.stats', 'hifz.sched', 'hifz.days', 'hifz.errors', 'hifz.custom', 'hifz.plan', 'hifz.tj', 'hifz.hf', 'hifz.cloud'].forEach(k => { try { localStorage.removeItem(k); } catch {} });
+  ['tathbit.stats', 'tathbit.sched', 'tathbit.days', 'tathbit.errors', 'tathbit.custom', 'tathbit.plan', 'tathbit.tj', 'tathbit.hf', 'tathbit.cloud'].forEach(k => { try { localStorage.removeItem(k); } catch {} });
   syncPause = false; acc.msg = tr('Déconnecté.'); acc.ok = true; acc.auto = true; acc.mode = 'login'; renderAccount();
 };
 const doDeleteMe = () => busy(async () => {
   if (!confirm(tr('Supprimer définitivement ton compte et ta progression enregistrée ? Cette action est irréversible.'))) return;
   const {error} = await sb.rpc('delete_me'); if (error) throw error;
-  await sb.auth.signOut(); me = null; try { localStorage.removeItem('hifz.cloud'); localStorage.removeItem('hifz.me'); } catch {}
+  await sb.auth.signOut(); me = null; try { localStorage.removeItem('tathbit.cloud'); localStorage.removeItem('tathbit.me'); } catch {}
   acc.mode = 'login'; acc.ok = true; acc.msg = tr('Compte supprimé. La progression de cet appareil est conservée.');
 });
 
 /* ---------- audio hors ligne : sourates téléchargées dans le cache de l'appareil (lues ensuite sans connexion) ---------- */
-const AUDIO_CACHE = 'hifz-audio-v1';
+const AUDIO_CACHE = 'tathbit-audio-v1';
 let audioUI = {plan: null, busy: false, ctl: null};
 const audioSurahs = () => { const a = Math.min(cfg.audFrom, cfg.audTo), b = Math.max(cfg.audFrom, cfg.audTo); return Array.from({length: b - a + 1}, (_, i) => a + i); };
 const audioOk = () => 'caches' in window && 'serviceWorker' in navigator && !!AU_EA[cfg.reciter];
@@ -3031,9 +3034,9 @@ async function audioPlanToday(auto){ // télécharge l'audio des sourates du pla
 }
 function maybeAutoAudio(){ // une fois par jour et par récitateur, seulement si le navigateur confirme le Wi-Fi
   if (!cfg.audAuto || !plan || audioUI.busy || !audioOk() || !auWifi(navigator.connection)) return;
-  const k = today() + cfg.reciter, last = store.get('hifz.audioAuto', '');
+  const k = today() + cfg.reciter, last = store.get('tathbit.audioAuto', '');
   if (last === k && !auMissing(auPlanSurahs(planToday()), audioSet(cfg.reciter)).length) return;
-  store.set('hifz.audioAuto', k); audioPlanToday(true);
+  store.set('tathbit.audioAuto', k); audioPlanToday(true);
 }
 async function audioGo(){
   const rec = cfg.reciter, q = auQ(rec, cfg.audQ), P = audioUI.plan; if (!P || !P.take.length || audioUI.busy) return;
@@ -3056,7 +3059,7 @@ async function audioGo(){
           const bar = $('aud-bar'); if (bar) bar.style.width = Math.round(100 * doneV / totalV) + '%';
           audioMsg(tr('Téléchargement… {a} / {b} versets', {a: doneV, b: totalV}));
         }
-        audioOff[rec] = {...audioSet(rec), [s]: {b: bytes, q}}; store.set('hifz.audio', audioOff);
+        audioOff[rec] = {...audioSet(rec), [s]: {b: bytes, q}}; store.set('tathbit.audio', audioOff);
         if (old && old.q !== q) await Promise.all(Q[s - 1].a.map((_, i) => cache.delete(auUrl(rec, s, i + 1, old.q)).catch(() => {})));   // l'autre qualité n'est plus utile
       } catch (e){ await Promise.all(urls.map(u => cache.delete(u).catch(() => {}))); throw e; }   // sourate incomplète : on ne garde rien
     }
@@ -3065,10 +3068,10 @@ async function audioGo(){
   audioUI.busy = false; audioUI.ctl = null; audioUI.plan = null; home();
   audioMsg(stopped === 'ok' ? tr('Terminé : disponible sans connexion.') : stopped === 'cap' ? tr('Plafond de taille atteint : la sourate en cours n\'a pas été gardée.') : stopped === 'cancel' ? tr('Téléchargement annulé.') : tr('Échec du téléchargement ({e}). Les sourates terminées sont gardées.', {e: stopped.slice(4)}), stopped === 'ok' ? true : false);
 }
-async function audioDel(s){ const rec = cfg.reciter, cache = await caches.open(AUDIO_CACHE), q = auEntry(audioSet(rec)[s] || 64).q; await Promise.all(Q[s - 1].a.map((_, i) => cache.delete(auUrl(rec, s, i + 1, q)))); const o = {...audioSet(rec)}; delete o[s]; audioOff[rec] = o; store.set('hifz.audio', audioOff); home(); }
+async function audioDel(s){ const rec = cfg.reciter, cache = await caches.open(AUDIO_CACHE), q = auEntry(audioSet(rec)[s] || 64).q; await Promise.all(Q[s - 1].a.map((_, i) => cache.delete(auUrl(rec, s, i + 1, q)))); const o = {...audioSet(rec)}; delete o[s]; audioOff[rec] = o; store.set('tathbit.audio', audioOff); home(); }
 async function audioDelAll(){ if (!confirm(tr("Supprimer tout l'audio téléchargé de ce récitateur ?"))) return; for (const s of Object.keys(audioSet(cfg.reciter))) await audioDel(+s); }
 /* ---------- rappels : notifications Web Push (envoyées par la fonction Supabase « send-reminders ») ---------- */
-const remState = () => Object.assign({on: false, time: '20:00', two: false, time2: '21:30'}, store.get('hifz.remind', {}));
+const remState = () => Object.assign({on: false, time: '20:00', two: false, time2: '21:30'}, store.get('tathbit.remind', {}));
 const PUSH_OK = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 const urlB64 = x => Uint8Array.from(atob(x.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 const remMsg = (m, ok) => { const e = $('rem-msg'); if (e){ e.textContent = m || ''; e.style.color = ok === false ? 'var(--ko)' : ''; } };
@@ -3104,14 +3107,14 @@ async function pushEnable(time, two, time2){
   if (two && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time2)) throw new Error(tr("Heure invalide."));
   if (two && time2 <= time) throw new Error(tr("Le 2e rappel doit être après le 1er."));
   await pushSubscribeServer(sub, time, two ? time2 : null);
-  store.set('hifz.remind', {on: true, time, two: !!two, time2: two ? time2 : remState().time2});
+  store.set('tathbit.remind', {on: true, time, two: !!two, time2: two ? time2 : remState().time2});
 }
 async function pushDrop(){ // retire l'abonnement (serveur + appareil)
   try {
     const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
     if (sub){ if (sb) await sb.rpc('push_unsubscribe', {p_endpoint: sub.endpoint}); await sub.unsubscribe(); }
   } catch {}
-  store.set('hifz.remind', Object.assign(remState(), {on: false}));
+  store.set('tathbit.remind', Object.assign(remState(), {on: false}));
 }
 async function pushResync(){ // change la langue/l'heure sans redemander la permission
   const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
@@ -3126,7 +3129,7 @@ async function remAction(act){
     else if (act === 'rem-test'){
       if (Notification.permission !== 'granted') throw new Error(tr('Notifications refusées : autorise-les dans les réglages de ton téléphone.'));
       const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification('Tathbīt', {body: tr("C'est l'heure de ta révision 📖"), icon: 'icons/icon-192.png', tag: 'hifz-test'});
+      await reg.showNotification('Tathbīt', {body: tr("C'est l'heure de ta révision 📖"), icon: 'icons/icon-192.png', tag: 'tathbit-test'});
       remMsg(tr('Notification de test envoyée.'), true);
     }
   } catch (e){ remMsg(friendly(e), false); }
@@ -3136,7 +3139,7 @@ async function remAction(act){
 const LEGAL_DATE = '2026-10-21';
 function renderLegal(){
   setNav(false); screen = 'legal';
-  const L = Object.assign({contact: '', region: ''}, window.HIFZ_LEGAL || {});
+  const L = Object.assign({contact: '', region: ''}, window.TATHBIT_LEGAL || window.HIFZ_LEGAL || {});
   const contact = L.contact ? `<a href="mailto:${esc(L.contact)}">${esc(L.contact)}</a>` : tr('(adresse à compléter)');
   const cnil = '<a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">cnil.fr/fr/plaintes</a>';
   const region = L.region ? ', ' + tr('région : {r}', {r: esc(L.region)}) : '';
@@ -3322,7 +3325,7 @@ function nfToggle(){ const p = nfPanel(); if (!p.hidden) return nfClose(); p.hid
 function nfClose(){ const p = $('nf-panel'); if (p && !p.hidden){ p.hidden = true; const b = $('bell'); if (b){ b.setAttribute('aria-expanded', 'false'); b.focus(); } } }
 async function nfRead(id){ try { await sb.rpc('notif_read', {p_id: id}); } catch { /* sans effet : on le verra au prochain chargement */ } const x = nf.list.find(y => y.id === id); if (x && !x.read_at) x.read_at = new Date().toISOString(); nfPaint(); }
 async function nfAll(){ try { await sb.rpc('notifs_read_all'); } catch { /* idem */ } nf.list.forEach(x => { if (!x.read_at) x.read_at = new Date().toISOString(); }); nfPaint(); }
-async function refreshProfile(){ try { const {data} = await sb.from('profiles').select('*').eq('id', me.user.id).maybeSingle(); if (data){ me.profile = data; store.set('hifz.me', me); } } catch { /* on garde le profil connu */ } }
+async function refreshProfile(){ try { const {data} = await sb.from('profiles').select('*').eq('id', me.user.id).maybeSingle(); if (data){ me.profile = data; store.set('tathbit.me', me); } } catch { /* on garde le profil connu */ } }
 async function nfOpen(id){
   const x = nf.list.find(y => y.id === id); if (!x) return;
   nfClose(); await nfRead(id);

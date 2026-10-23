@@ -19,7 +19,7 @@ def norm(w):
 
 
 raw = json.loads(urllib.request.urlopen(urllib.request.Request(
-    "https://api.alquran.cloud/v1/quran/quran-uthmani", headers={"User-Agent": "HifzApp/1.0"}), timeout=60).read())
+    "https://api.alquran.cloud/v1/quran/quran-uthmani", headers={"User-Agent": "TathbitApp/1.0"}), timeout=60).read())
 verses = []  # (s, a, tokens)
 for s in raw["data"]["surahs"]:
     for i, v in enumerate(s["ayahs"]):
