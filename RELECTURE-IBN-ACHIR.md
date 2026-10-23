@@ -1,19 +1,20 @@
 # Fiche de relecture : Ibn ʿĀshir, *al-Murshid al-Muʿīn*
 
 Le texte de l'application vient de **deux transcriptions de blogs** (copie A, retenue, et copie B) qui s'accordent à 96,8 %.
-Toutes les divergences entre les deux copies ont été **relues et tranchées par une personne le 23 oct. 2026** : 9 mots corrigés (section 1), 47 mots de la copie A confirmés (section 2). L'IA n'a rien tranché.
+Toutes les divergences entre les deux copies ont été **relues et tranchées par une personne le 23 oct. 2026** : 10 mots corrigés (section 1), 47 mots de la copie A confirmés (section 2). L'IA n'a rien tranché.
 
 Les 5 vers d'introduction (n° 1 à 5, seulement dans la copie A) ont aussi été relus : un mot corrigé (vers 4).
 
 **Pas encore relu :** les passages où les deux copies sont d'accord (hors vers d'introduction) ; le nombre de vers (314 dans l’application, 317 dans les sources) ; les titres des 27 chapitres.
 
-## 1. Mots corrigés par la relecture : 9
+## 1. Mots corrigés par la relecture : 10
 | N° du vers | Chapitre | Mot dans l'appli | Mot de la copie B | Vers complet (texte de l'appli) |
 |---|---|---|---|---|
 | 4 | Introduction | **فَالعَونَ** | **—** | وبَعدُ فَالعَونَ مِنَ اللهِ المَجيدْ فِي نَظْمِ أبْيَاتٍ لِلأُمِّيِّ تُفِيدْ |
-| 13 | Introduction au livre du credo | **الشَّعَرْ** | **—** | أو بمَنِيِّ أوْ بإِنْباتِ الشَّعَرْ أوْ بِثَمانِ عّشْرَةٍ حَوْلا ظَهَرْ |
-| 13 | Introduction au livre du credo | **بِثَمانِ** | **—** | أو بمَنِيِّ أوْ بإِنْباتِ الشَّعَرْ أوْ بِثَمانِ عّشْرَةٍ حَوْلا ظَهَرْ |
-| 13 | Introduction au livre du credo | **عّشْرَةٍ** | **—** | أو بمَنِيِّ أوْ بإِنْباتِ الشَّعَرْ أوْ بِثَمانِ عّشْرَةٍ حَوْلا ظَهَرْ |
+| 9 | Introduction au livre du credo | **للضَّرَرِي** | **—** | وجَائِزًا مَا قَبِلَ الأَمْرَيْنِ سِمْ للضَّرَرِي والنَّظري كُلُّ قُسِم |
+| 13 | Introduction au livre du credo | **الشَّعَرْ** | **—** | أو بمَنِيِّ أوْ بإِنْباتِ الشَّعَرْ أوْ بِثَمانِ عّشْرَةً حَوْلا ظَهَرْ |
+| 13 | Introduction au livre du credo | **بِثَمانِ** | **—** | أو بمَنِيِّ أوْ بإِنْباتِ الشَّعَرْ أوْ بِثَمانِ عّشْرَةً حَوْلا ظَهَرْ |
+| 13 | Introduction au livre du credo | **عّشْرَةً** | **—** | أو بمَنِيِّ أوْ بإِنْباتِ الشَّعَرْ أوْ بِثَمانِ عّشْرَةً حَوْلا ظَهَرْ |
 | 89 | Ce qui rend le grand lavage obligatoire | **والآخِرَان** | **والاحَرَان** | وَالأوَّلانِ مَنَعَا الْوَطْءَ إلَى غُسْلٍ والآخِرَان قُرْءانا خَلا |
 | 172 | Les conditions de l'imam | **وَأَغْلَفٌ** | **,َأغْلَفُ** | وَرَاتِبٌ مَجْهُولٌ أوْ مَنْ أُبِنَا وَأَغْلَفٌ عَبْدٌ خَصِيُّ ابْنُ زِنَا |
 | 201 | Livre de la zakât | **وَمِائَةْ** | **ومائة** | فِي وَاحِدٍ عِشْرينَ يَتْلو وَمِائَةْ وَمَعْ ثَمانينَ ثَلاثٌ مُجْزِئَةْ |
@@ -24,8 +25,8 @@ Les 5 vers d'introduction (n° 1 à 5, seulement dans la copie A) ont aussi ét�
 | N° du vers | Chapitre | Mot dans l'appli | Mot de la copie B | Vers complet (texte de l'appli) |
 |---|---|---|---|---|
 | 8 | Introduction au livre du credo | **المُحَالْ** | **المُجَالْ** | فواجِبٌ لا يَقْبَلُ النَّفْيَ بِحالْ وَمَا أبىَ الثُّبوتَ عَقْلا المُحَالْ |
-| 9 | Introduction au livre du credo | **قَبِلَ** | **قابَلَ** | وجَائِزًا مَا قَبِلَ الأَمْرَيْنِ سِمْ للضَّرُوري والنَّظري كُلُّ قُسِم |
-| 9 | Introduction au livre du credo | **سِمْ** | **إسم** | وجَائِزًا مَا قَبِلَ الأَمْرَيْنِ سِمْ للضَّرُوري والنَّظري كُلُّ قُسِم |
+| 9 | Introduction au livre du credo | **قَبِلَ** | **قابَلَ** | وجَائِزًا مَا قَبِلَ الأَمْرَيْنِ سِمْ للضَّرَرِي والنَّظري كُلُّ قُسِم |
+| 9 | Introduction au livre du credo | **سِمْ** | **إسم** | وجَائِزًا مَا قَبِلَ الأَمْرَيْنِ سِمْ للضَّرَرِي والنَّظري كُلُّ قُسِم |
 | 17 | La mère des fondements : les croyances (ʿaqāʾid) | **حَيَاةْ** | **حَيَا** | وَقُدْرَةُ إرادَةُ عِلْمُ حَيَاةْ سَمْعُ كَلامُ بَصَرُ ذي وَاجِباتْ |
 | 18 | La mère des fondements : les croyances (ʿaqāʾid) | **الصفاتْ** | **الصفتات** | ويستحيلُ ضدُّ هذه الصفاتْ العدمُ الحدوثُ ذا للحَادثاتْ |
 | 22 | La mère des fondements : les croyances (ʿaqāʾid) | **وُجودهُ** | **وُجزدهُ** | وُجودهُ لَهُ دَليلُ قاطِعْ حاجةُ كُلِّ مُحْدَثِ لِلصَّانِعْ |

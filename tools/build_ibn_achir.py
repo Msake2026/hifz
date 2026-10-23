@@ -110,7 +110,8 @@ CORRECTIONS = {_w(o): _w(n) for o, n in [
     ("641 64e 627 644 639 64e 648 646 64f", "641 64e 627 644 639 64e 648 646 64e"),          # vers 4   : فَالعَونُ -> فَالعَونَ (fatha sur la dernière lettre)
     ("627 644 634 651 64e 639 652 631 650", "627 644 634 651 64e 639 64e 631 652"),         # vers 13 (14 avant retrait du vers 6) : الشَّعْرِ -> الشَّعَرْ (fatha sur le ʿayn, sukūn sur le rāʾ)
     ("628 650 62b 64e 645 627 646", "628 650 62b 64e 645 627 646 650"),                      #   idem : ثَمان -> ثَمانِ (kasra sur le nūn)
-    ("639 651 634 652 631 64e 629 650", "639 651 634 652 631 64e 629 64d")                   #   idem : عّشْرَةِ -> عّشْرَةٍ (tanwīn kasr sur la tāʾ marbūṭa)
+    ("639 651 634 652 631 64e 629 650", "639 651 634 652 631 64e 629 64b"),                  #   idem : عّشْرَةِ -> عّشْرَةً (fathatan sur la tāʾ marbūṭa)
+    ("644 644 636 651 64e 631 64f 648 631 64a", "644 644 636 651 64e 631 64e 631 650 64a")  # vers 9 (10 avant retrait du vers 6) : للضَّرُوري -> للضَّرَرِي (choix A : sans wāw, fatha puis kasra sur les deux rāʾ)
 ]}
 
 

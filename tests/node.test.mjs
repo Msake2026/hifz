@@ -36,7 +36,8 @@ test('moutoun.js : 61 + 34 + 314 + 42 unités, chaque unité non vide, texte ara
   assert.ok(ib.a[213].t.split(' ')[1].startsWith('\u062d\u0650'), 'vers 214 : ḥijja (kasra sur le ḥāʾ), correction de relecture');
   const ws = k => ib.a[k - 1].t.split(' ');
   assert.ok(!ib.a.some(u => u.t.includes('\u0645\u064f\u0642\u062f\u0651\u0650\u0645\u0629\u064c \u0644\u0650\u0643\u0650\u062a\u0627\u0628\u0650')), 'le vers « مقدمة لكتاب الاعتقاد » a été retiré (c’est un titre de chapitre)');
-  assert.ok(ws(13).includes('\u0627\u0644\u0634\u0651\u064e\u0639\u064e\u0631\u0652') && ws(13).includes('\u0628\u0650\u062b\u064e\u0645\u0627\u0646\u0650') && ws(13).includes('\u0639\u0651\u0634\u0652\u0631\u064e\u0629\u064d'), 'vers 13 : الشَّعَرْ، ثَمانِ، عّشْرَةٍ');
+  assert.ok(ws(13).includes('\u0627\u0644\u0634\u0651\u064e\u0639\u064e\u0631\u0652') && ws(13).includes('\u0628\u0650\u062b\u064e\u0645\u0627\u0646\u0650') && ws(13).includes('\u0639\u0651\u0634\u0652\u0631\u064e\u0629\u064b'), 'vers 13 : الشَّعَرْ، ثَمانِ، عّشْرَةً');
+  assert.ok(ws(9).includes('\u0644\u0644\u0636\u0651\u064e\u0631\u064e\u0631\u0650\u064a'), 'vers 9 : للضَّرَرِي');
   assert.ok(ws(4).includes('\u0641\u064e\u0627\u0644\u0639\u064e\u0648\u0646\u064e'), 'vers 4 : فَالعَونَ (fatha sur la dernière lettre)');
   assert.ok(ws(89).includes('\u0648\u0627\u0644\u0622\u062e\u0650\u0631\u064e\u0627\u0646'), 'vers 89 : والآخِرَان (kasra sur le khāʾ)');
   assert.ok(ws(172).some(w => w.startsWith('\u0648\u064e\u0623\u064e\u063a')), 'vers 172 : fatha sur le wāw et sur l’alif de وَأَغْلَفٌ');
