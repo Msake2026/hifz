@@ -495,3 +495,15 @@ test('contenus rédigés par l’IA : la mention « pas une source officielle »
   for (const f of ['CONDRULE', 'AHNOTE', 'TJNOTE']) { const i = html.indexOf('const ' + f + ' ='); assert.ok(html.slice(i, i + 1500).includes('${AI()}'), f + ' doit porter la mention'); }
   assert.ok(html.includes("D'où viennent les contenus ?") && html.includes('Rédigé par une IA, pas une source officielle'), 'carte « D’où viennent les contenus ? » dans Réglages');
 });
+
+test('PWA : écrans de lancement iPhone et captures du manifeste existent, avec les bonnes dimensions', () => {
+  const html = read('index.html'), man = JSON.parse(read('manifest.webmanifest'));
+  const dims = f => { const b = fs.readFileSync(f); if (b[0] === 0x89) return [b.readUInt32BE(16), b.readUInt32BE(20)]; let i = 2; while (i < b.length) { if (b[i] !== 0xff) { i++; continue; } const m = b[i + 1]; if (m >= 0xc0 && m <= 0xc3) return [b.readUInt16BE(i + 7), b.readUInt16BE(i + 5)]; i += 2 + b.readUInt16BE(i + 2); } return null; };
+  const links = [...html.matchAll(/<link rel="apple-touch-startup-image" media="\(device-width: (\d+)px\) and \(device-height: (\d+)px\) and \(-webkit-device-pixel-ratio: (\d)\) and \(orientation: portrait\)" href="([^"]+)">/g)];
+  assert.ok(links.length >= 10, 'au moins 10 tailles d’iPhone');
+  for (const [, w, h, d, href] of links) assert.deepEqual(dims(href), [w * d, h * d], href + ' : dimensions = largeur×densité');
+  assert.equal(new Set(links.map(l => l.slice(1, 4).join('x'))).size, links.length, 'une balise par appareil');
+  assert.ok(Array.isArray(man.screenshots) && man.screenshots.length >= 2, 'captures du manifeste');
+  for (const s of man.screenshots) { assert.deepEqual(dims(s.src), s.sizes.split('x').map(Number), s.src); assert.equal(s.form_factor, 'narrow'); }
+  assert.ok(man.id, 'identifiant de l’application');
+});
