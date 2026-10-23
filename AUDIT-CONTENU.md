@@ -43,6 +43,7 @@ Résultat : **315 vers** (les sources citent 317 : 2 vers manquent peut-être da
 `لو أمكن / لو لم يك` (strophe sur le fanāʾ), `عالَما / عَلَما`, `الإيمان / الإسلام`, `حتما / ختما`, `لغير / عن`, `بفصل / بفضل`, `ونعم / وغنم`, `السقي / القي`, `لرفض / لفرض`, `والأشواط / والأشراط`, `بنسج / بسبح`, le vers « وادع بما شئت لدى الملتزم… » (présent dans A seulement) et le mot `حجه` (A seulement).
 Rejeté : l'édition « modfied » d'archive.org (item *Murshed-mu3in*) : le texte est remanié (titres et vers différents), ce n'est pas celui d'Ibn ʿĀshir. Les scans OCR d'archive.org sont illisibles (voyelles).
 **Fiche de relecture à remettre à une personne qui a l'édition imprimée : [RELECTURE-IBN-ACHIR.md](RELECTURE-IBN-ACHIR.md)** (15 divergences à trancher en priorité, puis 37 autres, chacune avec le vers complet).
+**Corrections de voyelles faites par relecture humaine** (seules retouches du texte de la copie A) : vers 215, `حَجَّةٍ` → `حِجَّةٍ` (23 oct. 2026).
 Un essai de « correction » de ma part, de mémoire, s'est révélé faux (الطُّهْران est juste, l'autre copie a la coquille) : je n'en fais plus aucune.
 
 **Manquant** : *Manẓūmat al-ʿAqāʾid ash-Sharnūbiyya* (ʿAbd al-Majīd ash-Sharnūbī) : aucune version texte fiable trouvée (seulement des scans PDF/EPUB illisibles à l'OCR). Non ajoutée. Pour l'ajouter : copier le texte depuis ton édition dans « Mes moutoun », ou m'en envoyer des photos lisibles.

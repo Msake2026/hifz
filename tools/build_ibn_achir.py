@@ -93,6 +93,10 @@ def tidy(w):
     return w
 
 
+# Corrections de voyelles faites par une relecture humaine (seules modifications du texte de la copie A). mot de A -> mot corrigé
+CORRECTIONS = {"\u062d\u064e\u062c\u0651\u064e\u0629\u064d": "\u062d\u0650\u062c\u0651\u064e\u0629\u064d"}   # حَجَّةٍ -> حِجَّةٍ (ordre des voyelles = celui de la source)   # vers 215 : ḥijja (ذو الحجة), pas ḥajja ; relecture de l'utilisateur, 23 oct. 2026
+
+
 LAST_REVIEW = []   # remplie par ibn_ashir() : une ligne par divergence (voir tools/review_ibn_achir.py)
 
 
@@ -105,6 +109,10 @@ def ibn_ashir():
     A = [(l, i) for i, l in enumerate(a[a0:a1]) if sk(l) not in HEADINGS]
     # A : jetons (forme d'origine, clé, n° de ligne)
     S = [(tidy(w), sk(w).replace(" ", ""), li) for l, li in A for w in junk(l).split() if sk(w)]
+    for old, new in CORRECTIONS.items():
+        hits = [k for k, t in enumerate(S) if t[0] == old]
+        assert len(hits) == 1, (old, len(hits))
+        S[hits[0]] = (new,) + S[hits[0]][1:]
     # B : un vers par ligne (B_SPLIT recolle les trois vers coupés)
     bl, i = [], b0
     while i < b1:

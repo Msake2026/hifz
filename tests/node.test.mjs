@@ -33,6 +33,7 @@ test('moutoun.js : 61 + 34 + 315 + 42 unités, chaque unité non vide, texte ara
     assert.ok(u.m >= 2 && u.m < u.t.split(' ').length, 'ibnachir vers ' + (i + 1) + ' : coupure');
   });
   assert.ok(ib.source.url && ib.source.note, 'source et mise en garde affichées');
+  assert.ok(ib.a[214].t.split(' ')[1].startsWith('\u062d\u0650'), 'vers 215 : ḥijja (kasra sur le ḥāʾ), correction de relecture');
   const I = loadGlobal('i18n.js', 'I18N');
   M.texts.filter(t => t.sec).forEach(t => {
     assert.equal(t.sec[0].from, 1, t.id + ' : le 1er bloc commence au vers 1');
