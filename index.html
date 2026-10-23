@@ -463,7 +463,7 @@ if (stored.strict === true && !stored.corr) cfg.corr = 'strict';
 LANG = ['fr', 'en', 'ar'].includes(cfg.lang) ? cfg.lang : 'fr'; applyLang();
 let stats = store.get('tathbit.stats', {}); // "s:a" -> [ok, ko]
 let errors = store.get('tathbit.errors', []); // journal : {t, k, m, sc, ans?, bad?[]}
-let plan = store.get('tathbit.plan', null);   // plan de mémorisation (voir plus bas)
+let plan = store.get('tathbit.plan', null);   // plan de révision (voir plus bas)
 const savePlan = () => store.set('tathbit.plan', plan);
 let sched = store.get('tathbit.sched', {}); // "s:a" -> {iv: jours, due: timestamp}
 let hfs = store.get('tathbit.hf', {});       // makhārij / ṣifāt : « mk:ظ » ou « sf:qalqala » -> [réussies, ratées]
@@ -837,7 +837,7 @@ function tabHome(){
     <button class="list-btn" data-act="tab" data-v="errors"><span>${tr('Voir toutes mes erreurs')}</span><span>›</span></button></div>` : ''}`;
 }
 
-/* -- Plan de mémorisation : sabaq (nouveau), sabqi (révision récente), manzil (révision ancienne) -- */
+/* -- Plan de révision : sabaq (nouveau), sabqi (révision récente), manzil (révision ancienne) -- */
 const PLAN_AMT = ['v3', 'v5', 'v10', 'v16', 'p0.25', 'p0.5', 'p1'];
 const amtLabel = a => a[0] === 'v' ? tr('{n} versets', {n: a.slice(1)}) : ({'p0.25': tr('¼ page'), 'p0.5': tr('½ page'), 'p1': tr('1 page')})[a];
 let pdraft = null, planEditing = false, sab = null;
@@ -945,8 +945,8 @@ function planSetupHtml(){
   const total = planUnits(d).length, per = d.amt[0] === 'v' ? +d.amt.slice(1) : +d.amt.slice(1) * 10.3, days = Math.ceil(total / per);
   const sel = (id, label, opts, val) => `<div><label class="f" for="${id}">${label}</label><select id="${id}">${opts.map(([v, t]) => `<option value="${v}" ${String(v) === String(val) ? 'selected' : ''}>${t}</option>`).join('')}</select></div>`;
   return `
-  <h1>${tr('Mon plan de mémorisation')}</h1>
-  <p class="sub">${tr("Chaque jour, l'application te dit quoi apprendre et quoi réviser.")}</p>
+  <h1>${tr('Mon plan de révision')}</h1>
+  <p class="sub">${tr("Chaque jour, l'application te dit quoi réviser de ce que tu as déjà mémorisé.")}</p>
   ${planDefsHtml(true)}
   <div class="card"><h2>${tr('Sourates du plan')}</h2>
     <div class="row"><div><label class="f" for="pf-from">${tr('De')}</label><select id="pf-from">${surahOpts(d.from)}</select></div>
@@ -992,7 +992,7 @@ function tabPlan(){
     ${done ? `<p class="ref" style="margin:0">✓ ${tr('Fait')}</p>` : act ? `<button class="pri big" data-act="${act}">${btn}</button>` : ''}</div>`;
   return `
   <h1>${tr('Plan')}</h1>
-  <div class="card"><h2>${tr('Mon plan de mémorisation')}</h2>
+  <div class="card"><h2>${tr('Mon plan de révision')}</h2>
     <div class="goal"><i style="width:${pct}%"></i></div>
     <p style="margin:6px 0 0"><b>${tr('{a} / {b} versets appris', {a: nL, b: units.length})}</b> · ${pct} %</p>
     <p class="ref" style="margin:4px 0 0">${rem ? tr('À ce rythme : environ {d} jours (fin vers le {date}).', {d: days, date: end}) : tr('Plan terminé 🎉')}</p></div>
@@ -2834,7 +2834,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v71';
+const APP_VERSION = '23 oct. 2026 · v72';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -3308,7 +3308,7 @@ function renderLegal(){
     <p class="sub">${tr('Dernière mise à jour : {d}', {d: date})}</p>
     ${sec('Qui est responsable ?', [tr("Tathbīt est un site personnel et gratuit d'aide à la révision du Coran et des moutoun. Responsable du site : contact par e-mail uniquement ({contact}).", {contact})])}
     ${sec('Quelles données ?', [tr("Compte : ton adresse e-mail, ton mot de passe (transmis au service d'authentification Supabase, qui le stocke de façon sécurisée ; ce site ne le conserve pas), la date d'inscription, ta dernière activité et ton rôle."),
-      tr("Progression : tes statistiques, ton historique d'erreurs (y compris les réponses que tu saisis), ton plan de mémorisation, tes réglages et les textes que tu ajoutes toi-même."),
+      tr("Progression : tes statistiques, ton historique d'erreurs (y compris les réponses que tu saisis), ton plan de révision, tes réglages et les textes que tu ajoutes toi-même."),
       tr("Rappels (facultatif) : si tu actives les notifications, l'adresse technique de ton appareil pour les notifications (fournie par Apple, Google ou Mozilla), l'heure choisie, ton fuseau horaire et ta langue sont enregistrés pour t'envoyer le rappel, qui transite par le service de notifications de ton système. Tu peux les désactiver à tout moment dans Réglages."),
       tr("Enseignant (facultatif) : si tu invites un enseignant, il voit ton e-mail, ton total de réponses, ta progression par sourate, tes jours d'activité et tes erreurs (sans les réponses que tu as tapées, sans tes réglages ni les textes que tu ajoutes). Tu génères un code d'invitation valable 7 jours et à usage unique ; seul ton enseignant peut mettre fin au suivi (tu peux aussi supprimer ton compte à tout moment) ; chaque consultation d'un détail est enregistrée et visible dans ton compte. Seul un compte auquel l'administrateur a donné le rôle enseignant peut utiliser un code."),
       tr("Messages, objectifs et classe (facultatif) : un enseignant que tu as invité (ou dont tu as saisi le code de classe) peut t'envoyer des messages de 280 caractères au plus et te fixer des objectifs (sourate, date limite) ; tu peux supprimer les messages. Si ton enseignant met fin au suivi, tu ne les vois plus."),
