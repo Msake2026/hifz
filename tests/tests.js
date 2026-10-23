@@ -722,6 +722,22 @@
     for (const L of ['en', 'ar']){ W.__N = [{id: 33, kind: 'reminder', ref: '2000-01-01', actor: null, n: 1, created_at: iso(0), read_at: null}, {id: 34, kind: 'reminder', ref: '2000-01-02', actor: null, n: 0, created_at: iso(0), read_at: iso(0)}]; E(`setLang('${L}'); days = {}; nfLoad()`); await wait(300); clickAct('bell'); await wait(200); eq(E('[...missingKeys]'), [], L + ' rappel'); clickAct('nf-close'); }
     E("setLang('fr'); days = {}; me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; nf = {list: [], loaded: false}; tch.loaded = false; tch.uid = null; bellSync()");
   });
+  test('Tablettes : mise en page adaptée (deux colonnes, colonne plus large, aucun défilement horizontal) de 320 à 1366 px', async () => {
+    reset(); const css0 = fr.style.cssText;
+    for (const [w, grid] of [[320, false], [390, false], [600, false], [744, false], [820, false], [1024, true], [1180, true], [1366, true]]){
+      fr.style.width = w + 'px'; fr.style.height = '900px'; await wait(150);
+      for (const tab of ['home', 'plan', 'train', 'progress', 'errors', 'settings']){
+        E(`go('${tab}')`); await wait(60);
+        const de = D.documentElement, over = de.scrollWidth - de.clientWidth;
+        ok(over <= 1, `${w} px, onglet ${tab} : défilement horizontal de ${over} px`);
+        const disp = W.getComputedStyle($q('#app')).display; ok((disp === 'grid') === grid, `${w} px : l’application est ${disp === 'grid' ? 'sur deux colonnes' : 'sur une colonne'} (attendu : ${grid ? 'deux colonnes' : 'une colonne'})`);
+      }
+      eq(parseFloat(W.getComputedStyle($q('main')).maxWidth), w >= 1280 ? 1240 : w >= 960 ? 1120 : w >= 700 ? 880 : 720, `${w} px : largeur maximale de la colonne`);
+    }
+    fr.style.width = '1024px'; await wait(100); E("cfg.mode = 'mcq'; start()"); await wait(100);
+    ok(parseFloat(W.getComputedStyle($q('main')).maxWidth) <= 820 && W.getComputedStyle($q('#app')).display !== 'grid', 'écran d’exercice : colonne unique de lecture confortable, même sur grande tablette'); ok(D.documentElement.scrollWidth <= D.documentElement.clientWidth + 1, 'exercice sans défilement horizontal');
+    fr.style.cssText = css0; E("home()");
+  });
   test('Profil et menus selon la personne : simple utilisateur (ni Élève ni Enseignant), élève, enseignant, administrateur', async () => {
     reset(); const calls = []; W.__calls = calls; W.__LK = [];
     E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; authReady = true; me = {user: {id: 'u1', email: 'simple@x.fr'}, profile: {role: 'user', created_at: new Date().toISOString()}}; try { localStorage.clear(); } catch {}
