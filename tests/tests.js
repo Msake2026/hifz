@@ -53,8 +53,8 @@
     ok(!E('Q[1].a[0].t').startsWith('بِسْمِ'), 'la basmala ne doit pas préfixer le verset 1 de la Baqara');
     ok(E('Q[0].a[0].t').startsWith('بِسْمِ'), 'la Fatiha commence par la basmala (c\'est son verset 1)');
   });
-  test('Moutoun : Tuhfa 61, Bayquniyya 34, Ibn ʿĀshir 315, Arbain 42 unités', () => {
-    eq(E("MT.tuhfa.a.length"), 61); eq(E("MT.bayquniyya.a.length"), 34); eq(E("MT.ibnachir.a.length"), 315); eq(E("MT.arbain.a.length"), 42);
+  test('Moutoun : Tuhfa 61, Bayquniyya 34, Ibn ʿĀshir 314, Arbain 42 unités', () => {
+    eq(E("MT.tuhfa.a.length"), 61); eq(E("MT.bayquniyya.a.length"), 34); eq(E("MT.ibnachir.a.length"), 314); eq(E("MT.arbain.a.length"), 42);
   });
   test('Moutoun : groupés par thème, avec choix d’un bloc (chapitre) dont les exercices ne portent que sur ce bloc', async () => {
     reset(); E("cfg.scope = {type: 'matn', id: 'tuhfa'}; cfg.tab = 'train'; go('train')");
@@ -64,7 +64,7 @@
     eq(E("buildPool({type: 'matn', id: 'tuhfa', sec: 1}).length"), 11, 'bloc 2 (nūn sākina et tanwīn) = vers 6 à 16');
     eq(E("buildPool({type: 'matn', id: 'tuhfa', sec: 9}).map(r => r.a).join()"), '58,59,60,61', 'dernier bloc = jusqu’au dernier vers');
     eq(E("buildPool({type: 'matn', id: 'tuhfa'}).length"), 61, 'sans bloc : tout le matn');
-    eq(E("buildPool({type: 'matn', id: 'all'}).length"), 61 + 34 + 315 + 42, 'tous les moutoun');
+    eq(E("buildPool({type: 'matn', id: 'all'}).length"), 61 + 34 + 314 + 42, 'tous les moutoun');
     $q('#ssec').value = '1'; $q('#ssec').dispatchEvent(new Event('change'));
     eq(E("cfg.scope.sec"), 1, 'le bloc choisi est retenu'); ok(E("scopeLabel(cfg.scope)").includes('Nūn sākina'), 'le bloc apparaît dans le libellé de la portée');
     const start = () => $q('.cta [data-act="start"]').textContent;
@@ -75,15 +75,15 @@
     E("cfg.scope = {type: 'matn', id: 'bayquniyya'}; go('train')"); ok(!$q('#ssec'), 'un matn sans titres de chapitres dans sa source n’a pas de choix de bloc');
     E("openReader('m:ibnachir')"); await wait(300); eq($$q('.rblk').length, 27, 'le lecteur affiche les titres des 27 blocs d’Ibn ʿĀshir');
     eq($$q('details.rblkd[open]').length, 27, 'matn entier : blocs dépliés au départ');
-    eq($$q(".rv").length, 315, "les 315 vers sont présents");
+    eq($$q(".rv").length, 314, "les 314 vers sont présents");
     ok($q('#rdblk') && $q('#rdblk').options[0].value === '', 'lecteur : « tout le matn » en tête de la liste des blocs');
     $q('[data-act="rd-fold"][data-v="1"]').click(); eq($$q('details.rblkd[open]').length, 0, 'Tout replier');
     eq(E("rd.closed.size"), 27, 'l’état replié est mémorisé');
     $q('[data-act="rd-fold"][data-v="0"]').click(); eq($$q('details.rblkd[open]').length, 27, 'Tout déplier');
     $q('#rdblk').value = '3'; $q('#rdblk').dispatchEvent(new Event('change'));
-    eq($$q('.rv').length, 7, 'un seul bloc : seuls ses vers (« Les piliers de l’islam » = vers 43 à 49) sont affichés');
+    eq($$q('.rv').length, 7, 'un seul bloc : seuls ses vers (« Les piliers de l’islam » = vers 42 à 48) sont affichés');
     eq($$q('h3.rblk').length, 1, 'un seul titre de bloc'); eq($$q('details.rblkd').length, 0, 'un seul bloc : pas de repli'); ok(!$q('[data-act="rd-fold"]'), 'pas de boutons replier/déplier pour un seul bloc');
-    eq($q('.rv .pn').textContent, '43', 'la numérotation reste celle du matn');
+    eq($q('.rv .pn').textContent, '42', 'la numérotation reste celle du matn');
     E("openReader('m:bayquniyya')"); await wait(200); ok(!$q('#rdblk') && !$q('[data-act="rd-fold"]'), 'matn sans blocs : ni choix de bloc ni boutons de repli'); noErr('blocs');
   });
   test('Versets proches : toutes les références existent', () => {

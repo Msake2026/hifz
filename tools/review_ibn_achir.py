@@ -37,7 +37,7 @@ out = f"""# Fiche de relecture : Ibn ʿĀshir, *al-Murshid al-Muʿīn*
 Le texte de l'application vient de **deux transcriptions de blogs** (copie A, retenue, et copie B) qui s'accordent à 96,8 %.
 Toutes les divergences entre les deux copies ont été **relues et tranchées par une personne le 23 oct. 2026** : {len(done)} mots corrigés (section 1), {len(kept)} mots de la copie A confirmés (section 2). L'IA n'a rien tranché.
 
-Les 5 vers d'introduction (n° 1 à 5, seulement dans la copie A) ont aussi été relus : un mot corrigé (vers 4).\n\n**Pas encore relu :** les passages où les deux copies sont d'accord (hors vers d'introduction) ; le nombre de vers (315 dans l'application, 317 dans les sources) ; les titres des 27 chapitres.
+Les 5 vers d'introduction (n° 1 à 5, seulement dans la copie A) ont aussi été relus : un mot corrigé (vers 4).\n\n**Pas encore relu :** les passages où les deux copies sont d'accord (hors vers d'introduction) ; le nombre de vers (314 dans l’application, 317 dans les sources) ; les titres des 27 chapitres.
 
 ## 1. Mots corrigés par la relecture : {len(done)}
 {head}

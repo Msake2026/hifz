@@ -93,6 +93,11 @@ def tidy(w):
     return w
 
 
+# Vers retirés par la relecture (ce sont des titres de chapitre, pas des vers du poème) : début du vers en squelette -> le titre reste
+# affiché comme titre de bloc, mais le vers n'est plus numéroté ni utilisé dans les exercices.
+DROP = ["مقدمه لكتاب الاعتقاد"]   # vers 6 de la 1re version : « مقدمة لكتاب الاعتقاد معينة لقارئها على المراد »
+
+
 # Corrections faites par une relecture humaine (l'utilisateur, 23 oct. 2026) : seules retouches du texte de la copie A.
 # (mot de A, mot corrigé), en points de code Unicode dans l'ordre de la source ; chaque mot doit exister une seule fois.
 def _w(h): return "".join(chr(int(x, 16)) for x in h.split())
@@ -102,7 +107,10 @@ CORRECTIONS = {_w(o): _w(n) for o, n in [
     ("648 623 63a 652 644 64e 641 64c", "648 64e 623 64e 63a 652 644 64e 641 64c"),          # vers 173 : وأغْلَفٌ -> وَأَغْلَفٌ (fatha sur le wāw et sur l'alif-hamza)
     ("648 64e 645 650 626 64e 629 652", "648 64e 645 650 627 626 64e 629 652"),            # vers 202 : وَمِئَةْ -> وَمِائَةْ (écriture de la copie B, kasra sur le mīm)
     ("645 64f 632 652 62f 64e 644 650 641 64d", "645 64f 632 652 62f 64e 644 650 641 64e"),  # vers 236 : مُزْدَلِفٍ -> مُزْدَلِفَ (fatha sur la dernière lettre)
-    ("641 64e 627 644 639 64e 648 646 64f", "641 64e 627 644 639 64e 648 646 64e")           # vers 4   : فَالعَونُ -> فَالعَونَ (fatha sur la dernière lettre)
+    ("641 64e 627 644 639 64e 648 646 64f", "641 64e 627 644 639 64e 648 646 64e"),          # vers 4   : فَالعَونُ -> فَالعَونَ (fatha sur la dernière lettre)
+    ("627 644 634 651 64e 639 652 631 650", "627 644 634 651 64e 639 64e 631 652"),         # vers 13 (14 avant retrait du vers 6) : الشَّعْرِ -> الشَّعَرْ (fatha sur le ʿayn, sukūn sur le rāʾ)
+    ("628 650 62b 64e 645 627 646", "628 650 62b 64e 645 627 646 650"),                      #   idem : ثَمان -> ثَمانِ (kasra sur le nūn)
+    ("639 651 634 652 631 64e 629 650", "639 651 634 652 631 64e 629 64d")                   #   idem : عّشْرَةِ -> عّشْرَةٍ (tanwīn kasr sur la tāʾ marbūṭa)
 ]}
 
 
@@ -176,6 +184,11 @@ def ibn_ashir():
         if grp.get(ci): units.append(unit(grp[ci]))
         unit_of[ci] = len(units)
         if ci in ex: units.append(unit(ex[ci]))
+    dropped = {}   # clé -> (n° du vers qu'occupait le vers retiré, son texte)
+    for key in DROP:
+        k = next(i for i, u in enumerate(units) if sk(u["t"]).startswith(key))
+        dropped[key] = (k + 1, units.pop(k)["t"]); lid0.pop(k)
+        for ci in unit_of: unit_of[ci] -= 1 if unit_of[ci] > k + 1 else 0   # les vers suivants avancent d'un numéro
     LAST_REVIEW[:] = [{"n": unit_of.get(ci, 0), "a": a_, "b": b_, "bline": bl[ci] if ci < len(bl) else ""} for ci, a_, b_ in rev]
     sk_diffs = [d for d in diffs if d[0].replace(" ", "") != d[1].replace(" ", "")]
     ratio = sm.ratio()
@@ -188,8 +201,11 @@ def ibn_ashir():
         n = next((k + 1 for k, x in enumerate(lid0) if x > hi), None)
         if n: marks.append((n, " ".join(junk(hl).split()), sk(hl)))
     for key in VERSE_TITLES:
-        n = next(k + 1 for k, u in enumerate(units) if sk(u["t"]).startswith(key))
-        marks.append((n, units[n - 1]["t"], key))
+        if key in dropped:
+            n, t = dropped[key]       # le titre ouvre le bloc ; le vers suivant porte désormais ce numéro
+        else:
+            n = next(k + 1 for k, u in enumerate(units) if sk(u["t"]).startswith(key)); t = units[n - 1]["t"]
+        marks.append((n, t, key))
     marks.sort()
     sections = [{"ar": "المقدمة", "fr": FR["مقدمه"], "from": 1}] + [{"ar": t, "fr": FR[k], "from": n} for n, t, k in marks]
     assert all(x["from"] < y["from"] for x, y in zip(sections, sections[1:])), sections

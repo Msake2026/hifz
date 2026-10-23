@@ -22,10 +22,10 @@ test('quran.js : 114 sourates, 6236 versets, empreinte SHA-256 correcte', () => 
   assert.deepEqual(Q.surahs.map(s => s.a.length).slice(0, 3), [7, 286, 200]);
 });
 
-test('moutoun.js : 61 + 34 + 315 + 42 unités, chaque unité non vide, texte arabe seul (ni chiffre ni signe parasite)', () => {
+test('moutoun.js : 61 + 34 + 314 + 42 unités, chaque unité non vide, texte arabe seul (ni chiffre ni signe parasite)', () => {
   const M = loadGlobal('moutoun.js', 'MOUTOUN');
   const n = Object.fromEntries(M.texts.map(t => [t.id, t.a.length]));
-  assert.deepEqual(n, { tuhfa: 61, bayquniyya: 34, ibnachir: 315, arbain: 42 });
+  assert.deepEqual(n, { tuhfa: 61, bayquniyya: 34, ibnachir: 314, arbain: 42 });
   M.texts.forEach(t => t.a.forEach(u => assert.ok(u.t && u.t.trim(), t.id)));
   const ib = M.texts.find(t => t.id === 'ibnachir');
   ib.a.forEach((u, i) => {
@@ -33,13 +33,15 @@ test('moutoun.js : 61 + 34 + 315 + 42 unités, chaque unité non vide, texte ara
     assert.ok(u.m >= 2 && u.m < u.t.split(' ').length, 'ibnachir vers ' + (i + 1) + ' : coupure');
   });
   assert.ok(ib.source.url && ib.source.note, 'source et mise en garde affichées');
-  assert.ok(ib.a[214].t.split(' ')[1].startsWith('\u062d\u0650'), 'vers 215 : ḥijja (kasra sur le ḥāʾ), correction de relecture');
+  assert.ok(ib.a[213].t.split(' ')[1].startsWith('\u062d\u0650'), 'vers 214 : ḥijja (kasra sur le ḥāʾ), correction de relecture');
   const ws = k => ib.a[k - 1].t.split(' ');
+  assert.ok(!ib.a.some(u => u.t.includes('\u0645\u064f\u0642\u062f\u0651\u0650\u0645\u0629\u064c \u0644\u0650\u0643\u0650\u062a\u0627\u0628\u0650')), 'le vers « مقدمة لكتاب الاعتقاد » a été retiré (c’est un titre de chapitre)');
+  assert.ok(ws(13).includes('\u0627\u0644\u0634\u0651\u064e\u0639\u064e\u0631\u0652') && ws(13).includes('\u0628\u0650\u062b\u064e\u0645\u0627\u0646\u0650') && ws(13).includes('\u0639\u0651\u0634\u0652\u0631\u064e\u0629\u064d'), 'vers 13 : الشَّعَرْ، ثَمانِ، عّشْرَةٍ');
   assert.ok(ws(4).includes('\u0641\u064e\u0627\u0644\u0639\u064e\u0648\u0646\u064e'), 'vers 4 : فَالعَونَ (fatha sur la dernière lettre)');
-  assert.ok(ws(90).includes('\u0648\u0627\u0644\u0622\u062e\u0650\u0631\u064e\u0627\u0646'), 'vers 90 : والآخِرَان (kasra sur le khāʾ)');
-  assert.ok(ws(173).some(w => w.startsWith('\u0648\u064e\u0623\u064e\u063a')), 'vers 173 : fatha sur le wāw et sur l’alif de وَأَغْلَفٌ');
-  assert.ok(ws(202).includes('\u0648\u064e\u0645\u0650\u0627\u0626\u064e\u0629\u0652'), 'vers 202 : وَمِائَةْ (écriture de la copie B, kasra sur le mīm)');
-  assert.ok(ws(236).includes('\u0645\u064f\u0632\u0652\u062f\u064e\u0644\u0650\u0641\u064e'), 'vers 236 : fatha sur la dernière lettre de مُزْدَلِفَ');
+  assert.ok(ws(89).includes('\u0648\u0627\u0644\u0622\u062e\u0650\u0631\u064e\u0627\u0646'), 'vers 89 : والآخِرَان (kasra sur le khāʾ)');
+  assert.ok(ws(172).some(w => w.startsWith('\u0648\u064e\u0623\u064e\u063a')), 'vers 172 : fatha sur le wāw et sur l’alif de وَأَغْلَفٌ');
+  assert.ok(ws(201).includes('\u0648\u064e\u0645\u0650\u0627\u0626\u064e\u0629\u0652'), 'vers 201 : وَمِائَةْ (écriture de la copie B, kasra sur le mīm)');
+  assert.ok(ws(235).includes('\u0645\u064f\u0632\u0652\u062f\u064e\u0644\u0650\u0641\u064e'), 'vers 235 : fatha sur la dernière lettre de مُزْدَلِفَ');
   const I = loadGlobal('i18n.js', 'I18N');
   M.texts.filter(t => t.sec).forEach(t => {
     assert.equal(t.sec[0].from, 1, t.id + ' : le 1er bloc commence au vers 1');
