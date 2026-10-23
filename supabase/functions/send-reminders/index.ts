@@ -168,6 +168,9 @@ Deno.serve(async (req) => {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
         JSON.stringify({ title: m.title, body: d.second ? m.late : due > 0 ? m.due(due) : m.plain, url: './' }), { TTL: 6 * 3600, urgency: 'normal' });
       await db.from('push_subs').update(mark).eq('id', s.id); sent++;
+      // même rappel dans la cloche de l'application, tant que la personne ne l'a pas traité (un seul rappel non traité à la fois)
+      await db.from('notifications').delete().eq('user_id', s.user_id).eq('kind', 'reminder').is('read_at', null);
+      await db.from('notifications').insert({ user_id: s.user_id, kind: 'reminder', ref: d.date, n: due });
     } catch (e) {
       const code = (e as { statusCode?: number }).statusCode;
       if (code === 404 || code === 410) { await db.from('push_subs').delete().eq('id', s.id); removed++; } // appareil désinscrit

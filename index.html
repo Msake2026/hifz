@@ -34,6 +34,7 @@
   --ok:#74d3a1; --okbg:#173326; --ko:#ff9a8c; --kobg:#3d1f1a; --mid:#e8b95b; --midbg:#3a2c14;
   --pattern:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23d5b25a' stroke-opacity='.09'%3E%3Crect x='20' y='20' width='32' height='32'/%3E%3Crect x='20' y='20' width='32' height='32' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='4'/%3E%3C/g%3E%3C/svg%3E");}
 *{box-sizing:border-box}
+.heard{min-height:2.6em;font-size:1.45rem;line-height:1.9;text-align:center;margin:4px 0 8px}.heard .interim{opacity:.55}
 .chip{display:inline-block;padding:2px 9px;border-radius:12px;font-size:.78rem;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 .chip.role-admin{border-color:var(--ko);color:var(--ko)}.chip.role-teacher{border-color:var(--gold);color:var(--mid)}.chip.role-student{border-color:var(--accent);color:var(--accent)}
 .bell{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);inset-inline-end:10px;z-index:30;width:44px;height:44px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.12)}
@@ -402,7 +403,7 @@ let tjs = store.get('hifz.tj', {});       // règle de tajwīd -> [réussies, ra
 let days = store.get('hifz.days', {});   // "AAAA-MM-JJ" -> nb de réponses
 const saveCfg = () => store.set('hifz.cfg', cfg);
 const today = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let SR = window.SpeechRecognition || window.webkitSpeechRecognition;   // (let : les tests y mettent un faux micro)
 const key = r => r.s + ':' + r.a;
 const verse = r => book(r.s).a[r.a - 1].t;
 const slen = s => book(s).a.length;
@@ -1292,7 +1293,8 @@ function workUI(l = {}){
     ? `<textarea id="ans" dir="rtl" lang="ar" rows="${rows}" placeholder="${ph}"></textarea>${kbd()}
        <button class="pri" style="margin-top:8px" data-act="check">${tr('Vérifier')}</button>`
     : cfg.input === 'voice' && SR
-    ? `<button class="pri big" data-act="listen">${voice}</button><p class="ref" id="heard"></p>
+    ? `<button class="pri big" data-act="listen">${voice}</button>
+       <p class="ref" style="margin:10px 0 2px">${tr("Ce que j'entends :")}</p><div class="ar heard" id="heard" dir="rtl" lang="ar" aria-live="off"></div><p class="ref" id="hmsg"></p>
        <button class="link" data-act="reveal">${tr("Je préfère m'auto-évaluer")}</button>`
     : `<button class="pri big" data-act="reveal">${rev}</button>`;
 }
@@ -1956,19 +1958,23 @@ function markGo(){
 function listen(){
   if (cur.done) return;
   const cont = cur.m === 'cont';
-  const btn = document.querySelector('[data-act="listen"]'), heard = $('heard');
-  const rec = new SR(); rec.lang = 'ar-SA'; rec.interimResults = cont; rec.continuous = cont; rec.maxAlternatives = 1;
+  const btn = document.querySelector('[data-act="listen"]'), heard = $('heard'), msg = $('hmsg');
+  const rec = new SR(); rec.lang = 'ar-SA'; rec.interimResults = true; rec.continuous = cont; rec.maxAlternatives = 1;   // résultats provisoires : on voit le texte au fur et à mesure
   let text = '', stopping = false;
   rec.onresult = ev => {
-    text = [...ev.results].map(r => r[0].transcript).join(' ');
-    if (cont) heard.textContent = text;
+    const R = [...ev.results]; text = R.map(r => r[0].transcript).join(' ');
+    heard.innerHTML = R.map(r => `<span class="${r.isFinal ? '' : 'interim'}">${esc(r[0].transcript)}</span>`).join(' ');   // les mots encore provisoires sont estompés
   };
-  rec.onerror = ev => { heard.textContent = tr('Micro indisponible ({e}).', {e: ev.error}); };
+  rec.onerror = ev => { msg.textContent = tr('Micro indisponible ({e}).', {e: ev.error}); };
   rec.onend = () => {
     btn.disabled = false; btn.textContent = tr('🎤 Réessayer'); btn.onclick = null;
-    if (text.trim()) evaluate(text, true); else if (!heard.textContent) heard.textContent = tr('Rien entendu, réessaie.');
+    heard.querySelectorAll('.interim').forEach(e => e.classList.remove('interim'));
+    if (text.trim()){
+      evaluate(text, true);
+      const w = $('work'); if (w) w.insertAdjacentHTML('beforeend', `<p class="ref" style="margin:12px 0 2px">${tr("Ce que j'ai entendu :")}</p><div class="ar heard" dir="rtl" lang="ar">${esc(text)}</div>`);   // la correction remplace la zone : on garde ce qui a été entendu
+    } else if (!msg.textContent) msg.textContent = tr('Rien entendu, réessaie.');
   };
-  heard.textContent = '';
+  heard.textContent = ''; msg.textContent = '';
   btn.textContent = cont ? tr("⏹ J'ai fini de réciter") : tr("🎙️ Je t'écoute… récite la suite");
   if (cont){ btn.onclick = ev => { ev.stopPropagation(); if (!stopping){ stopping = true; rec.stop(); } }; } else btn.disabled = true;
   try { rec.start(); } catch { btn.disabled = false; }
@@ -2668,7 +2674,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v49';
+const APP_VERSION = '23 oct. 2026 · v50';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -3260,7 +3266,8 @@ function nfText(x){
     request_declined: tr("Ta demande pour devenir enseignant n'a pas été acceptée."),
     linked: tr('{e} suit maintenant ta progression.', {e}),
     unlinked: tr('{e} a mis fin au suivi.', {e}),
-    student_joined: tr('{e} a rejoint ta classe.', {e})
+    student_joined: tr('{e} a rejoint ta classe.', {e}),
+    reminder: n > 0 ? trp(n, 'Rappel de révision : {n} verset à revoir aujourd\'hui|Rappel de révision : {n} versets à revoir aujourd\'hui') : tr("Rappel de révision : c'est l'heure de ta révision.")
   })[x.kind] || esc(x.kind);
 }
 function bellSync(){
@@ -3287,7 +3294,13 @@ function nfPaint(){
     ${U.length ? U.map(x => item(x)).join('') + `<button data-act="nf-all" style="margin-top:8px">${tr('Tout marquer comme traité')}</button>` : `<p class="ref" style="margin:8px 0">${tr('Rien à traiter pour le moment.')}</p>`}
     ${R.length ? `<h3 style="margin:12px 0 4px;font-size:.95rem">${tr('Déjà traitées')}</h3>${R.map(x => item(x, true)).join('')}` : ''}`;
 }
-async function nfLoad(){ if (!me || !sb || !sb.rpc) return; try { const r = await sb.rpc('notifs_mine'); if (!r.error) nf.list = r.data || []; } catch { /* hors ligne ou base pas à jour : la cloche reste vide */ } nfPaint(); }
+async function nfLoad(){
+  if (!me || !sb || !sb.rpc) return;
+  try { const r = await sb.rpc('notifs_mine'); if (!r.error) nf.list = r.data || []; } catch { /* hors ligne ou base pas à jour : la cloche reste vide */ }
+  // un rappel de révision est traité dès qu'on a révisé le jour où il a été envoyé (ou après)
+  for (const x of nf.list) if (x.kind === 'reminder' && !x.read_at && (days[x.ref] || 0) > 0) nfRead(x.id);
+  nfPaint();
+}
 function nfToggle(){ const p = nfPanel(); if (!p.hidden) return nfClose(); p.hidden = false; const bl = $('bell'); if (bl) bl.setAttribute('aria-expanded', 'true'); nfPaint(); nfLoad(); const f = p.querySelector('button'); if (f) f.focus(); }
 function nfClose(){ const p = $('nf-panel'); if (p && !p.hidden){ p.hidden = true; const b = $('bell'); if (b){ b.setAttribute('aria-expanded', 'false'); b.focus(); } } }
 async function nfRead(id){ try { await sb.rpc('notif_read', {p_id: id}); } catch { /* sans effet : on le verra au prochain chargement */ } const x = nf.list.find(y => y.id === id); if (x && !x.read_at) x.read_at = new Date().toISOString(); nfPaint(); }
@@ -3301,6 +3314,7 @@ async function nfOpen(id){
   else if (x.kind === 'request') openAdmin();
   else if (x.kind === 'role_teacher'){ await refreshProfile(); go('teacher'); }
   else if (x.kind === 'student_joined') go('teacher');
+  else if (x.kind === 'reminder'){ if (dueRefs().length) start(shuffle(reviewPick(15))); else go('train'); }
   else if (x.kind === 'unlinked' || x.kind === 'request_declined') openAccount();
   else go('student');
 }
@@ -3627,7 +3641,7 @@ $app.addEventListener('input', e => {
 function fixA11y(){
   $app.querySelectorAll('label:not([for])').forEach(l => { const c = l.closest('.card, div, form') || $app; const f = [...c.querySelectorAll('select, input:not([type=checkbox]):not([type=file]), textarea')].find(x => (l.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING) && !l.contains(x)); if (f && f.id && !l.querySelector('input,select')) l.setAttribute('for', f.id); });
   $app.querySelectorAll('.ar:not([lang]), .rd:not([lang]), .rv:not([lang])').forEach(e => e.setAttribute('lang', 'ar'));
-  ['fb', 'aud-msg', 'rem-msg', 'acc-msg', 'cm-status', 'heard'].forEach(id => { const e = document.getElementById(id); if (e && !e.hasAttribute('aria-live')) e.setAttribute('aria-live', 'polite'); });
+  ['fb', 'aud-msg', 'rem-msg', 'acc-msg', 'cm-status', 'hmsg'].forEach(id => { const e = document.getElementById(id); if (e && !e.hasAttribute('aria-live')) e.setAttribute('aria-live', 'polite'); });
 }
 if (window.MutationObserver) new MutationObserver(() => { clearTimeout(fixA11y.t); fixA11y.t = setTimeout(fixA11y, 30); }).observe($app, {childList: true, subtree: true});
 

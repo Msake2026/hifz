@@ -664,6 +664,33 @@
     for (const L of ['en', 'ar']){ W.__N = [{id: 1, kind: 'message', ref: 't', actor: 'p@x.fr', n: 3, created_at: iso(0), read_at: null}, {id: 2, kind: 'role_teacher', ref: null, actor: null, n: 1, created_at: iso(0), read_at: null}, {id: 3, kind: 'unlinked', ref: 't', actor: 'p@x.fr', n: 1, created_at: iso(0), read_at: iso(0)}]; E(`setLang('${L}'); nfLoad()`); await wait(200); clickAct('bell'); await wait(200); ok(P().textContent.length > 40, L); eq(E('[...missingKeys]'), [], L + ' cloche'); clickAct('nf-close'); }
     E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; nf = {list: [], loaded: false}; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: '', wk: false, unread: {}, loading: false, q: '', sort: 'activity', chatWith: null, openAfter: null}; bellSync()");
   });
+  test('Récitation à voix haute : le texte entendu s’affiche en direct (micro simulé)', async () => {
+    reset("cfg.mode = 'next'; cfg.input = 'voice'; cfg.scope = {type: 'surah', from: 1, to: 1};");
+    E("SR = function(){ window.__rec = this; this.start = function(){}; this.stop = function(){ this.onend(); }; };"); E("start()"); noErr('start voix');
+    ok($q('#heard') && $q('#heard').getAttribute('dir') === 'rtl' && $q('#heard').getAttribute('aria-live') === 'off', 'zone « Ce que j’entends » (arabe, de droite à gauche, non annoncée en continu)');
+    clickAct('listen'); await wait(100); ok(E('window.__rec.interimResults === true && window.__rec.lang === "ar-SA"'), 'résultats provisoires demandés');
+    E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: false})]})"); ok($q('#heard .interim') && $q('#heard').textContent.includes('الحمد لله'), 'texte provisoire affiché (estompé)');
+    E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: true}), Object.assign([{transcript: 'رب العالمين'}], {isFinal: false})]})"); ok($q('#heard').textContent.includes('الحمد لله') && $q('#heard').textContent.includes('رب العالمين') && $$q('#heard .interim').length === 1, 'mots confirmés + mots encore provisoires');
+    E("window.__rec.onend()"); await wait(200); ok(!$q('#work .interim') && $q('#work').textContent.includes('رب العالمين') && $q('#work').textContent.includes('الحمد لله'), 'à la fin, ce qui a été entendu reste affiché sous la correction'); ok($q('#fb .fb'), 'la récitation est corrigée'); noErr('voix');
+    E("SR = window.SpeechRecognition || window.webkitSpeechRecognition");
+  });
+  test('Cloche : rappel de révision reçu et pas encore consulté', async () => {
+    reset(); const calls = []; W.__calls = calls; const today = E("today()"), iso = d => new Date(Date.now() + d * 864e5).toISOString();
+    W.__N = [{id: 31, kind: 'reminder', ref: today, actor: null, n: 7, created_at: iso(-0.01), read_at: null}];
+    E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; authReady = true; me = {user: {id: 'u2', email: 'u@x.fr'}, profile: {role: 'user'}}; days = {};
+      sb = {from(){ return {select(){ const p = Promise.resolve({data: [], error: null}); p.is = () => ({gt: () => p}); return p; }}; }, auth: {}, async rpc(n, a){ window.__calls.push(n + ' ' + JSON.stringify(a || {}));
+        if (n === 'notifs_mine') return {data: window.__N.map(x => ({...x})), error: null};
+        if (n === 'notif_read'){ window.__N.forEach(x => { if (x.id === a.p_id) x.read_at = new Date().toISOString(); }); return {data: null, error: null}; }
+        return {data: [], error: null}; }};`);
+    E("nf = {list: [], loaded: false}; bellSync(); go('home')"); for (let i = 0; i < 40 && !($q('#bell .badge') && $q('#bell .badge').textContent === '1'); i++) await wait(50); eq($q('#bell .badge').textContent, '1', 'le rappel est dans la cloche');
+    clickAct('bell'); await wait(300); ok(/Rappel de révision : 7 versets à revoir aujourd.hui/.test($q('#nf-panel').textContent), 'texte du rappel : ' + $q('#nf-panel').textContent.slice(0, 120));
+    clickAct('nf-open', '31'); await wait(500); ok(calls.includes('notif_read {"p_id":31}'), 'ouvrir traite le rappel'); ok(['train', 'home'].includes(E('cfg.tab')) || E('screen') === 'full', 'mène à la révision');
+    // révisé aujourd'hui : un rappel non traité se traite tout seul
+    W.__N = [{id: 32, kind: 'reminder', ref: today, actor: null, n: 3, created_at: iso(-0.01), read_at: null}]; calls.length = 0; E(`days = {[today()]: 4}; home(); nfLoad()`); await wait(500);
+    ok(calls.includes('notif_read {"p_id":32}') && !$q('#bell .badge'), 'déjà révisé aujourd’hui : rappel traité automatiquement');
+    for (const L of ['en', 'ar']){ W.__N = [{id: 33, kind: 'reminder', ref: '2000-01-01', actor: null, n: 1, created_at: iso(0), read_at: null}, {id: 34, kind: 'reminder', ref: '2000-01-02', actor: null, n: 0, created_at: iso(0), read_at: iso(0)}]; E(`setLang('${L}'); days = {}; nfLoad()`); await wait(300); clickAct('bell'); await wait(200); eq(E('[...missingKeys]'), [], L + ' rappel'); clickAct('nf-close'); }
+    E("setLang('fr'); days = {}; me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; nf = {list: [], loaded: false}; tch.loaded = false; tch.uid = null; bellSync()");
+  });
   test('Profil et menus selon la personne : simple utilisateur (ni Élève ni Enseignant), élève, enseignant, administrateur', async () => {
     reset(); const calls = []; W.__calls = calls; W.__LK = [];
     E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; authReady = true; me = {user: {id: 'u1', email: 'simple@x.fr'}, profile: {role: 'user', created_at: new Date().toISOString()}}; try { localStorage.clear(); } catch {}
