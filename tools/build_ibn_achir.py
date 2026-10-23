@@ -93,6 +93,9 @@ def tidy(w):
     return w
 
 
+LAST_REVIEW = []   # remplie par ibn_ashir() : une ligne par divergence (voir tools/review_ibn_achir.py)
+
+
 def ibn_ashir():
     a = lines_of(http(URL_A)); b = lines_of(http(URL_B))
     a0 = next(i for i, l in enumerate(a) if sk(l).startswith("يقول عبد الواحد بن عاشر"))
@@ -112,25 +115,30 @@ def ibn_ashir():
             bl.append(junk(l) + " " + junk(b[i + 1])); i += 2; continue
         bl.append(junk(l)); i += 1
     C = [(sk(w).replace(" ", ""), ci) for ci, l in enumerate(bl) for w in l.split() if sk(w)]
+    Co = [w for l in bl for w in l.split() if sk(w)]   # mots de B tels qu'écrits, même ordre que C
     sm = difflib.SequenceMatcher(None, [c[0] for c in C], [s[1] for s in S], autojunk=False)
-    grp, last, intro, extra, diffs = {}, None, [], [], []
+    grp, last, intro, extra, diffs, rev = {}, None, [], [], [], []
     for tag, x0, x1, y0, y1 in sm.get_opcodes():
         if tag == "equal":
             for k in range(x1 - x0):
                 grp.setdefault(C[x0 + k][1], []).append(y0 + k); last = C[x0 + k][1]
         elif tag == "replace":
             diffs.append((' '.join(c[0] for c in C[x0:x1]), ' '.join(s[1] for s in S[y0:y1]), C[x0][1]))
+            rev.append((C[x0][1], ' '.join(s[0] for s in S[y0:y1]), ' '.join(Co[x0:x1])))
             grp.setdefault(C[x0][1], []).extend(range(y0, y1)); last = C[x1 - 1][1]
         elif tag == "insert":
             if last is None:
                 intro.extend(range(y0, y1))        # introduction : seulement dans A
             elif y1 - y0 >= 6:
                 extra.append((last, list(range(y0, y1))))  # vers présent seulement dans A
+                rev.append((last, ' '.join(s[0] for s in S[y0:y1]), '(vers absent de B)'))
             else:
                 diffs.append(("", ' '.join(s[1] for s in S[y0:y1]), last))
+                rev.append((last, ' '.join(s[0] for s in S[y0:y1]), ''))
                 grp.setdefault(last, []).extend(range(y0, y1))
         elif tag == "delete":
             diffs.append((' '.join(c[0] for c in C[x0:x1]), "", C[x0][1])); last = C[x1 - 1][1]
+            rev.append((C[x0][1], '', ' '.join(Co[x0:x1])))
 
     def unit(idx):
         toks = [S[j] for j in sorted(idx)]
@@ -146,10 +154,12 @@ def ibn_ashir():
     for j in intro: by.setdefault(S[j][2], []).append(j)
     ls = sorted(by); assert len(ls) == 10, len(ls)
     units += [unit(by[ls[2 * k]] + by[ls[2 * k + 1]]) for k in range(5)]
-    ex = dict(extra)
+    ex, unit_of = dict(extra), {}
     for ci in range(len(bl)):
         if grp.get(ci): units.append(unit(grp[ci]))
+        unit_of[ci] = len(units)
         if ci in ex: units.append(unit(ex[ci]))
+    LAST_REVIEW[:] = [{"n": unit_of.get(ci, 0), "a": a_, "b": b_, "bline": bl[ci] if ci < len(bl) else ""} for ci, a_, b_ in rev]
     sk_diffs = [d for d in diffs if d[0].replace(" ", "") != d[1].replace(" ", "")]
     ratio = sm.ratio()
     print("Ibn ʿĀshir :", len(units), "vers ; accord A/B", round(ratio, 4), "; divergences", len(sk_diffs), file=sys.stderr)
