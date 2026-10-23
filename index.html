@@ -543,7 +543,7 @@ function step(){
   player.play().catch(() => { playQ = []; const m = $('audio-msg'); if (m) m.textContent = tr('Audio indisponible (connexion ?).'); });
 }
 player.onended = step;
-function stopAudio(){ playQ = []; playDone = null; try { player.pause(); } catch {} }
+function stopAudio(){ playQ = []; playDone = null; try { player.pause(); } catch {} stopMic(); }
 const audioHtml = () => (cur && cur.audio && cur.audio.length && isQ(cur.audio[0].s))
   ? `<div class="grades"><button data-act="play">🔊 ${tr('Écouter')} (${(RECITERS.find(x => x[0] === cfg.reciter) || RECITERS[0])[1]})</button><button data-act="stopaudio" style="flex:0 0 auto;min-width:0">⏹</button></div><p class="ref" id="audio-msg"></p>` : '';
 
@@ -1247,7 +1247,7 @@ function logError(r, score, info = {}){
   store.set('hifz.errors', errors);
 }
 function finish(score, extra = ''){
-  if (cur.done) return; cur.done = true;
+  if (cur.done) return; cur.done = true; stopMic();      // la solution s'affiche : le micro est coupé
   if (cur.m === 'tajweed' || cur.hf){ days[today()] = (days[today()] || 0) + 1; store.set('hifz.days', days); }   // l'entraînement au tajwīd compte pour l'objectif du jour mais ne touche ni la révision espacée ni l'historique d'erreurs
   else if (cur.perRef) cur.perRef.forEach(([x, sc], v) => { if (x.bas) return; record(x, sc); if (sc < 1){ ses.missed.push(x); logError(x, sc, {bad: cur.badV && cur.badV[v]}); } });
   else { record(cur.r, score); if (score < 1){ ses.missed.push(cur.r); logError(cur.r, score, cur.info); } }
@@ -1955,29 +1955,45 @@ function markGo(){
 }
 
 /* ---------- voix (Web Speech API, arabe) ---------- */
+/* Le micro ne reste jamais ouvert indéfiniment : il se coupe (1) dès que la solution s'affiche (réponse corrigée, « Je préfère m'auto-évaluer », question suivante, sortie),
+   (2) quand tu appuies sur « J'ai fini de réciter », (3) quand le navigateur détecte la fin de ta phrase (silence), (4) au plus tard au bout de MIC_MAX secondes. */
+let MIC_MAX = {one: 45, cont: 180};
+let micRec = null;
+function stopMic(){
+  if (!micRec) return; const r = micRec; micRec = null; r.aborted = true; clearTimeout(r.cap); clearInterval(r.tick);
+  try { r.abort(); } catch { try { r.stop(); } catch { /* déjà arrêté */ } }
+}
 function listen(){
   if (cur.done) return;
+  stopMic();
   const cont = cur.m === 'cont';
   const btn = document.querySelector('[data-act="listen"]'), heard = $('heard'), msg = $('hmsg');
   const rec = new SR(); rec.lang = 'ar-SA'; rec.interimResults = true; rec.continuous = cont; rec.maxAlternatives = 1;   // résultats provisoires : on voit le texte au fur et à mesure
-  let text = '', stopping = false;
+  let text = '', stopping = false, left = cont ? MIC_MAX.cont : MIC_MAX.one;
   rec.onresult = ev => {
     const R = [...ev.results]; text = R.map(r => r[0].transcript).join(' ');
     heard.innerHTML = R.map(r => `<span class="${r.isFinal ? '' : 'interim'}">${esc(r[0].transcript)}</span>`).join(' ');   // les mots encore provisoires sont estompés
   };
-  rec.onerror = ev => { msg.textContent = tr('Micro indisponible ({e}).', {e: ev.error}); };
+  rec.onerror = ev => { msg.dataset.err = '1'; msg.textContent = tr('Micro indisponible ({e}).', {e: ev.error}); };
   rec.onend = () => {
+    clearTimeout(rec.cap); clearInterval(rec.tick); if (micRec === rec) micRec = null;
+    if (rec.aborted) return;                                  // coupé par l'application (solution affichée) : rien à corriger
     btn.disabled = false; btn.textContent = tr('🎤 Réessayer'); btn.onclick = null;
     heard.querySelectorAll('.interim').forEach(e => e.classList.remove('interim'));
     if (text.trim()){
       evaluate(text, true);
       const w = $('work'); if (w) w.insertAdjacentHTML('beforeend', `<p class="ref" style="margin:12px 0 2px">${tr("Ce que j'ai entendu :")}</p><div class="ar heard" dir="rtl" lang="ar">${esc(text)}</div>`);   // la correction remplace la zone : on garde ce qui a été entendu
-    } else if (!msg.textContent) msg.textContent = tr('Rien entendu, réessaie.');
+    } else if (rec.capped) msg.textContent = tr('Micro coupé automatiquement après {n} s.', {n: cont ? MIC_MAX.cont : MIC_MAX.one});
+    else if (!msg.dataset.err) msg.textContent = tr('Rien entendu, réessaie.');
   };
-  heard.textContent = ''; msg.textContent = '';
+  heard.textContent = ''; delete msg.dataset.err;
+  const tick = () => { msg.textContent = tr('Micro ouvert : il se coupe tout seul dans {n} s.', {n: left}); };
+  tick(); rec.tick = setInterval(() => { left--; if (left > 0) tick(); }, 1000);
+  rec.cap = setTimeout(() => { rec.capped = true; try { rec.stop(); } catch { /* déjà arrêté */ } }, left * 1000);
   btn.textContent = cont ? tr("⏹ J'ai fini de réciter") : tr("🎙️ Je t'écoute… récite la suite");
   if (cont){ btn.onclick = ev => { ev.stopPropagation(); if (!stopping){ stopping = true; rec.stop(); } }; } else btn.disabled = true;
-  try { rec.start(); } catch { btn.disabled = false; }
+  micRec = rec;
+  try { rec.start(); } catch { btn.disabled = false; micRec = null; clearTimeout(rec.cap); clearInterval(rec.tick); }
 }
 
 /* ---------- écoute d'une portée ---------- */
@@ -2429,7 +2445,7 @@ const onClick = e => {
     case 'hreview': if (hrefs.length) start(shuffle(hrefs)); break;
     case 'hclear': if (confirm(tr("Effacer tout l'historique des erreurs ?"))){ errors = []; store.set('hifz.errors', errors); home(); } break;
     case 'nextq': nextQ(); break;
-    case 'reveal': $('work').innerHTML = markUI(); break;
+    case 'reveal': stopMic(); $('work').innerHTML = markUI(); break;
     case 'wd': el.classList.toggle('bad'); { const n = document.querySelectorAll('.wd.bad').length; $('mark-go').textContent = trp(n, 'Valider ({n} erreur)|Valider ({n} erreurs)'); } break;
     case 'mark-ok': case 'mark-mid': {
       const sc = el.dataset.act === 'mark-ok' ? 1 : 0.5;
@@ -2674,7 +2690,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v50';
+const APP_VERSION = '23 oct. 2026 · v51';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

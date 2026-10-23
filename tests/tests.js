@@ -672,6 +672,14 @@
     E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: false})]})"); ok($q('#heard .interim') && $q('#heard').textContent.includes('الحمد لله'), 'texte provisoire affiché (estompé)');
     E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: true}), Object.assign([{transcript: 'رب العالمين'}], {isFinal: false})]})"); ok($q('#heard').textContent.includes('الحمد لله') && $q('#heard').textContent.includes('رب العالمين') && $$q('#heard .interim').length === 1, 'mots confirmés + mots encore provisoires');
     E("window.__rec.onend()"); await wait(200); ok(!$q('#work .interim') && $q('#work').textContent.includes('رب العالمين') && $q('#work').textContent.includes('الحمد لله'), 'à la fin, ce qui a été entendu reste affiché sous la correction'); ok($q('#fb .fb'), 'la récitation est corrigée'); noErr('voix');
+    // le micro se coupe quand la solution s'affiche, et jamais au-delà de la limite
+    E("window.__aborted = 0; SR = function(){ window.__rec = this; this.start = function(){}; this.stop = function(){ this.onend(); }; this.abort = function(){ window.__aborted++; this.onend(); }; };");
+    E("home()"); E("start()"); clickAct('listen'); await wait(100); ok(E('micRec !== null'), 'micro ouvert'); ok(/Micro ouvert/.test($q('#hmsg').textContent) && /\d+ s/.test($q('#hmsg').textContent), 'compte à rebours affiché : ' + $q('#hmsg').textContent);
+    clickAct('reveal'); await wait(100); eq(E('window.__aborted'), 1, 'la solution s’affiche : micro coupé'); ok(E('micRec === null') && !$q('#fb .fb'), 'rien n’est corrigé à la place de l’élève');
+    E("home()"); E("start()"); clickAct('listen'); await wait(50); E("home()"); eq(E('window.__aborted'), 2, 'quitter l’exercice coupe le micro');
+    E("start()"); clickAct('listen'); await wait(50); E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: true})]})"); E("finish(1)"); eq(E('window.__aborted'), 3, 'la correction (finish) coupe le micro');
+    E("MIC_MAX.one = 1; home()"); E("start()"); clickAct('listen'); await wait(1500); ok(E('micRec === null') && /Micro coupé automatiquement après 1 s/.test($q('#hmsg').textContent), 'coupé automatiquement après la limite : ' + $q('#hmsg').textContent);
+    E("MIC_MAX.one = 45");
     E("SR = window.SpeechRecognition || window.webkitSpeechRecognition");
   });
   test('Cloche : rappel de révision reçu et pas encore consulté', async () => {
