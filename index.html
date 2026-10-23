@@ -1176,7 +1176,7 @@ function tabSettings(){
   </div>
 
   <div class="card"><h2>${tr("D'où viennent les contenus ?")}</h2>
-    <p class="ref" style="margin:0 0 6px"><b>${tr('Sources citées et vérifiables :')}</b> ${tr('texte du Coran et traductions (Tanzil), tafsīr al-Muyassar, annotation du tajwīd (Islamic Network), moutoun (Wikisource, hadith-api), règles des lettres (Wikisource et Wikipédia arabe).')}</p>
+    <p class="ref" style="margin:0 0 6px"><b>${tr('Sources citées et vérifiables :')}</b> ${tr('texte du Coran et traductions (Tanzil), tafsīr al-Muyassar, annotation du tajwīd (Islamic Network), moutoun (Wikisource, hadith-api ; Ibn ʿĀshir : deux transcriptions web non officielles), règles des lettres (Wikisource et Wikipédia arabe).')}</p>
     <p class="ref" style="margin:0 0 6px"><b>${tr('Rédigé par une IA, pas une source officielle :')}</b> ${tr("les textes d'explication, les consignes, les noms français des règles, les traductions anglaises et arabes de l'interface et le choix des questions. Ils sont signalés par la mention « 🤖 ». En cas de doute, demande à un enseignant qualifié.")}</p>
     <p class="ref" style="margin:0"><a href="https://github.com/Msake2026/tathbit/blob/main/AUDIT-CONTENU.md" target="_blank" rel="noopener">${tr('Voir le détail de la vérification des contenus')}</a></p></div>
   <div class="card"><h2>${tr('Accessibilité')}</h2>
@@ -2781,7 +2781,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v65';
+const APP_VERSION = '23 oct. 2026 · v66';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

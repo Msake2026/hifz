@@ -4,11 +4,14 @@
 Sources :
   - Wikisource arabe (API MediaWiki) : Tuḥfat al-Aṭfāl, Manẓūmat al-Bayqūnī
   - hadith-api (fawazahmed0, via jsDelivr), édition « ara-nawawi » : Al-Arbaʿūn an-Nawawiyya
+  - deux transcriptions web comparées (voir build_ibn_achir.py) : Al-Murshid al-Muʿīn d'Ibn ʿĀshir
 
 Usage : python3 -I tools/build_moutoun.py
 Contrôles intégrés : nombre de vers attendu (61 / 34) et numérotation continue ; le script s'arrête sinon.
 """
 import json, re, time, html, datetime, urllib.request, urllib.parse, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import build_ibn_achir
 
 UA = "TathbitApp/1.0 (personal study app)"
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "moutoun.js")
@@ -102,6 +105,10 @@ texts.append({"id": "tuhfa", "ar": "تحفة الأطفال والغلمان", "
 u, rev = bayquniyya()
 texts.append({"id": "bayquniyya", "ar": "المنظومة البيقونية", "fr": "Al-Manẓūma al-Bayqūniyya", "author": "Al-Bayqūnī",
               "topic": "Muṣṭalaḥ al-ḥadīth", "kind": "poem", "unit": "vers", "source": wiki_src("", rev), "a": u})
+u, _ = build_ibn_achir.ibn_ashir()
+texts.append({"id": "ibnachir", "ar": "المرشد المعين على الضروري من علوم الدين", "fr": "Al-Murshid al-Muʿīn (Ibn ʿĀshir)",
+              "author": "ʿAbd al-Wāḥid Ibn ʿĀshir", "topic": "ʿAqīda, fiqh mālikī, taṣawwuf", "kind": "poem", "unit": "vers",
+              "source": build_ibn_achir.source(), "a": u})
 u, _ = arbain()
 texts.append({"id": "arbain", "ar": "الأربعون النووية", "fr": "Al-Arbaʿūn an-Nawawiyya", "author": "Al-Nawawī",
               "topic": "Ḥadīth", "kind": "prose", "unit": "hadith",

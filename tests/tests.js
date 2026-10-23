@@ -53,8 +53,8 @@
     ok(!E('Q[1].a[0].t').startsWith('بِسْمِ'), 'la basmala ne doit pas préfixer le verset 1 de la Baqara');
     ok(E('Q[0].a[0].t').startsWith('بِسْمِ'), 'la Fatiha commence par la basmala (c\'est son verset 1)');
   });
-  test('Moutoun : Tuhfa 61, Bayquniyya 34, Arbain 42 unités', () => {
-    eq(E("MT.tuhfa.a.length"), 61); eq(E("MT.bayquniyya.a.length"), 34); eq(E("MT.arbain.a.length"), 42);
+  test('Moutoun : Tuhfa 61, Bayquniyya 34, Ibn ʿĀshir 315, Arbain 42 unités', () => {
+    eq(E("MT.tuhfa.a.length"), 61); eq(E("MT.bayquniyya.a.length"), 34); eq(E("MT.ibnachir.a.length"), 315); eq(E("MT.arbain.a.length"), 42);
   });
   test('Versets proches : toutes les références existent', () => {
     const bad = []; const MS = E('MS');

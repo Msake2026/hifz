@@ -22,11 +22,17 @@ test('quran.js : 114 sourates, 6236 versets, empreinte SHA-256 correcte', () => 
   assert.deepEqual(Q.surahs.map(s => s.a.length).slice(0, 3), [7, 286, 200]);
 });
 
-test('moutoun.js : 61 + 34 + 42 unités, chaque unité non vide', () => {
+test('moutoun.js : 61 + 34 + 315 + 42 unités, chaque unité non vide, texte arabe seul (ni chiffre ni signe parasite)', () => {
   const M = loadGlobal('moutoun.js', 'MOUTOUN');
   const n = Object.fromEntries(M.texts.map(t => [t.id, t.a.length]));
-  assert.deepEqual(n, { tuhfa: 61, bayquniyya: 34, arbain: 42 });
+  assert.deepEqual(n, { tuhfa: 61, bayquniyya: 34, ibnachir: 315, arbain: 42 });
   M.texts.forEach(t => t.a.forEach(u => assert.ok(u.t && u.t.trim(), t.id)));
+  const ib = M.texts.find(t => t.id === 'ibnachir');
+  ib.a.forEach((u, i) => {
+    assert.ok(/^[\u0621-\u063A\u0641-\u065F\u0670 ]+$/.test(u.t), 'ibnachir vers ' + (i + 1) + ' : caractère parasite');
+    assert.ok(u.m >= 2 && u.m < u.t.split(' ').length, 'ibnachir vers ' + (i + 1) + ' : coupure');
+  });
+  assert.ok(ib.source.url && ib.source.note, 'source et mise en garde affichées');
 });
 
 test('traductions : chaque texte tr()/trp() de index.html existe en anglais et en arabe', () => {
