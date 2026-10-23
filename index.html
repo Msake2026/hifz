@@ -1978,7 +1978,7 @@ function markGo(){
 
 /* ---------- voix (Web Speech API, arabe) ---------- */
 /* Le micro ne reste jamais ouvert indéfiniment : il se coupe (1) dès que la solution s'affiche (réponse corrigée, « Je préfère m'auto-évaluer », question suivante, sortie),
-   (2) quand tu appuies sur « J'ai fini de réciter », (3) quand le navigateur détecte la fin de ta phrase (silence), (4) au plus tard au bout de MIC_MAX secondes. */
+   (2) quand tu appuies sur « J'ai fini de réciter » (récitation d'un verset comme d'un passage), (3) si le navigateur coupe lui-même l'écoute, (4) au plus tard au bout de MIC_MAX secondes. */
 /* MH:begin — message d'aide quand le micro ne s'ouvre pas : renvoie le texte (français) à traduire, selon le code d'erreur du navigateur et l'appareil */
 function micHelp(code, platform, standalone){
   const how = platform === 'ios' ? (standalone ? "Sur iPhone, la reconnaissance vocale ne marche pas toujours dans l'application installée : ouvre le site dans Safari. Vérifie aussi Réglages > Safari > Microphone et Réglages > Général > Clavier > Activer la dictée."
@@ -2006,7 +2006,7 @@ function listen(){
   stopMic();
   const cont = cur.m === 'cont';
   const btn = document.querySelector('[data-act="listen"]'), heard = $('heard'), msg = $('hmsg');
-  const rec = new SR(); rec.lang = 'ar-SA'; rec.interimResults = true; rec.continuous = cont; rec.maxAlternatives = 1;   // résultats provisoires : on voit le texte au fur et à mesure
+  const rec = new SR(); rec.lang = 'ar-SA'; rec.interimResults = true; rec.continuous = true; rec.maxAlternatives = 1;   // résultats provisoires : on voit le texte au fur et à mesure ; écoute continue : une pause au milieu du verset ne coupe plus le micro, c'est toi qui termines
   let text = '', stopping = false, left = cont ? MIC_MAX.cont : MIC_MAX.one;
   rec.onresult = ev => {
     const R = [...ev.results]; text = R.map(r => r[0].transcript).join(' ');
@@ -2027,10 +2027,10 @@ function listen(){
   };
   heard.textContent = ''; delete msg.dataset.err;
   const tick = () => { if (!msg.dataset.err) msg.textContent = tr('Micro ouvert : il se coupe tout seul dans {n} s.', {n: left}); };
-  msg.textContent = tr("Si ton navigateur demande l'autorisation du micro, accepte."); rec.tick = setInterval(() => { left--; if (left > 0 && rec.started) tick(); }, 1000);
+  msg.textContent = tr("Si ton navigateur demande l'autorisation du micro, accepte. Touche « J'ai fini de réciter » quand tu as terminé."); rec.tick = setInterval(() => { left--; if (left > 0 && rec.started) tick(); }, 1000);
   rec.cap = setTimeout(() => { rec.capped = true; try { rec.stop(); } catch { /* déjà arrêté */ } }, left * 1000);
-  btn.textContent = cont ? tr("⏹ J'ai fini de réciter") : tr("🎙️ Je t'écoute… récite la suite");
-  if (cont){ btn.onclick = ev => { ev.stopPropagation(); if (!stopping){ stopping = true; rec.stop(); } }; } else btn.disabled = true;
+  btn.textContent = tr("⏹ J'ai fini de réciter");
+  btn.onclick = ev => { ev.stopPropagation(); if (!stopping){ stopping = true; btn.disabled = true; try { rec.stop(); } catch { /* déjà arrêté */ } } };   // c'est toi qui décides quand le verset est récité : le micro se coupe et la réponse est corrigée
   micRec = rec;
   try { rec.start(); } catch (e){ btn.disabled = false; btn.textContent = tr('🎤 Réessayer'); micRec = null; clearTimeout(rec.cap); clearInterval(rec.tick); msg.dataset.err = '1'; msg.textContent = micError((e && e.name === 'NotAllowedError') ? 'not-allowed' : (e && e.name) || 'start'); }
 }
@@ -2729,7 +2729,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v60';
+const APP_VERSION = '23 oct. 2026 · v61';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

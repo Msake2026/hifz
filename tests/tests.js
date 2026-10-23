@@ -672,6 +672,13 @@
     E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: false})]})"); ok($q('#heard .interim') && $q('#heard').textContent.includes('الحمد لله'), 'texte provisoire affiché (estompé)');
     E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: true}), Object.assign([{transcript: 'رب العالمين'}], {isFinal: false})]})"); ok($q('#heard').textContent.includes('الحمد لله') && $q('#heard').textContent.includes('رب العالمين') && $$q('#heard .interim').length === 1, 'mots confirmés + mots encore provisoires');
     E("window.__rec.onend()"); await wait(200); ok(!$q('#work .interim') && $q('#work').textContent.includes('رب العالمين') && $q('#work').textContent.includes('الحمد لله'), 'à la fin, ce qui a été entendu reste affiché sous la correction'); ok($q('#fb .fb'), 'la récitation est corrigée'); noErr('voix');
+    // c'est l'utilisateur qui termine : un bouton « J'ai fini de réciter » arrête le micro et corrige (verset isolé comme passage)
+    E("window.__stops = 0; SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ window.__stops++; this.onend(); }; this.abort = function(){}; };");
+    E("home()"); E("start()"); clickAct('listen'); await wait(100); ok(E('window.__rec.continuous === true'), 'écoute continue : une pause ne coupe plus le micro');
+    ok(!$q('[data-act="listen"]').disabled && /fini de réciter/.test($q('[data-act="listen"]').textContent), 'bouton « J’ai fini de réciter » actif pendant l’écoute');
+    E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله رب'}], {isFinal: false})]})"); await wait(30);
+    $q('[data-act="listen"]').click(); $q('[data-act="listen"]') && $q('[data-act="listen"]').click(); await wait(250);
+    eq(E('window.__stops'), 1, 'un seul arrêt, même si on touche deux fois'); ok($q('#fb .fb') && $q('#work').textContent.includes('الحمد لله رب'), 'le verset est corrigé avec ce qui a été récité');
     // le micro se coupe quand la solution s'affiche, et jamais au-delà de la limite
     E("window.__aborted = 0; SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ this.onend(); }; this.abort = function(){ window.__aborted++; this.onend(); }; };");
     E("home()"); E("start()"); clickAct('listen'); await wait(100); ok(E('micRec !== null'), 'micro ouvert'); ok(/Micro ouvert/.test($q('#hmsg').textContent) && /\d+ s/.test($q('#hmsg').textContent), 'compte à rebours affiché : ' + $q('#hmsg').textContent);
