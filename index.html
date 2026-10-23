@@ -35,6 +35,7 @@
   --pattern:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23d5b25a' stroke-opacity='.09'%3E%3Crect x='20' y='20' width='32' height='32'/%3E%3Crect x='20' y='20' width='32' height='32' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='4'/%3E%3C/g%3E%3C/svg%3E");}
 *{box-sizing:border-box}
 .heard{min-height:2.6em;font-size:1.45rem;line-height:1.9;text-align:center;margin:4px 0 8px}.heard .interim{opacity:.55}
+.ai{display:inline-block;margin:2px 0 0 6px;padding:1px 8px;border-radius:10px;font-size:.72rem;font-weight:500;border:1px dashed var(--muted);color:var(--muted);white-space:normal}
 .chip{display:inline-block;padding:2px 9px;border-radius:12px;font-size:.78rem;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 .chip.role-admin{border-color:var(--ko);color:var(--ko)}.chip.role-teacher{border-color:var(--gold);color:var(--mid)}.chip.role-student{border-color:var(--accent);color:var(--accent)}
 .bell{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);inset-inline-end:10px;z-index:30;width:44px;height:44px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.12)}
@@ -629,6 +630,8 @@ const TAB_STUDENT = ['student', 'Élève', '<path d="M12 3 2 8l10 5 10-5z"/><pat
 const TAB_TEACHER = ['teacher', 'Enseignant', '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 6h5M16 10h5M16 14h5"/>'];
 // Qui est la personne ? administrateur, enseignant (rôle donné par l'admin), élève (au moins un enseignant, message ou objectif), sinon simple utilisateur.
 // L'onglet Élève n'apparaît que pour un élève, l'onglet Enseignant que pour un enseignant ; un simple utilisateur n'a ni l'un ni l'autre (ses invitations sont dans Mon compte).
+// Mention affichée près de tout texte d'explication écrit par l'IA qui a développé l'application : ce n'est pas une source officielle
+const AI = () => `<span class="ai" role="note">🤖 ${tr('Texte rédigé par une IA, pas une source officielle')}</span>`;
 const stuKey = () => 'tathbit.stu.' + (me ? me.user.id : '');
 const isStudent = () => !!me && !isAdmin() && (tch.loaded ? !!((tch.links || []).length || (tch.msgs || []).length || (tch.goals || []).length) : !!store.get(stuKey(), false));
 const hasStudentTab = () => cloudOn() && !!me && !isAdmin() && (isStudent() || (cfg.tab === 'student' && !tch.loaded));
@@ -850,7 +853,7 @@ function planDefsHtml(open){ // définitions des trois étapes du plan
     ${item('Sabaq', "La leçon nouvelle : la portion que tu apprends aujourd'hui, par lecture, écoute et répétition jusqu'à pouvoir la réciter de mémoire.")}
     ${item('Sabqi', "La révision des leçons récentes : chaque jour, tu récites les portions apprises ces derniers jours pour les ancrer avant qu'elles ne s'effacent.")}
     ${item('Manzil', "La révision des anciennes leçons : tout ce que tu as déjà appris plus tôt, revu en rotation sur un cycle (de 14 à 60 jours dans le plan) pour que rien ne se perde.")}
-    <p class="ref" style="margin:0">${tr('Ces termes viennent de la tradition de mémorisation du Coran ; les durées varient selon les écoles et les enseignants. Tu peux les régler dans « Modifier le plan ».')}</p></div></details>`;
+    <p class="ref" style="margin:0">${tr('Ces termes viennent de la tradition de mémorisation du Coran ; les durées varient selon les écoles et les enseignants. Tu peux les régler dans « Modifier le plan ».')} ${AI()}</p></div></details>`;
 }
 function planSetupHtml(){
   const d = pdraft || (pdraft = plan ? {from: plan.from, to: plan.to, order: plan.order, amt: plan.amt, recent: plan.recent, cycle: plan.cycle} : {from: 78, to: 114, order: 'desc', amt: 'v5', recent: 7, cycle: 30});
@@ -893,7 +896,7 @@ function planWeekHtml(pl){
   return `<div class="card"><h2>${tr('Semaine')}</h2>
     ${W.map((x, i) => `<div class="weak" style="display:block${i === 0 ? ';font-weight:600' : ''}"><div>${i === 0 ? '▸ ' : ''}${esc(fmt(x.day))}</div>
       <div class="ref" style="margin:2px 0 0">${x.chunk ? `${x.done.sabaq ? '✓ ' : ''}${tr('Nouveau :')} ${esc(passageLabel(chunkRefs(x.chunk)))}` : tr('Plan terminé 🎉')}${x.rec ? ` · ${x.done.sabqi ? '✓ ' : ''}${trp(x.rec, 'révision récente : {n} portion|révision récente : {n} portions')}` : ''}${x.man ? ` · ${x.done.manzil ? '✓ ' : ''}${trp(x.man, 'révision ancienne : {n} portion|révision ancienne : {n} portions')}` : ''}</div></div>`).join('')}
-    <p class="ref" style="margin:8px 0 0">${tr("Prévision : elle suppose que tu apprends chaque jour la portion prévue. Les portions de révision sont celles de la règle sabqi / manzil de ton plan.")}</p></div>`;
+    <p class="ref" style="margin:8px 0 0">${tr("Prévision : elle suppose que tu apprends chaque jour la portion prévue. Les portions de révision sont celles de la règle sabqi / manzil de ton plan.")} ${AI()}</p></div>`;
 }
 function tabPlan(){
   if (!plan || planEditing) return planSetupHtml() + weakCard(true);
@@ -1113,6 +1116,10 @@ function tabSettings(){
       <button data-act="ics">📅 ${tr('Ajouter au calendrier')}</button></div>
   </div>
 
+  <div class="card"><h2>${tr("D'où viennent les contenus ?")}</h2>
+    <p class="ref" style="margin:0 0 6px"><b>${tr('Sources citées et vérifiables :')}</b> ${tr('texte du Coran et traductions (Tanzil), tafsīr al-Muyassar, annotation du tajwīd (Islamic Network), moutoun (Wikisource, hadith-api), règles des lettres (Wikisource et Wikipédia arabe).')}</p>
+    <p class="ref" style="margin:0 0 6px"><b>${tr('Rédigé par une IA, pas une source officielle :')}</b> ${tr("les textes d'explication, les consignes, les noms français des règles, les traductions anglaises et arabes de l'interface et le choix des questions. Ils sont signalés par la mention « 🤖 ». En cas de doute, demande à un enseignant qualifié.")}</p>
+    <p class="ref" style="margin:0"><a href="https://github.com/Msake2026/tathbit/blob/main/AUDIT-CONTENU.md" target="_blank" rel="noopener">${tr('Voir le détail de la vérification des contenus')}</a></p></div>
   <div class="card"><h2>${tr('Accessibilité')}</h2>
     <label class="f" for="sth">${tr('Thème')}</label>
     <select id="sth"><option value="auto" ${!cfg.theme ? 'selected' : ''}>${tr('Automatique (préférence du système)')}</option><option value="light" ${cfg.theme === 'light' ? 'selected' : ''}>${tr('Clair')}</option><option value="dark" ${cfg.theme === 'dark' ? 'selected' : ''}>${tr('Sombre')}</option></select>
@@ -1730,7 +1737,7 @@ function qMakharij(){
   const real = hfPointOf(H, q.b), same = real === q.point;
   hfShow(q, tr('Vrai ou faux : ces deux lettres sortent du même point.'), `${q.a} · ${q.b}`, same ? `${tr('Vrai :')} ${hfGroup(q.point.letters)}` : `${tr('Faux :')} ${hfLet(q.a)} ${tr('sort de')} ${hfGroup(q.point.letters)}, ${hfLet(q.b)} ${tr('sort de')} ${hfGroup(real.letters)}`, 'mk:' + q.a);
 }
-const CONDRULE = () => `<p class="ref" style="margin:8px 0 0">${tr("Rappel : qalqala = ق ط ب ج د quand la lettre est sakina (ou à l'arrêt, en fin de verset) ; līn = و ou ي sakina après une fatḥa. Règle appliquée au texte du verset.")}</p>`;
+const CONDRULE = () => `<p class="ref" style="margin:8px 0 0">${tr("Rappel : qalqala = ق ط ب ج د quand la lettre est sakina (ou à l'arrêt, en fin de verset) ; līn = و ou ي sakina après une fatḥa. Règle appliquée au texte du verset.")} ${AI()}</p>`;
 function condWhy(q){
   const l = hfLet(q.letter);
   return ({
@@ -1749,7 +1756,7 @@ function qCond(){
     ${q.options.map(o => `<button class="opt" data-act="opt" data-v="${o.v}">${hfOpt(o)}</button>`).join('')}<div id="fb"></div>${CONDRULE()}`);
 }
 const AHNOTE = () => { const S = window.AHKAM.sources, a = (x, t) => `<a href="${x.url}" target="_blank" rel="noopener">${t}</a>`;
-  return `<p class="ref" style="margin:8px 0 0">${tr("Sources : deux articles de Wikipédia arabe et le texte d'Ibn al-Jazarī (Wikisource). Les occurrences viennent du texte du Coran, contrôlées une à une contre l'annotation du tajwīd : seuls les versets où tout concorde sont utilisés.")} ${a(S[0], 'Wikipédia (nūn)')} · ${a(S[1], 'Wikipédia (mīm)')} · ${a(S[2], 'Wikisource')}</p>`; };
+  return `<p class="ref" style="margin:8px 0 0">${tr("Sources : deux articles de Wikipédia arabe et le texte d'Ibn al-Jazarī (Wikisource). Les occurrences viennent du texte du Coran, contrôlées une à une contre l'annotation du tajwīd : seuls les versets où tout concorde sont utilisés.")} ${a(S[0], 'Wikipédia (nūn)')} · ${a(S[1], 'Wikipédia (mīm)')} · ${a(S[2], 'Wikisource')} ${AI()}</p>`; };
 function qAhkam(){
   const A = window.AHKAM, kinds = ['nun', 'mim', 'letter', 'group', 'ghunna', 'tf'];
   const q = ahBuild(cfg.ahKind === 'mix' ? kinds[rnd(kinds.length)] : cfg.ahKind || 'nun', A, Q, rnd, shuffle) || ahBuild('letter', A, Q, rnd, shuffle);
@@ -1775,7 +1782,7 @@ function qAhkam(){
   hfShow(q, stem, view, explain, stat, AHNOTE());
 }
 const MDNOTE = () => { const T = window.QX.tajweed, a = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
-  return `<p class="ref" style="margin:8px 0 0">${tr("Durées et marques : légende du tajwīd d'Islamic Network (annotation automatique, non relue par un enseignant). Causes : texte d'Ibn al-Jazarī sur Wikisource. Le type de madd est déduit du texte du verset et n'est posé que s'il concorde avec la marque de la source.")} ${a(T.legend, tr('Légende officielle'))} · ${a(window.HURUF.sources[0].url, 'Wikisource')}</p>`; };
+  return `<p class="ref" style="margin:8px 0 0">${tr("Durées et marques : légende du tajwīd d'Islamic Network (annotation automatique, non relue par un enseignant). Causes : texte d'Ibn al-Jazarī sur Wikisource. Le type de madd est déduit du texte du verset et n'est posé que s'il concorde avec la marque de la source.")} ${a(T.legend, tr('Légende officielle'))} · ${a(window.HURUF.sources[0].url, 'Wikisource')} ${AI()}</p>`; };
 function qMadd(){
   const T = window.QX.tajweed.s, kinds = ['type', 'count', 'cause', 'tf'];
   let kind = cfg.mdKind === 'mix' ? kinds[rnd(kinds.length)] : cfg.mdKind || 'type';
@@ -1810,7 +1817,7 @@ function qSifat(noCond){
 }
 
 function tjStat(code, ok){ const x = tjs[code] || [0, 0]; tjs[code] = [x[0] + (ok ? 1 : 0), x[1] + (ok ? 0 : 1)]; store.set('tathbit.tj', tjs); (ses.tj ||= {})[code] = [((ses.tj[code] || [0, 0])[0]) + (ok ? 1 : 0), ((ses.tj[code] || [0, 0])[1]) + (ok ? 0 : 1)]; }
-const TJNOTE = () => `<p class="ref" style="margin:8px 0 0">${tr("Entraînement : les règles viennent d'une annotation automatique (Islamic Network), non relue par un enseignant. En cas de doute, fie-toi à ton professeur.")}</p>`;
+const TJNOTE = () => `<p class="ref" style="margin:8px 0 0">${tr("Entraînement : les règles viennent d'une annotation automatique (Islamic Network), non relue par un enseignant. En cas de doute, fie-toi à ton professeur.")} ${AI()}</p>`;
 const TJUNIQ = 'npmoqcfwiaug';   // familles dont la couleur est unique dans la légende (h/l et d/b partagent un gris)
 const TJKINDS = [['rule', 'Reconnaître la règle'], ['color', 'Reconnaître la règle (avec les couleurs, plus facile)'], ['find', "Trouver la partie d'une règle"], ['tf', 'Vrai ou faux ?'], ['read', 'Lire la couleur (retrouver la règle avec la légende)'], ['mix', 'Mélange des types']];
 function qTajweed(){
@@ -2507,7 +2514,7 @@ const TJLEG = [['h', '#AAAAAA', 'Hamzat al-waṣl'], ['l', '#AAAAAA', 'Lām sola
   ['w', '#58B800', 'Idghām shafawī'], ['i', '#26BFFD', 'Iqlāb'], ['a', '#169777', 'Idghām avec ghunna'], ['u', '#169200', 'Idghām sans ghunna'], ['d', '#A1A1A1', 'Idghām mutajānisayn / mutaqāribayn'], ['g', '#FF7E1E', 'Ghunna (2 temps)']];
 const TJNAME = Object.fromEntries(TJLEG.map(([c, , n]) => [c, n]));   // famille de règle -> nom (légende officielle)
 const TRSRC = {fr: 'Hamidullah', en: 'Saheeh International'};
-const tjLegendHtml = () => `<p style="margin:6px 0 0">${TJLEG.map(([c, col, n]) => `<span class="tjkey"><i style="background:var(--tjc-${c},${col})"></i><span class="tjpat rd tj" lang="ar"><span class="tj-${c}">ـبـ</span></span>${esc(tr(n))}</span>`).join('')}</p>`;
+const tjLegendHtml = () => `<p style="margin:6px 0 0">${TJLEG.map(([c, col, n]) => `<span class="tjkey"><i style="background:var(--tjc-${c},${col})"></i><span class="tjpat rd tj" lang="ar"><span class="tj-${c}">ـبـ</span></span>${esc(tr(n))}</span>`).join('')}</p><p class="ref" style="margin:4px 0 0">${AI()}</p>`;
 function rdSources(){
   const L = [], a = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
   if (cfg.rdTaj) L.push(`<p class="ref" style="margin:8px 0 0">${tr("Couleurs du tajwīd : annotation automatique d'Islamic Network (api.alquran.cloud), non relue par un enseignant. Vérifie avec ton professeur ; elle suit une écriture légèrement différente du texte des exercices.")} ${a('https://1x.ax/islamic-network/alquran/tools/~files/master/docs/tajweed.md', tr('Légende officielle'))}.
@@ -2691,7 +2698,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v55';
+const APP_VERSION = '23 oct. 2026 · v56';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

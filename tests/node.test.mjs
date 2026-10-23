@@ -488,3 +488,10 @@ test('résumé hebdomadaire : total, jours actifs et série sur 7 jours (send-re
   assert.deepEqual(weekSummary({ [d(1)]: 4 }, now), { total: 4, active: 1, streak: 1 });   // aujourd'hui pas encore révisé : la série d'hier compte encore
   assert.ok(ts.includes("getUTCDay() !== 0"), 'seulement le dimanche');
 });
+
+test('contenus rédigés par l’IA : la mention « pas une source officielle » accompagne les explications de règles et le détail est dans Réglages', () => {
+  const html = read('index.html');
+  assert.ok((html.match(/\$\{AI\(\)\}/g) || []).length >= 7, 'la mention doit figurer près des textes d’explication (plan, règles de tajwīd, madd, aḥkām, légende)');
+  for (const f of ['CONDRULE', 'AHNOTE', 'TJNOTE']) { const i = html.indexOf('const ' + f + ' ='); assert.ok(html.slice(i, i + 1500).includes('${AI()}'), f + ' doit porter la mention'); }
+  assert.ok(html.includes("D'où viennent les contenus ?") && html.includes('Rédigé par une IA, pas une source officielle'), 'carte « D’où viennent les contenus ? » dans Réglages');
+});

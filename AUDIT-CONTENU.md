@@ -36,3 +36,6 @@ Des tests automatiques contrôlent à chaque envoi les empreintes, l'alignement 
 
 ## 4. Engagement
 Si une source ne confirme pas un fait, il n'est pas mis dans l'application. Pour re-vérifier : `python3 -I tools/build_quran.py` puis les autres `build_*.py`, et comparer.
+
+## 5. Mention « rédigé par une IA »
+Tout texte d'explication écrit par l'IA qui a développé l'application (explications de règles, termes du plan, légende traduite, notes d'exercices) porte la mention « 🤖 Texte rédigé par une IA, pas une source officielle ». Réglages → « D'où viennent les contenus ? » résume ce qui vient de sources citées et ce qui est rédigé par l'IA.
