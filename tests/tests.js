@@ -636,6 +636,7 @@
     W.__N = [{id: 5, kind: 'message', ref: 't1', actor: 'prof@x.fr', n: 2, created_at: iso(-0.1), read_at: null}, {id: 4, kind: 'goal', ref: '78', actor: 'prof@x.fr', n: 1, created_at: iso(-0.2), read_at: null}, {id: 3, kind: 'linked', ref: 't1', actor: 'prof@x.fr', n: 1, created_at: iso(-3), read_at: iso(-2)}];
     E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; authReady = true; me = {user: {id: 's1', email: 'eleve@x.fr'}, profile: {role: 'user'}};
       sb = {from(){ return {select(){ const p = Promise.resolve({data: [], error: null}); p.is = () => ({gt: () => p}); return p; }}; }, auth: {}, async rpc(n, a){ window.__calls.push(n + ' ' + JSON.stringify(a || {}));
+        if (n === 'links_mine') return {data: [{as_role: 'teacher', other_id: 't1', email: 'prof@x.fr', since: new Date().toISOString()}], error: null};
         if (n === 'notifs_mine') return {data: window.__N.map(x => ({...x})), error: null};
         if (n === 'notif_read'){ window.__N.forEach(x => { if (x.id === a.p_id) x.read_at = new Date().toISOString(); }); return {data: null, error: null}; }
         if (n === 'notifs_read_all'){ window.__N.forEach(x => { x.read_at = x.read_at || new Date().toISOString(); }); return {data: null, error: null}; }
@@ -662,6 +663,24 @@
     $q('#tch-all').value = 'Bonjour la classe'; clickAct('tch-all'); await wait(400); ok(calls.includes('teacher_message_all {"p_body":"Bonjour la classe"}') && appText().includes('Envoyé à 2 élèves.'), 'envoyé aux 2 élèves');
     for (const L of ['en', 'ar']){ W.__N = [{id: 1, kind: 'message', ref: 't', actor: 'p@x.fr', n: 3, created_at: iso(0), read_at: null}, {id: 2, kind: 'role_teacher', ref: null, actor: null, n: 1, created_at: iso(0), read_at: null}, {id: 3, kind: 'unlinked', ref: 't', actor: 'p@x.fr', n: 1, created_at: iso(0), read_at: iso(0)}]; E(`setLang('${L}'); nfLoad()`); await wait(200); clickAct('bell'); await wait(200); ok(P().textContent.length > 40, L); eq(E('[...missingKeys]'), [], L + ' cloche'); clickAct('nf-close'); }
     E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; nf = {list: [], loaded: false}; tch = {students: null, detail: null, msg: '', ok: false, links: null, invites: null, log: null, code: null, busy: false, loaded: false, req: false, msgs: [], goals: [], classes: [], joinMsg: '', wk: false, unread: {}, loading: false, q: '', sort: 'activity', chatWith: null, openAfter: null}; bellSync()");
+  });
+  test('Profil et menus selon la personne : simple utilisateur (ni Élève ni Enseignant), élève, enseignant, administrateur', async () => {
+    reset(); const calls = []; W.__calls = calls; W.__LK = [];
+    E(`CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; authReady = true; me = {user: {id: 'u1', email: 'simple@x.fr'}, profile: {role: 'user', created_at: new Date().toISOString()}}; try { localStorage.clear(); } catch {}
+      sb = {from(){ return {select(){ const p = Promise.resolve({data: [], error: null}); p.is = () => ({gt: () => p}); return p; }}; }, auth: {}, async rpc(n){ if (n === 'links_mine') return {data: window.__LK, error: null}; return {data: [], error: null}; }};`);
+    const tabs = () => $$q('#nav [data-act="tab"]').map(b => b.dataset.v), chip = () => [...D.querySelectorAll('.chip')].map(x => x.textContent).join('|');
+    E("go('home')"); await wait(600); ok(!tabs().includes('student') && !tabs().includes('teacher'), 'simple utilisateur : ni onglet Élève ni onglet Enseignant : ' + tabs().join(',')); eq(chip(), 'Utilisateur', 'profil : Utilisateur');
+    E("openAccount()"); await wait(500); eq(chip(), 'Utilisateur', 'Mon compte : profil Utilisateur'); ok(appText().includes('ni élève ni enseignant') && $q('[data-act="tch-invite"]') && $q('[data-act="tch-req"]'), 'inviter un enseignant et devenir enseignant restent dans Mon compte');
+    // il devient élève dès qu'un enseignant le suit
+    W.__LK = [{as_role: 'teacher', other_id: 't1', email: 'prof@x.fr', since: new Date().toISOString()}]; E("tch.loaded = false; tch.uid = null; go('home')"); for (let i = 0; i < 40 && !tabs().includes('student'); i++) await wait(50);
+    ok(tabs().includes('student') && !tabs().includes('teacher'), 'élève : onglet Élève seulement'); eq(chip(), 'Élève', 'profil : Élève'); E("openAccount()"); await wait(500); ok(appText().includes('Mes enseignants : prof@x.fr'), 'Mon compte : ses enseignants');
+    // enseignant sans élève ni enseignant : onglet Enseignant seul
+    W.__LK = []; E("me = {user: {id: 't9', email: 'prof@x.fr'}, profile: {role: 'teacher', created_at: new Date().toISOString()}}; tch.loaded = false; tch.uid = null; go('home')"); await wait(600);
+    ok(tabs().includes('teacher') && !tabs().includes('student'), 'enseignant : onglet Enseignant (pas Élève s’il n’a pas d’enseignant)'); eq(chip(), 'Enseignant', 'profil : Enseignant');
+    E("me = {user: {id: 'a1', email: 'adm@x.fr'}, profile: {role: 'admin', created_at: new Date().toISOString()}}; tch.loaded = false; tch.uid = null; go('home')"); await wait(600);
+    ok(!tabs().includes('student') && !tabs().includes('teacher'), 'administrateur : aucun des deux onglets'); eq(chip(), 'Administrateur', 'profil : Administrateur');
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); openAccount()`); await wait(300); eq(E('[...missingKeys]'), [], L + ' profil'); }
+    E("setLang('fr'); me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; tch.loaded = false; tch.uid = null; try { localStorage.clear(); } catch {}");
   });
   test('Espace admin : surveillance des e-mails (calme, attention, alerte, nom de domaine)', async () => {
     const mk = (n, agoH) => Array.from({length: n}, (_, i) => ({id: 'u' + agoH + i, email: `u${agoH}-${i}@x.fr`, role: 'user', blocked: false, created_at: new Date(Date.now() - agoH * 36e5).toISOString(), last_seen: null, answers: 0, ok: 0, errors: 0}));

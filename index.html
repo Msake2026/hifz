@@ -34,6 +34,8 @@
   --ok:#74d3a1; --okbg:#173326; --ko:#ff9a8c; --kobg:#3d1f1a; --mid:#e8b95b; --midbg:#3a2c14;
   --pattern:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23d5b25a' stroke-opacity='.09'%3E%3Crect x='20' y='20' width='32' height='32'/%3E%3Crect x='20' y='20' width='32' height='32' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='4'/%3E%3C/g%3E%3C/svg%3E");}
 *{box-sizing:border-box}
+.chip{display:inline-block;padding:2px 9px;border-radius:12px;font-size:.78rem;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.chip.role-admin{border-color:var(--ko);color:var(--ko)}.chip.role-teacher{border-color:var(--gold);color:var(--mid)}.chip.role-student{border-color:var(--accent);color:var(--accent)}
 .bell{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);inset-inline-end:10px;z-index:30;width:44px;height:44px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .bell svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .bell .badge{position:absolute;top:-3px;inset-inline-end:-3px;background:var(--ko);color:#fff;border-radius:10px;font-size:.68rem;line-height:1;padding:3px 5px;font-weight:600}
@@ -623,10 +625,17 @@ const BASE_TABS = [
 ];
 const TAB_STUDENT = ['student', 'Élève', '<path d="M12 3 2 8l10 5 10-5z"/><path d="M6 10.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.5"/>'];
 const TAB_TEACHER = ['teacher', 'Enseignant', '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 6h5M16 10h5M16 14h5"/>'];
-const hasStudentTab = () => cloudOn() && !!me && !isAdmin();           // l'administrateur n'est ni élève ni enseignant
+// Qui est la personne ? administrateur, enseignant (rôle donné par l'admin), élève (au moins un enseignant, message ou objectif), sinon simple utilisateur.
+// L'onglet Élève n'apparaît que pour un élève, l'onglet Enseignant que pour un enseignant ; un simple utilisateur n'a ni l'un ni l'autre (ses invitations sont dans Mon compte).
+const stuKey = () => 'hifz.stu.' + (me ? me.user.id : '');
+const isStudent = () => !!me && !isAdmin() && (tch.loaded ? !!((tch.links || []).length || (tch.msgs || []).length || (tch.goals || []).length) : !!store.get(stuKey(), false));
+const hasStudentTab = () => cloudOn() && !!me && !isAdmin() && (isStudent() || (cfg.tab === 'student' && !tch.loaded));
+const hasTeacherTab = () => cloudOn() && !!me && isTeacher();
+const profileRoles = () => !me ? [] : isAdmin() ? [['admin', 'Administrateur']] : [...(isTeacher() ? [['teacher', 'Enseignant']] : []), ...(isStudent() ? [['student', 'Élève']] : []), ...(!isTeacher() && !isStudent() ? [['user', 'Utilisateur']] : [])];
+const roleChips = () => profileRoles().map(([k, t]) => `<span class="chip role-${k}">${tr(t)}</span>`).join(' ');
 const unreadStudent = () => (tch.msgs || []).filter(m => !m.from_student && !m.read_at).length;
 const unreadTeacher = () => Object.values(tch.unread || {}).reduce((a, b) => a + b, 0);
-const tabsNow = () => [...BASE_TABS.slice(0, 5), ...(hasStudentTab() ? [TAB_STUDENT] : []), ...(hasStudentTab() && isTeacher() ? [TAB_TEACHER] : []), BASE_TABS[5]];
+const tabsNow = () => [...BASE_TABS.slice(0, 5), ...(hasStudentTab() ? [TAB_STUDENT] : []), ...(hasTeacherTab() ? [TAB_TEACHER] : []), BASE_TABS[5]];
 function setNav(on){
   const n = $('nav'); n.hidden = !on; document.body.classList.toggle('has-nav', on); screen = on ? 'tab' : 'full'; queueMicrotask(bellSync);
   if (!on) return;
@@ -709,7 +718,7 @@ function tabHome(){
   const due = dueRefs(), td = days[today()] || 0, st = streak();
   const top = aggErrors(errors.filter(e => e.t >= Date.now() - 7 * 864e5)).slice(0, 3);
   return `
-  <div class="hero"><div class="logo">حفظ</div><div><h1>Hifz</h1><p>${me ? esc(me.user.email) : tr('Que ta mémorisation soit bénie.')}</p></div></div>
+  <div class="hero"><div class="logo">حفظ</div><div><h1>Hifz</h1><p>${me ? esc(me.user.email) + ' ' + roleChips() : tr('Que ta mémorisation soit bénie.')}</p></div></div>
   ${cloudOn() && !me ? `<div class="card"><h2>${tr('Sauvegarde ta progression')}</h2><p class="sub" style="margin:0 0 8px">${tr('Crée un compte gratuit pour retrouver tes séries, tes erreurs et ton historique sur tous tes appareils.')}</p>
     <div class="row"><button class="pri" data-act="acc-open" data-v="signup">${tr('Créer un compte')}</button><button data-act="acc-open" data-v="login">${tr('Se connecter')}</button></div></div>` : ''}
 
@@ -2659,7 +2668,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '22 oct. 2026 · v48';
+const APP_VERSION = '23 oct. 2026 · v49';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2823,7 +2832,10 @@ function renderAccount(){
   else if (!sb) body = `<div class="card"><p class="sub" style="margin:0 0 10px">${esc(acc.msg || tr('Chargement…'))}</p><button class="pri" onclick="location.reload()">${tr('Réessayer')}</button></div>`;
   else if (me){
     body = `<div class="card"><h2>${esc(me.user.email)}</h2>
-      <p class="ref" style="margin:0 0 8px">${isAdmin() ? tr('Rôle : administrateur') : tr('Rôle : utilisateur')} · ${tr('inscrit le {d}', {d: esc(new Date(me.profile.created_at).toLocaleDateString(LOCALE()))})}</p>
+      <p style="margin:0 0 6px">${roleChips()}</p>
+      <p class="ref" style="margin:0 0 4px">${tr('inscrit le {d}', {d: esc(new Date(me.profile.created_at).toLocaleDateString(LOCALE()))})}</p>
+      ${isStudent() && (tch.links || []).length ? `<p class="ref" style="margin:0 0 4px">${tr('Mes enseignants :')} ${(tch.links || []).map(x => esc(x.email)).join(', ')}</p>` : ''}
+      ${isTeacher() ? `<p class="ref" style="margin:0 0 4px">${tr('Tu peux suivre des élèves (onglet Enseignant).')}</p>` : isAdmin() ? `<p class="ref" style="margin:0 0 4px">${tr("Tu administres le site (ni élève, ni enseignant).")}</p>` : !isStudent() ? `<p class="ref" style="margin:0 0 4px">${tr("Tu n'es ni élève ni enseignant : invite un enseignant ou demande à en devenir un plus bas.")}</p>` : ''}
       <p class="ref" style="margin:0 0 10px">${acc.last ? tr('Dernière synchronisation :') + ' ' + fdate(Date.parse(acc.last)) : tr('Synchronisation automatique active')}${acc.syncErr ? ' · <span style="color:var(--ko)">' + esc(acc.syncErr) + '</span>' : ''}</p>
       <div class="row"><button class="pri" data-act="acc-sync">🔄 ${tr('Synchroniser maintenant')}</button>${isAdmin() ? `<button data-act="adm-open">🛡 ${tr('Espace admin')}</button>` : ''}</div></div>
       ${flashHtml()}
@@ -3221,10 +3233,11 @@ async function tchLoadStudent(){ // ce que l'élève voit : ses invitations, ses
     tch.links = (a.data || []).filter(x => x.as_role === 'teacher'); tch.invites = b.data || []; tch.log = c.data || [];
     if (isTeacher()){ const u = await safe(() => sb.rpc('teacher_unread')); tch.unread = Object.fromEntries(u.map(x => [x.student_id, Number(x.n)])); }
   } catch (e){ tchErr(e); }
-  tch.loading = false; tch.loaded = true;
+  const wasStudent = me ? store.get(stuKey(), false) : false;
+  tch.loading = false; tch.loaded = true; if (me) store.set(stuKey(), isStudent());
   const unseen = unreadStudent();
   if (screen === 'tab' && cfg.tab === 'student'){ home(); if (unseen){ sb.rpc('messages_mark_read').then(() => { nfLoad(); tch.msgs.forEach(m => { if (!m.from_student && !m.read_at) m.read_at = new Date().toISOString(); }); if (screen === 'tab') setNav(true); }); } }
-  else if (screen === 'tab') setNav(true);       // simple mise à jour des pastilles du menu
+  else if (screen === 'tab'){ if (me && wasStudent !== isStudent()) home(); else setNav(true); }       // le profil a changé (devenu élève ou plus élève) : on redessine ; sinon, simple mise à jour des pastilles du menu
   else if (screen === 'account') renderAccount();
   tchFlash();
 }
@@ -3288,6 +3301,7 @@ async function nfOpen(id){
   else if (x.kind === 'request') openAdmin();
   else if (x.kind === 'role_teacher'){ await refreshProfile(); go('teacher'); }
   else if (x.kind === 'student_joined') go('teacher');
+  else if (x.kind === 'unlinked' || x.kind === 'request_declined') openAccount();
   else go('student');
 }
 document.addEventListener('click', e => { const p = $('nf-panel'); if (p && !p.hidden && !e.target.closest('#nf-panel, #bell')) nfClose(); });
