@@ -1,4 +1,4 @@
--- Hifz : comptes, synchronisation de la progression et espace admin (Supabase)
+-- Tathbīt : comptes, synchronisation de la progression et espace admin (Supabase)
 -- À coller dans Supabase → SQL Editor → New query → Run. Peut être relancé sans risque.
 --
 -- Sécurité : toutes les règles sont appliquées PAR LA BASE (RLS + fonctions), pas par le site.

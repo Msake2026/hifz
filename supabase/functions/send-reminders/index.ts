@@ -12,9 +12,9 @@ import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
 type Sub = { id: number; user_id: string; endpoint: string; p256dh: string; auth: string; remind_time: string; remind_time2: string | null; tz: string; lang: string; last_sent: string | null; last_sent2: string | null };
 
 const MSG: Record<string, { title: string; plain: string; due: (n: number) => string; late: string }> = {
-  fr: { title: 'Hifz', plain: "C'est l'heure de ta révision 📖", due: (n) => `${n} verset${n > 1 ? 's' : ''} à revoir aujourd'hui 📖`, late: "Il n'est pas trop tard pour ta révision du jour 🌙" },
-  en: { title: 'Hifz', plain: 'Time for your review 📖', due: (n) => `${n} verse${n !== 1 ? 's' : ''} to review today 📖`, late: "It's not too late for today's review 🌙" },
-  ar: { title: 'حفظ', plain: 'حان وقت مراجعتك 📖', due: (n) => `${n} ${n === 1 ? 'آية' : 'آيات'} للمراجعة اليوم 📖`, late: 'لم يفت الأوان بعد لمراجعة اليوم 🌙' },
+  fr: { title: 'Tathbīt', plain: "C'est l'heure de ta révision 📖", due: (n) => `${n} verset${n > 1 ? 's' : ''} à revoir aujourd'hui 📖`, late: "Il n'est pas trop tard pour ta révision du jour 🌙" },
+  en: { title: 'Tathbīt', plain: 'Time for your review 📖', due: (n) => `${n} verse${n !== 1 ? 's' : ''} to review today 📖`, late: "It's not too late for today's review 🌙" },
+  ar: { title: 'تثبيت', plain: 'حان وقت مراجعتك 📖', due: (n) => `${n} ${n === 1 ? 'آية' : 'آيات'} للمراجعة اليوم 📖`, late: 'لم يفت الأوان بعد لمراجعة اليوم 🌙' },
 };
 
 // date (AAAA-MM-JJ) et minutes écoulées dans la journée, dans le fuseau de l'appareil
@@ -39,9 +39,9 @@ function decide(sub: Sub, now: Date) {
 }
 
 const REQ = {
-  fr: (e: string) => ({ title: 'Hifz · demande enseignant', body: `${e} demande à devenir enseignant.` }),
-  en: (e: string) => ({ title: 'Hifz · teacher request', body: `${e} asks to become a teacher.` }),
-  ar: (e: string) => ({ title: 'حفظ · طلب معلّم', body: `${e} يطلب أن يصبح معلّماً.` }),
+  fr: (e: string) => ({ title: 'Tathbīt · demande enseignant', body: `${e} demande à devenir enseignant.` }),
+  en: (e: string) => ({ title: 'Tathbīt · teacher request', body: `${e} asks to become a teacher.` }),
+  ar: (e: string) => ({ title: 'تثبيت · طلب معلّم', body: `${e} يطلب أن يصبح معلّماً.` }),
 };
 
 // demandes d'enseignant pas encore signalées : notification aux appareils des admins + e-mail aux admins (si SMTP configuré)
@@ -68,8 +68,8 @@ async function notifyRequests(db: ReturnType<typeof createClient>) {
     if (smtpUser && smtpPass) {
       try {
         const c = new SMTPClient({ connection: { hostname: 'smtp.gmail.com', port: 465, tls: true, auth: { username: smtpUser, password: smtpPass } } });
-        await c.send({ from: smtpUser, to: (admins ?? []).map((a: { email: string }) => a.email), subject: 'Hifz : demande pour devenir enseignant',
-          content: `${email} demande à devenir enseignant.\n\nPour accepter ou refuser : Hifz → Réglages → Compte → Espace admin → « Demandes d'enseignant ».` });
+        await c.send({ from: smtpUser, to: (admins ?? []).map((a: { email: string }) => a.email), subject: 'Tathbīt : demande pour devenir enseignant',
+          content: `${email} demande à devenir enseignant.\n\nPour accepter ou refuser : Tathbīt → Réglages → Compte → Espace admin → « Demandes d'enseignant ».` });
         await c.close(); ok = true;
       } catch (e) { console.error('mail admin', (e as Error).message); }
     }
@@ -89,9 +89,9 @@ function weekSummary(days: Record<string, number>, now: Date) {
   return { total, active, streak };
 }
 const WK = {
-  fr: { subject: 'Hifz : ta semaine', body: (w: { total: number; active: number; streak: number }) => `Cette semaine : ${w.total} réponse${w.total > 1 ? 's' : ''}, ${w.active} jour${w.active > 1 ? 's' : ''} actif${w.active > 1 ? 's' : ''} sur 7.\n${w.active === 0 ? "Une petite révision aujourd'hui relancera la régularité." : 'Continue comme ça, la régularité fait la mémorisation.'}\n\nPour ne plus recevoir ce résumé : Hifz → Réglages → Compte.` },
-  en: { subject: 'Hifz: your week', body: (w: { total: number; active: number; streak: number }) => `This week: ${w.total} answer${w.total !== 1 ? 's' : ''}, ${w.active} active day${w.active !== 1 ? 's' : ''} out of 7.\n${w.active === 0 ? 'A short review today will restart your routine.' : 'Keep going: regularity builds memorisation.'}\n\nTo stop receiving this summary: Hifz → Settings → Account.` },
-  ar: { subject: 'حفظ: أسبوعك', body: (w: { total: number; active: number; streak: number }) => `هذا الأسبوع: ${w.total} إجابة، و${w.active} أيام نشطة من 7.\n${w.active === 0 ? 'مراجعة قصيرة اليوم تعيد لك انتظامك.' : 'واصل: الانتظام يصنع الحفظ.'}\n\nلإيقاف هذا الملخص: حفظ ← الإعدادات ← الحساب.` },
+  fr: { subject: 'Tathbīt : ta semaine', body: (w: { total: number; active: number; streak: number }) => `Cette semaine : ${w.total} réponse${w.total > 1 ? 's' : ''}, ${w.active} jour${w.active > 1 ? 's' : ''} actif${w.active > 1 ? 's' : ''} sur 7.\n${w.active === 0 ? "Une petite révision aujourd'hui relancera la régularité." : 'Continue comme ça, la régularité fait la mémorisation.'}\n\nPour ne plus recevoir ce résumé : Tathbīt → Réglages → Compte.` },
+  en: { subject: 'Tathbīt: your week', body: (w: { total: number; active: number; streak: number }) => `This week: ${w.total} answer${w.total !== 1 ? 's' : ''}, ${w.active} active day${w.active !== 1 ? 's' : ''} out of 7.\n${w.active === 0 ? 'A short review today will restart your routine.' : 'Keep going: regularity builds memorisation.'}\n\nTo stop receiving this summary: Tathbīt → Settings → Account.` },
+  ar: { subject: 'تثبيت: أسبوعك', body: (w: { total: number; active: number; streak: number }) => `هذا الأسبوع: ${w.total} إجابة، و${w.active} أيام نشطة من 7.\n${w.active === 0 ? 'مراجعة قصيرة اليوم تعيد لك انتظامك.' : 'واصل: الانتظام يصنع الحفظ.'}\n\nلإيقاف هذا الملخص: تثبيت ← الإعدادات ← الحساب.` },
 };
 // WK:end
 
@@ -118,9 +118,9 @@ async function sendWeekly(db: ReturnType<typeof createClient>, now: Date) {
 }
 
 const MSGN = {
-  fr: (e: string) => ({ title: 'Hifz · nouveau message', body: `Message de ${e}` }),
-  en: (e: string) => ({ title: 'Hifz · new message', body: `Message from ${e}` }),
-  ar: (e: string) => ({ title: 'حفظ · رسالة جديدة', body: `رسالة من ${e}` }),
+  fr: (e: string) => ({ title: 'Tathbīt · nouveau message', body: `Message de ${e}` }),
+  en: (e: string) => ({ title: 'Tathbīt · new message', body: `Message from ${e}` }),
+  ar: (e: string) => ({ title: 'تثبيت · رسالة جديدة', body: `رسالة من ${e}` }),
 };
 
 // messages enseignant ↔ élève pas encore signalés : notification au destinataire (sans le texte du message)

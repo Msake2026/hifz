@@ -1,4 +1,4 @@
-# Avant d'ouvrir Hifz au public
+# Avant d'ouvrir Tathbīt au public
 
 À relire le jour où tu invites du monde (ce que le code peut vérifier seul est déjà contrôlé à chaque `git push`).
 

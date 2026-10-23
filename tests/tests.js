@@ -1,4 +1,4 @@
-/* Tests de l'application Hifz : pilotent index.html dans un <iframe> avec de vrais clics.
+/* Tests de l'application Tathbīt : pilotent index.html dans un <iframe> avec de vrais clics.
    Résultat : window.__result = {passed, failed, results:[{name, ok, err}]} et affichage dans la page. */
 (async () => {
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);

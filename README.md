@@ -1,4 +1,4 @@
-# Hifz – tester sa mémorisation du Coran et des moutoun
+# Tathbīt – réviser le Coran et les moutoun
 
 Application web (un seul dossier, sans serveur) : exercices de mémorisation, historique des erreurs, révision espacée, lecteur du texte complet, audio verset par verset.
 

@@ -1,4 +1,4 @@
--- Hifz : rappels par notification (à lancer APRÈS schema.sql, dans Supabase → SQL Editor). Peut être relancé sans risque.
+-- Tathbīt : rappels par notification (à lancer APRÈS schema.sql, dans Supabase → SQL Editor). Peut être relancé sans risque.
 
 create table if not exists public.push_subs (
   id          bigint generated always as identity primary key,

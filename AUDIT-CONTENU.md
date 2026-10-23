@@ -1,4 +1,4 @@
-# Audit du contenu de Hifz (22 oct. 2026)
+# Audit du contenu de Tathbīt (22 oct. 2026)
 
 Règle : aucun verset, vers ou règle n'est écrit de mémoire ; tout vient d'une source citée et vérifiable.
 

@@ -9,9 +9,9 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Hifz">
+<meta name="apple-mobile-web-app-title" content="Tathbīt">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Hifz – Teste ta mémorisation du Coran</title>
+<title>Tathbīt – Coran et moutoun</title>
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/amiri-quran-arabic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="fonts/fonts.css">
@@ -202,6 +202,7 @@ button.big{border-radius:14px}
 .hero .logo{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--accent) 70%,#fff),var(--accent));border:2px solid var(--gold);color:var(--gold-soft);
   box-shadow:0 0 0 4px color-mix(in srgb,var(--gold) 22%,transparent)}
 .hero h1{font-size:2.1rem}
+.hero .logo{font-size:.95rem;line-height:1}.hero p.tag{font-weight:600;color:var(--accent);font-size:.95rem;margin-top:2px}
 .bar,.goal{height:8px;border-radius:8px;background:color-mix(in srgb,var(--gold) 22%,var(--line))}
 .bar i,.goal i{background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:8px}
 .stat div{background:color-mix(in srgb,var(--bg) 55%,var(--card));border:1px solid var(--line);border-radius:14px}
@@ -290,7 +291,7 @@ const trp = (n, k, v) => { const [a, b] = lookup(k).split('|'); return fill((LAN
 const LOCALE = () => ({fr: 'fr-FR', en: 'en-GB', ar: 'ar-u-nu-latn'})[LANG];
 function applyLang(){
   document.documentElement.lang = LANG; document.documentElement.dir = LANG === 'ar' ? 'rtl' : 'ltr';
-  document.title = tr('Hifz – Teste ta mémorisation du Coran');
+  document.title = tr('Tathbīt – Coran et moutoun');
   const b = document.getElementById('boot'); if (b) b.textContent = tr('Chargement du texte du Coran…');
 }
 
@@ -719,7 +720,7 @@ function tabHome(){
   const due = dueRefs(), td = days[today()] || 0, st = streak();
   const top = aggErrors(errors.filter(e => e.t >= Date.now() - 7 * 864e5)).slice(0, 3);
   return `
-  <div class="hero"><div class="logo">حفظ</div><div><h1>Hifz</h1><p>${me ? esc(me.user.email) + ' ' + roleChips() : tr('Que ta mémorisation soit bénie.')}</p></div></div>
+  <div class="hero"><div class="logo">تثبيت</div><div><h1>Tathbīt</h1><p class="tag">${tr('Coran et moutoun')}</p><p>${me ? esc(me.user.email) + ' ' + roleChips() : tr('Que ta mémorisation soit bénie.')}</p></div></div>
   ${cloudOn() && !me ? `<div class="card"><h2>${tr('Sauvegarde ta progression')}</h2><p class="sub" style="margin:0 0 8px">${tr('Crée un compte gratuit pour retrouver tes séries, tes erreurs et ton historique sur tous tes appareils.')}</p>
     <div class="row"><button class="pri" data-act="acc-open" data-v="signup">${tr('Créer un compte')}</button><button data-act="acc-open" data-v="login">${tr('Se connecter')}</button></div></div>` : ''}
 
@@ -2022,9 +2023,9 @@ function exportIcs(){
   const d = new Date(), p = n => String(n).padStart(2, '0');
   const ymd = d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate());
   const url = location.protocol.startsWith('http') ? '\\n' + location.href : '';
-  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Hifz//FR', 'BEGIN:VEVENT', 'UID:hifz-rappel-quotidien',
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Tathbīt//FR', 'BEGIN:VEVENT', 'UID:hifz-rappel-quotidien',
     'DTSTAMP:' + ymd + 'T000000Z', `DTSTART:${ymd}T${p(h)}${p(m)}00`, 'DURATION:PT15M', 'RRULE:FREQ=DAILY',
-    'SUMMARY:' + tr('Révision du Coran (Hifz)'), 'DESCRIPTION:' + tr('Fais ta révision du jour.') + url,
+    'SUMMARY:' + tr('Révision du Coran (Tathbīt)'), 'DESCRIPTION:' + tr('Fais ta révision du jour.') + url,
     'BEGIN:VALARM', 'TRIGGER:PT0S', 'ACTION:DISPLAY', 'DESCRIPTION:' + tr('Révision du Coran'), 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   download('rappel-hifz.ics', ics, 'text/calendar');
 }
@@ -2103,7 +2104,7 @@ async function importFile(f){
     store.set('hifz.cfg', d.cfg || {}); store.set('hifz.stats', d.stats); store.set('hifz.sched', d.sched || {});
     store.set('hifz.days', d.days || {}); store.set('hifz.custom', d.custom || []); store.set('hifz.errors', d.errors || []); store.set('hifz.plan', d.plan || null);
     location.reload();
-  } catch { alert(tr('Fichier non reconnu : choisis une sauvegarde exportée depuis Hifz.')); }
+  } catch { alert(tr('Fichier non reconnu : choisis une sauvegarde exportée depuis Tathbīt.')); }
 }
 
 /* ---------- import d'un matn depuis une photo, un PDF ou un fichier Word : tout est lu DANS le navigateur ---------- */
@@ -2690,7 +2691,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v51';
+const APP_VERSION = '23 oct. 2026 · v52';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2891,7 +2892,7 @@ function renderAccount(){
   const gate = cloudOn() && !me; acc.fromGate = gate;
   const langBar = `<div class="langs">${Object.entries(LANGS).map(([k, n]) => `<button class="${LANG === k ? 'sel' : ''}" data-act="lang" data-v="${k}" lang="${k}">${n}</button>`).join('')}</div>`;
   $app.innerHTML = `${gate ? langBar : `<div class="top"><button class="link" data-act="acc-back">${tr('← Retour')}</button><span>${tr('Compte')}</span></div>`}
-    ${gate ? `<div class="hero" style="margin-top:8px"><div class="logo">حفظ</div><div><h1>Hifz</h1><p>${tr("Crée un compte ou connecte-toi pour accéder à l'application.")}</p></div></div>` : `<h1 style="margin-top:8px">${tr('Mon compte')}</h1>`}
+    ${gate ? `<div class="hero" style="margin-top:8px"><div class="logo">تثبيت</div><div><h1>Tathbīt</h1><p class="tag">${tr('Coran et moutoun')}</p><p>${tr("Crée un compte ou connecte-toi pour accéder à l'application.")}</p></div></div>` : `<h1 style="margin-top:8px">${tr('Mon compte')}</h1>`}
     ${acc.msg && cloudOn() && sb ? `<div id="acc-msg" class="fb ${acc.ok ? 'ok' : 'ko'}">${esc(acc.msg)}</div>` : ''}
     ${acc.resend && !me && sb && !acc.mode.startsWith('newp') ? `<p style="margin:0 0 10px;text-align:center"><button class="link" data-act="acc-resend">✉ ${tr("Renvoyer l'e-mail de confirmation")}</button></p>` : ''}${body}`;
   clearTimeout(msgTimer);
@@ -3125,7 +3126,7 @@ async function remAction(act){
     else if (act === 'rem-test'){
       if (Notification.permission !== 'granted') throw new Error(tr('Notifications refusées : autorise-les dans les réglages de ton téléphone.'));
       const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification('Hifz', {body: tr("C'est l'heure de ta révision 📖"), icon: 'icons/icon-192.png', tag: 'hifz-test'});
+      await reg.showNotification('Tathbīt', {body: tr("C'est l'heure de ta révision 📖"), icon: 'icons/icon-192.png', tag: 'hifz-test'});
       remMsg(tr('Notification de test envoyée.'), true);
     }
   } catch (e){ remMsg(friendly(e), false); }
@@ -3144,7 +3145,7 @@ function renderLegal(){
   $app.innerHTML = `<div class="top"><button class="link" data-act="legal-back">${tr('← Retour')}</button><span>${tr('Confidentialité')}</span></div>
     <h1 style="margin-top:8px">${tr("Confidentialité et conditions d'utilisation")}</h1>
     <p class="sub">${tr('Dernière mise à jour : {d}', {d: date})}</p>
-    ${sec('Qui est responsable ?', [tr("Hifz est un site personnel et gratuit d'aide à la mémorisation du Coran. Responsable du site : contact par e-mail uniquement ({contact}).", {contact})])}
+    ${sec('Qui est responsable ?', [tr("Tathbīt est un site personnel et gratuit d'aide à la révision du Coran et des moutoun. Responsable du site : contact par e-mail uniquement ({contact}).", {contact})])}
     ${sec('Quelles données ?', [tr("Compte : ton adresse e-mail, ton mot de passe (transmis au service d'authentification Supabase, qui le stocke de façon sécurisée ; ce site ne le conserve pas), la date d'inscription, ta dernière activité et ton rôle."),
       tr("Progression : tes statistiques, ton historique d'erreurs (y compris les réponses que tu saisis), ton plan de mémorisation, tes réglages et les textes que tu ajoutes toi-même."),
       tr("Rappels (facultatif) : si tu actives les notifications, l'adresse technique de ton appareil pour les notifications (fournie par Apple, Google ou Mozilla), l'heure choisie, ton fuseau horaire et ta langue sont enregistrés pour t'envoyer le rappel, qui transite par le service de notifications de ton système. Tu peux les désactiver à tout moment dans Réglages."),
@@ -3160,7 +3161,7 @@ function renderLegal(){
     ${sec('Stockage sur ton appareil', [tr("Ce site n'utilise ni cookies publicitaires ni outil de mesure d'audience. Il garde sur ton appareil (stockage local et cache du navigateur) ta session, ta progression, les fichiers de l'application pour fonctionner hors ligne et, si tu les télécharges, les fichiers audio des sourates choisies."),
       tr("Les photos et fichiers que tu importes pour ajouter un matn sont lus directement sur ton appareil : ils ne sont pas envoyés à un serveur.")])}
     ${sec('Sécurité', [tr("Les échanges sont chiffrés (HTTPS) et l'accès aux données est limité par des règles de la base de données : chacun ne voit que ses propres données, seul l'administrateur voit l'ensemble.")])}
-    ${sec("Conditions d'utilisation", [tr("Hifz est un outil d'aide à la mémorisation, fourni gratuitement et sans garantie. Les textes (Coran, moutoun) viennent de sources publiques citées dans l'application et peuvent contenir des erreurs : vérifie toujours avec ton mushaf et ton enseignant. Tu es responsable de l'usage de ton compte et de la confidentialité de ton mot de passe. Un compte peut être suspendu en cas d'abus.")])}
+    ${sec("Conditions d'utilisation", [tr("Tathbīt est un outil d'aide à la révision, fourni gratuitement et sans garantie. Les textes (Coran, moutoun) viennent de sources publiques citées dans l'application et peuvent contenir des erreurs : vérifie toujours avec ton mushaf et ton enseignant. Tu es responsable de l'usage de ton compte et de la confidentialité de ton mot de passe. Un compte peut être suspendu en cas d'abus.")])}
     ${sec('Modifications', [tr("Cette page peut évoluer ; la date de dernière mise à jour est indiquée en haut.")])}`;
   window.scrollTo(0, 0);
 }

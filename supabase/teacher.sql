@@ -1,4 +1,4 @@
--- Hifz : rôle « enseignant » (à lancer APRÈS schema.sql, dans Supabase → SQL Editor). Peut être relancé sans risque.
+-- Tathbīt : rôle « enseignant » (à lancer APRÈS schema.sql, dans Supabase → SQL Editor). Peut être relancé sans risque.
 --
 -- Principe : l'élève crée un code d'invitation (valable 7 jours, à usage unique) et le donne à son enseignant ; l'enseignant
 -- (compte auquel un admin a donné le rôle « teacher ») saisit le code : le lien existe alors, jusqu'à ce que l'enseignant

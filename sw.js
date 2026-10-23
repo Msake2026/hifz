@@ -1,4 +1,4 @@
-// Service worker Hifz : l'application fonctionne hors ligne, mais NE MET JAMAIS EN CACHE les échanges de compte (Supabase).
+// Service worker Tathbīt : l'application fonctionne hors ligne, mais NE MET JAMAIS EN CACHE les échanges de compte (Supabase).
 const SHELL = 'hifz-shell-v8', RUNTIME = 'hifz-runtime-v8', AUDIO = 'hifz-audio-v1';   // AUDIO : sourates téléchargées par l'utilisateur (jamais effacé automatiquement)
 const FILES = ['./', './index.html', './config.js', './i18n.js', './manifest.webmanifest', './icon.svg', './quran.js', './huruf.js', './moutoun.js', './mutashabihat.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
@@ -42,7 +42,7 @@ async function audioResponse(req){
 self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch { d = {body: e.data ? e.data.text() : ''}; }
-  e.waitUntil(self.registration.showNotification(d.title || 'Hifz', {
+  e.waitUntil(self.registration.showNotification(d.title || 'Tathbīt', {
     body: d.body || '', icon: './icons/icon-192.png', badge: './icons/icon-192.png', tag: 'hifz-reminder', data: {url: d.url || './'}}));
 });
 self.addEventListener('notificationclick', e => {

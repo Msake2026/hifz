@@ -60,20 +60,20 @@ Avec **Resend** (recommandé par Supabase ; plan gratuit : 3 000 e-mails/mois et
 1. resend.com → créer le compte → **Domains → Add Domain** → ajouter les enregistrements DNS demandés chez ton registraire, puis **Verify**.
 2. Resend → **API Keys → Create API Key** (accès « Sending access ») : copie la clé (elle commence par `re_`).
 3. Supabase → **Authentication → Emails → SMTP Settings** (le menu peut s'appeler « Auth → SMTP ») → activer **Custom SMTP** :
-   - Sender email : une adresse de ton domaine, ex. `noreply@mail.ton-domaine.fr` · Sender name : `Hifz`
+   - Sender email : une adresse de ton domaine, ex. `noreply@mail.ton-domaine.fr` · Sender name : `Tathbīt`
    - Host : `smtp.resend.com` · Port : `465` · Username : `resend` · Password : la clé API.
 4. Supabase → **Authentication → Rate Limits** : avec un SMTP personnalisé, la limite démarre à 30 e-mails/heure ; relève-la si besoin.
 5. **Authentication → URL Configuration** : *Site URL* = `https://msake2026.github.io/hifz/` ; ajoute la même adresse dans *Redirect URLs*.
-6. **Authentication → Emails → Templates** : colle le contenu de `supabase/emails/confirm-signup.html` (modèle « Confirm sign up », sujet : `Confirm your email · Hifz`) et de `supabase/emails/reset-password.html` (modèle « Reset password », sujet : `Reset your password · Hifz`). Le message contient les trois langues (français, anglais, arabe) et le sujet est toujours en anglais (Supabase n'accepte qu'un seul sujet par modèle).
+6. **Authentication → Emails → Templates** : colle le contenu de `supabase/emails/confirm-signup.html` (modèle « Confirm sign up », sujet : `Confirm your email · Tathbīt`) et de `supabase/emails/reset-password.html` (modèle « Reset password », sujet : `Reset your password · Tathbīt`). Le message contient les trois langues (français, anglais, arabe) et le sujet est toujours en anglais (Supabase n'accepte qu'un seul sujet par modèle).
 7. Test : crée un compte avec une adresse qui n'est pas dans l'équipe Supabase ; l'e-mail doit arriver (regarde les courriers indésirables). Dans l'application, le bouton « Renvoyer l'e-mail de confirmation » apparaît après l'inscription ou si la connexion est refusée parce que l'e-mail n'est pas confirmé (une relance toutes les 60 s au plus).
 
 ### Variante sans nom de domaine : Gmail comme service d'envoi
 
 Pour démarrer gratuitement (environ 500 e-mails par jour pour un compte Gmail personnel d'après des sources tierces ; non confirmé par la documentation de Supabase) :
-1. Crée un compte Gmail **dédié** à Hifz (ne réutilise pas ton adresse principale).
+1. Crée un compte Gmail **dédié** à Tathbīt (ne réutilise pas ton adresse principale).
 2. Active la **validation en deux étapes** (myaccount.google.com → Sécurité). Sans elle, les mots de passe d'application n'existent pas. Ils ne sont pas proposés avec des clés de sécurité seules, un compte professionnel/scolaire ou la Protection avancée.
-3. Ouvre https://myaccount.google.com/apppasswords, donne un nom (ex. « Hifz Supabase ») : Google affiche un code de 16 caractères, montré une seule fois. Changer le mot de passe du compte Google révoque ce code.
-4. Supabase → Authentication → SMTP Settings → Custom SMTP : Sender email = l'adresse Gmail dédiée · Sender name = `Hifz` · Host = `smtp.gmail.com` · Port = `465` (ou `587`) · Username = l'adresse Gmail complète · Password = le code de 16 caractères.
+3. Ouvre https://myaccount.google.com/apppasswords, donne un nom (ex. « Tathbīt Supabase ») : Google affiche un code de 16 caractères, montré une seule fois. Changer le mot de passe du compte Google révoque ce code.
+4. Supabase → Authentication → SMTP Settings → Custom SMTP : Sender email = l'adresse Gmail dédiée · Sender name = `Tathbīt` · Host = `smtp.gmail.com` · Port = `465` (ou `587`) · Username = l'adresse Gmail complète · Password = le code de 16 caractères.
 5. Puis les étapes 4 à 7 ci-dessus (limite horaire, URL de site, modèles, test). Si Google bloque l'envoi ou si le nombre d'inscrits dépasse la limite quotidienne, passe à un nom de domaine et à Resend.
 
 Ne mets jamais la clé API dans le dépôt : elle ne va que dans le champ « Password » de Supabase.
