@@ -738,7 +738,7 @@ function home(){ // affiche l'écran du menu courant (accès réservé aux compt
   $app.innerHTML = ({home: tabHome, plan: tabPlan, train: tabTrain, progress: tabProgress, errors: tabErrors, settings: tabSettings, student: tabStudent, teacher: tabTeacher})[cfg.tab]();
   setNav(true); tchEnter(); chatBottom(); if (cfg.tab === 'settings') setTimeout(audioSpace, 0);
   $app.querySelectorAll('select').forEach(el => { if (el.id.startsWith('cm-')) return;
-    el.onchange = () => { syncCfg(); if (['stype', 'smatn', 'sgoal', 'scat', 'srec', 'aud-from', 'aud-to', 'aud-cap', 'aud-q'].includes(el.id) || el.id.startsWith('pf-')) home(); }; });
+    el.onchange = () => { syncCfg(); if (['stype', 'smatn', 'ssec', 'sgoal', 'scat', 'srec', 'aud-from', 'aud-to', 'aud-cap', 'aud-q'].includes(el.id) || el.id.startsWith('pf-')) home(); }; });
   if ($('impfile')) $('impfile').onchange = e => importFile(e.target.files[0]);
   ['cm-f-cam', 'cm-f-img', 'cm-f-doc'].forEach(id => { if ($(id)) $(id).onchange = e => { queueAdd([...e.target.files]); e.target.value = ''; }; });
 }
@@ -1070,7 +1070,7 @@ function tabTrain(){
       <label class="f">${tr('Matn')}</label>
       <select id="smatn"><option value="all">${tr('Tous les moutoun')}</option>${matnOpts(sc.id)}</select>
       ${isM && MT[sc.id] && MT[sc.id].sec ? `<label class="f">${tr('Bloc (chapitre du matn)')}</label>
-      <select id="ssec"><option value="">${tr('Tout le matn')} (${MT[sc.id].a.length})</option>${MT[sc.id].sec.map((b, k) => `<option value="${k}" ${sc.sec === k ? 'selected' : ''}>${k + 1}. ${esc(secName(b))} (${secSize(sc.id, k)})</option>`).join('')}</select>
+      <select id="ssec"><option value="" ${sc.sec == null ? 'selected' : ''}>📜 ${tr('Tout le matn')} (${MT[sc.id].a.length})</option>${MT[sc.id].sec.map((b, k) => `<option value="${k}" ${sc.sec === k ? 'selected' : ''}>${k + 1}. ${esc(secName(b))} (${secSize(sc.id, k)})</option>`).join('')}</select>
       <p class="ref" style="margin:4px 0 0">${tr("Titres des blocs : ceux de la source ; le français est traduit par l'IA, pas une source officielle.")}</p>` : ''}
       ${isM ? srcNote(sc) : ''}
       <details style="margin-top:12px"><summary>➕ ${tr('Ajouter mon propre matn')}</summary>
@@ -2804,7 +2804,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v67';
+const APP_VERSION = '23 oct. 2026 · v68';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

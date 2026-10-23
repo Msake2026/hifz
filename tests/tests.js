@@ -67,6 +67,11 @@
     eq(E("buildPool({type: 'matn', id: 'all'}).length"), 61 + 34 + 315 + 42, 'tous les moutoun');
     $q('#ssec').value = '1'; $q('#ssec').dispatchEvent(new Event('change'));
     eq(E("cfg.scope.sec"), 1, 'le bloc choisi est retenu'); ok(E("scopeLabel(cfg.scope)").includes('Nūn sākina'), 'le bloc apparaît dans le libellé de la portée');
+    const start = () => $q('.cta [data-act="start"]').textContent;
+    ok(start().includes('Nūn sākina'), 'le bouton de départ porte le nom du bloc');
+    ok($q('#ssec').options[0].value === '' && $q('#ssec').options[0].textContent.includes('Tout le matn'), 'le matn entier est le premier choix de la liste des blocs');
+    $q('#ssec').value = ''; $q('#ssec').dispatchEvent(new Event('change'));
+    eq(E("cfg.scope.sec"), undefined, 'retour au matn entier'); ok(!start().includes('Nūn sākina'), 'le bouton de départ ne porte plus le nom du bloc');
     E("cfg.scope = {type: 'matn', id: 'bayquniyya'}; go('train')"); ok(!$q('#ssec'), 'un matn sans titres de chapitres dans sa source n’a pas de choix de bloc');
     E("openReader('m:ibnachir')"); await wait(300); eq($$q('.rblk').length, 27, 'le lecteur affiche les titres des 27 blocs d’Ibn ʿĀshir'); noErr('blocs');
   });
