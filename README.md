@@ -1,6 +1,8 @@
 # Tathbīt – réviser le Coran et les moutoun
 
-Application web (un seul dossier, sans serveur) : exercices de mémorisation, historique des erreurs, révision espacée, lecteur du texte complet, audio verset par verset.
+**But : le tathbīt (تثبيت), pas le ḥifẓ.** L'application sert à consolider ce que l'on a déjà mémorisé du Coran et des moutoun, pas à le mémoriser pour la première fois.
+
+Application web (un seul dossier, sans serveur) : exercices de consolidation de la mémoire, historique des erreurs, révision espacée, lecteur du texte complet, audio verset par verset.
 
 - **Coran (Ḥafṣ)** : texte uthmani du projet Tanzil, embarqué dans `quran.js` (généré et contrôlé par `tools/build_quran.py` depuis api.alquran.cloud ; vérifié par empreinte SHA-256 à chaque chargement) ; audio via cdn.islamic.network.
 - **Lecteur (facultatif)** : `data/*.js` générés par `tools/build_extras.py` et chargés à la demande : tajwīd en couleurs (édition `quran-tajweed` d'Islamic Network, légende officielle ; annotation automatique non relue), traductions de Tanzil (Hamidullah en français, Saheeh International en anglais ; usage non commercial, lien vers tanzil.net/trans), tafsir al-Muyassar (Complexe du Roi Fahd). Chaque fichier est contrôlé (6236 versets, empreinte SHA-256) avant affichage.

@@ -42,6 +42,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Tathbīt">
+<meta name="description" content="Tathbīt (تثبيت) : consolider ce que tu as déjà mémorisé du Coran et des moutoun. Le but est le tathbīt, pas le ḥifẓ (la première mémorisation).">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Tathbīt – Coran et moutoun</title>
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -1202,6 +1203,9 @@ function tabSettings(){
     <div class="row" style="margin-top:12px;align-items:end"><div><label class="f">${tr('Rappel quotidien (calendrier)')}</label><input type="time" id="rtime" value="20:00"></div>
       <button data-act="ics">📅 ${tr('Ajouter au calendrier')}</button></div>
   </div>
+
+  <div class="card"><h2>${tr("But de l'application")}</h2>
+    <p class="ref" style="margin:0">${tr("Tathbīt (تثبيت) sert à consolider ce que tu as déjà mémorisé du Coran et des moutoun : c'est le tathbīt, et non le ḥifẓ (la première mémorisation).")}</p></div>
 
   <div class="card"><h2>${tr("D'où viennent les contenus ?")}</h2>
     <p class="ref" style="margin:0 0 6px"><b>${tr('Sources citées et vérifiables :')}</b> ${tr('texte du Coran et traductions (Tanzil), tafsīr al-Muyassar, annotation du tajwīd (Islamic Network), moutoun (Wikisource, hadith-api ; Ibn ʿĀshir : deux transcriptions web non officielles), règles des lettres (Wikisource et Wikipédia arabe).')}</p>
@@ -2830,7 +2834,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v70';
+const APP_VERSION = '23 oct. 2026 · v71';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -3049,7 +3053,7 @@ function renderAccount(){
   const gate = cloudOn() && !me; acc.fromGate = gate;
   const langBar = `<div class="langs">${Object.entries(LANGS).map(([k, n]) => `<button class="${LANG === k ? 'sel' : ''}" data-act="lang" data-v="${k}" lang="${k}">${n}</button>`).join('')}</div>`;
   $app.innerHTML = `${gate ? langBar : `<div class="top"><button class="link" data-act="acc-back">${tr('← Retour')}</button><span>${tr('Compte')}</span></div>`}
-    ${gate ? `<div class="hero" style="margin-top:8px"><div class="logo"><span class="lg">تثبيت</span></div><div><h1>Tathbīt</h1><p class="tag">${tr('Coran et moutoun')}</p><p>${tr("Crée un compte ou connecte-toi pour accéder à l'application.")}</p></div></div>` : `<h1 style="margin-top:8px">${tr('Mon compte')}</h1>`}
+    ${gate ? `<div class="hero" style="margin-top:8px"><div class="logo"><span class="lg">تثبيت</span></div><div><h1>Tathbīt</h1><p class="tag">${tr('Coran et moutoun')}</p><p>${tr("Crée un compte ou connecte-toi pour accéder à l'application.")}</p><p class="ref" style="margin:2px 0 0">${tr('Consolider ce que tu as déjà mémorisé (tathbīt), pas le mémoriser pour la première fois (ḥifẓ).')}</p></div></div>` : `<h1 style="margin-top:8px">${tr('Mon compte')}</h1>`}
     ${acc.msg && cloudOn() && sb ? `<div id="acc-msg" class="fb ${acc.ok ? 'ok' : 'ko'}">${esc(acc.msg)}</div>` : ''}
     ${acc.resend && !me && sb && !acc.mode.startsWith('newp') ? `<p style="margin:0 0 10px;text-align:center"><button class="link" data-act="acc-resend">✉ ${tr("Renvoyer l'e-mail de confirmation")}</button></p>` : ''}${body}`;
   clearTimeout(msgTimer);
