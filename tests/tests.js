@@ -679,6 +679,14 @@
     E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله رب'}], {isFinal: false})]})"); await wait(30);
     $q('[data-act="listen"]').click(); $q('[data-act="listen"]') && $q('[data-act="listen"]').click(); await wait(250);
     eq(E('window.__stops'), 1, 'un seul arrêt, même si on touche deux fois'); ok($q('#fb .fb') && $q('#work').textContent.includes('الحمد لله رب'), 'le verset est corrigé avec ce qui a été récité');
+    // fin de récitation détectée par une pause (le micro n'a pas besoin qu'on touche le bouton) ; correction forcée si le navigateur ne signale jamais la fin
+    E("MIC_SILENCE = 100; window.__stops = 0; SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ window.__stops++; this.onend(); }; this.abort = function(){}; };");
+    E("home()"); E("start()"); clickAct('listen'); await wait(50); E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: true})]})"); await wait(400);
+    eq(E('window.__stops'), 1, 'pause après avoir récité : le micro s’arrête tout seul'); ok($q('#fb .fb'), 'et la récitation est corrigée sans rien toucher');
+    E("MIC_SILENCE = 4000; MIC_GRACE = 100; window.__stops = 0; SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ window.__stops++; }; this.abort = function(){}; };");
+    E("home()"); E("start()"); clickAct('listen'); await wait(50); E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله رب'}], {isFinal: false})]})"); await wait(30);
+    $q('[data-act=\"listen\"]').click(); await wait(500); ok($q('#fb .fb') && $q('#work').textContent.includes('الحمد لله رب'), 'le navigateur ne signale jamais la fin : la récitation est corrigée quand même'); ok(E('micRec === null'), 'micro libéré');
+    E("MIC_GRACE = 1500");
     // le micro se coupe quand la solution s'affiche, et jamais au-delà de la limite
     E("window.__aborted = 0; SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ this.onend(); }; this.abort = function(){ window.__aborted++; this.onend(); }; };");
     E("home()"); E("start()"); clickAct('listen'); await wait(100); ok(E('micRec !== null'), 'micro ouvert'); ok(/Micro ouvert/.test($q('#hmsg').textContent) && /\d+ s/.test($q('#hmsg').textContent), 'compte à rebours affiché : ' + $q('#hmsg').textContent);

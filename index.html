@@ -1995,10 +1995,10 @@ function micHelp(code, platform, standalone){
 /* MH:end */
 const micPlatform = () => IOS ? 'ios' : /Android/i.test(navigator.userAgent) ? 'android' : 'desktop';
 const micError = code => { const h = micHelp(code, micPlatform(), IOS_APP); return h.text ? tr(h.text) + (h.how ? ' ' + tr(h.how) : '') : tr('Micro indisponible ({e}).', {e: code}); };
-let MIC_MAX = {one: 45, cont: 180};
+let MIC_MAX = {one: 45, cont: 180}, MIC_SILENCE = 4000, MIC_GRACE = 1500;   // MIC_SILENCE : pause (ms) après laquelle, une fois du texte entendu, la récitation est considérée finie ; MIC_GRACE : attente (ms) de la fin d'écoute après l'arrêt, avant de corriger de force
 let micRec = null;
 function stopMic(){
-  if (!micRec) return; const r = micRec; micRec = null; r.aborted = true; clearTimeout(r.cap); clearInterval(r.tick);
+  if (!micRec) return; const r = micRec; micRec = null; r.aborted = true; clearTimeout(r.cap); clearTimeout(r.silence); clearTimeout(r.grace); clearInterval(r.tick);
   try { r.abort(); } catch { try { r.stop(); } catch { /* déjà arrêté */ } }
 }
 function listen(){
@@ -2007,15 +2007,17 @@ function listen(){
   const cont = cur.m === 'cont';
   const btn = document.querySelector('[data-act="listen"]'), heard = $('heard'), msg = $('hmsg');
   const rec = new SR(); rec.lang = 'ar-SA'; rec.interimResults = true; rec.continuous = true; rec.maxAlternatives = 1;   // résultats provisoires : on voit le texte au fur et à mesure ; écoute continue : une pause au milieu du verset ne coupe plus le micro, c'est toi qui termines
-  let text = '', stopping = false, left = cont ? MIC_MAX.cont : MIC_MAX.one;
+  let text = '', stopping = false, ended = false, left = cont ? MIC_MAX.cont : MIC_MAX.one;
   rec.onresult = ev => {
     const R = [...ev.results]; text = R.map(r => r[0].transcript).join(' ');
     heard.innerHTML = R.map(r => `<span class="${r.isFinal ? '' : 'interim'}">${esc(r[0].transcript)}</span>`).join(' ');   // les mots encore provisoires sont estompés
+    clearTimeout(rec.silence); if (text.trim() && !stopping) rec.silence = setTimeout(stopNow, MIC_SILENCE);          // une pause assez longue après avoir récité = terminé
   };
   rec.onerror = ev => { if (ev.error === 'aborted') return; msg.dataset.err = '1'; msg.textContent = micError(ev.error); };
   rec.onstart = () => { rec.started = true; if (!msg.dataset.err) tick(); };
-  rec.onend = () => {
-    clearTimeout(rec.cap); clearInterval(rec.tick); if (micRec === rec) micRec = null;
+  const finish = () => {
+    if (ended) return; ended = true;
+    clearTimeout(rec.cap); clearTimeout(rec.silence); clearTimeout(rec.grace); clearInterval(rec.tick); if (micRec === rec) micRec = null;
     if (rec.aborted) return;                                  // coupé par l'application (solution affichée) : rien à corriger
     btn.disabled = false; btn.textContent = tr('🎤 Réessayer'); btn.onclick = null;
     heard.querySelectorAll('.interim').forEach(e => e.classList.remove('interim'));
@@ -2025,12 +2027,15 @@ function listen(){
     } else if (rec.capped) msg.textContent = tr('Micro coupé automatiquement après {n} s.', {n: cont ? MIC_MAX.cont : MIC_MAX.one});
     else if (!msg.dataset.err) msg.textContent = tr('Rien entendu, réessaie.');
   };
+  rec.onend = finish;
+  // terminer : on demande l'arrêt ; si le navigateur ne signale jamais la fin (cas vu sur certains appareils), on corrige quand même après MIC_GRACE ms
+  function stopNow(){ if (stopping) return; stopping = true; clearTimeout(rec.silence); btn.disabled = true; try { rec.stop(); } catch { /* déjà arrêté */ } rec.grace = setTimeout(() => { try { rec.abort(); } catch { /* déjà arrêté */ } finish(); }, MIC_GRACE); }
   heard.textContent = ''; delete msg.dataset.err;
   const tick = () => { if (!msg.dataset.err) msg.textContent = tr('Micro ouvert : il se coupe tout seul dans {n} s.', {n: left}); };
   msg.textContent = tr("Si ton navigateur demande l'autorisation du micro, accepte. Touche « J'ai fini de réciter » quand tu as terminé."); rec.tick = setInterval(() => { left--; if (left > 0 && rec.started) tick(); }, 1000);
-  rec.cap = setTimeout(() => { rec.capped = true; try { rec.stop(); } catch { /* déjà arrêté */ } }, left * 1000);
+  rec.cap = setTimeout(() => { rec.capped = true; stopNow(); }, left * 1000);
   btn.textContent = tr("⏹ J'ai fini de réciter");
-  btn.onclick = ev => { ev.stopPropagation(); if (!stopping){ stopping = true; btn.disabled = true; try { rec.stop(); } catch { /* déjà arrêté */ } } };   // c'est toi qui décides quand le verset est récité : le micro se coupe et la réponse est corrigée
+  btn.onclick = ev => { ev.stopPropagation(); stopNow(); };   // c'est toi qui décides quand le verset est récité : le micro se coupe et la réponse est corrigée
   micRec = rec;
   try { rec.start(); } catch (e){ btn.disabled = false; btn.textContent = tr('🎤 Réessayer'); micRec = null; clearTimeout(rec.cap); clearInterval(rec.tick); msg.dataset.err = '1'; msg.textContent = micError((e && e.name === 'NotAllowedError') ? 'not-allowed' : (e && e.name) || 'start'); }
 }
@@ -2729,7 +2734,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v61';
+const APP_VERSION = '23 oct. 2026 · v62';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
