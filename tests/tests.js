@@ -247,7 +247,7 @@
     box.checked = false; E("cfg.tjp = false; cfg.rdTaj = false; applyA11y()"); ok(!D.documentElement.classList.contains('tjp')); host.remove();
   });
   test('Accessibilité : audit axe-core (WCAG 2.2 AA) des écrans principaux, sans violation', async () => {
-    const src = await fetch('https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js').then(r => r.ok ? r.text() : '').catch(() => '');
+    const src = await fetch('https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js', {signal: AbortSignal.timeout(20000)}).then(r => r.ok ? r.text() : '').catch(() => '');
     if (!src) return;                                            // pas d'accès au CDN : test ignoré
     W.eval(src); const st = D.createElement('style'); st.textContent = '.cta,#nav{position:static!important}'; D.head.appendChild(st);   // barres collantes : elles masquent des champs selon la hauteur de l'écran (le décalage du focus est traité par scroll-padding) ; on mesure ici la taille des cibles
     const opts = {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']}}, bad = [];
