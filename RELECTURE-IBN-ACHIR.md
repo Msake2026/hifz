@@ -1,13 +1,16 @@
 # Fiche de relecture : Ibn ʿĀshir, *al-Murshid al-Muʿīn*
 
 Le texte de l'application vient de **deux transcriptions de blogs** (copie A, retenue, et copie B) qui s'accordent à 96,8 %.
-Toutes les divergences entre les deux copies ont été **relues et tranchées par une personne le 23 oct. 2026** : 5 mots corrigés (section 1), 47 mots de la copie A confirmés (section 2). L'IA n'a rien tranché.
+Toutes les divergences entre les deux copies ont été **relues et tranchées par une personne le 23 oct. 2026** : 6 mots corrigés (section 1), 47 mots de la copie A confirmés (section 2). L'IA n'a rien tranché.
 
-**Pas encore relu :** les passages où les deux copies sont d'accord ; les 5 vers d'introduction (n° 1 à 5, seulement dans la copie A) ; le nombre de vers (315 dans l'application, 317 dans les sources) ; les titres des 27 chapitres.
+Les 5 vers d'introduction (n° 1 à 5, seulement dans la copie A) ont aussi été relus : un mot corrigé (vers 4).
 
-## 1. Mots corrigés par la relecture : 5
+**Pas encore relu :** les passages où les deux copies sont d'accord (hors vers d'introduction) ; le nombre de vers (315 dans l'application, 317 dans les sources) ; les titres des 27 chapitres.
+
+## 1. Mots corrigés par la relecture : 6
 | N° du vers | Chapitre | Mot dans l'appli | Mot de la copie B | Vers complet (texte de l'appli) |
 |---|---|---|---|---|
+| 4 | Introduction | **فَالعَونَ** | **—** | وبَعدُ فَالعَونَ مِنَ اللهِ المَجيدْ فِي نَظْمِ أبْيَاتٍ لِلأُمِّيِّ تُفِيدْ |
 | 90 | Ce qui rend le grand lavage obligatoire | **والآخِرَان** | **والاحَرَان** | وَالأوَّلانِ مَنَعَا الْوَطْءَ إلَى غُسْلٍ والآخِرَان قُرْءانا خَلا |
 | 173 | Les conditions de l'imam | **وَأَغْلَفٌ** | **,َأغْلَفُ** | وَرَاتِبٌ مَجْهُولٌ أوْ مَنْ أُبِنَا وَأَغْلَفٌ عَبْدٌ خَصِيُّ ابْنُ زِنَا |
 | 202 | Livre de la zakât | **وَمِائَةْ** | **ومائة** | فِي وَاحِدٍ عِشْرينَ يَتْلو وَمِائَةْ وَمَعْ ثَمانينَ ثَلاثٌ مُجْزِئَةْ |

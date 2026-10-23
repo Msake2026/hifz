@@ -12,6 +12,11 @@ def same(r): return B.sk(r["a"]).replace(" ", "") == B.sk(r["b"]).replace(" ", "
 for r in allrows:   # un vers présent seulement dans A : son numéro est celui qui suit le vers de B auquel il est rattaché
     if r["b"].startswith("(vers"): r["n"] += 1
 rows = [r for r in allrows if not same(r) or r["a"] in B.CORRECTIONS.values()]
+for new in B.CORRECTIONS.values():   # corrections qui ne viennent pas d'une divergence (ex. vers d'introduction, seulement dans A)
+    if not any(r["a"] == new for r in rows):
+        n = next(i + 1 for i, u in enumerate(units) if new in u["t"].split(" "))
+        rows.append({"n": n, "a": new, "b": "", "bline": ""})
+rows.sort(key=lambda r: r["n"])
 def chap(n):
     return [s for s in sec if s["from"] <= n][-1]["fr"]
 def verse(r):
@@ -32,7 +37,7 @@ out = f"""# Fiche de relecture : Ibn ʿĀshir, *al-Murshid al-Muʿīn*
 Le texte de l'application vient de **deux transcriptions de blogs** (copie A, retenue, et copie B) qui s'accordent à 96,8 %.
 Toutes les divergences entre les deux copies ont été **relues et tranchées par une personne le 23 oct. 2026** : {len(done)} mots corrigés (section 1), {len(kept)} mots de la copie A confirmés (section 2). L'IA n'a rien tranché.
 
-**Pas encore relu :** les passages où les deux copies sont d'accord ; les 5 vers d'introduction (n° 1 à 5, seulement dans la copie A) ; le nombre de vers (315 dans l'application, 317 dans les sources) ; les titres des 27 chapitres.
+Les 5 vers d'introduction (n° 1 à 5, seulement dans la copie A) ont aussi été relus : un mot corrigé (vers 4).\n\n**Pas encore relu :** les passages où les deux copies sont d'accord (hors vers d'introduction) ; le nombre de vers (315 dans l'application, 317 dans les sources) ; les titres des 27 chapitres.
 
 ## 1. Mots corrigés par la relecture : {len(done)}
 {head}
