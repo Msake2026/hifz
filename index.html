@@ -289,6 +289,12 @@ input[type=email],input[type=password],input[type=time]{direction:ltr;text-align
 /* lecteur : plusieurs sections (Coran entier, tous les moutoun) */
 .rsec{margin:0 0 22px}
 .rblk{margin:22px 0 4px;padding:6px 12px;border-radius:8px;background:var(--line-soft);font-size:1rem;font-weight:700}
+h3.rblk{margin-top:12px}
+summary.rblk{cursor:pointer;list-style:none;display:block;margin:12px 0 4px}
+summary.rblk::-webkit-details-marker{display:none}
+summary.rblk::before{content:'▾ ';color:var(--muted)}
+details.rblkd:not([open]) > summary.rblk::before{content:'▸ '}
+.rblk small{font-weight:400;color:var(--muted)}
 .rtitle{margin:0 0 6px;text-align:center;border-top:1px solid var(--gold-soft);border-bottom:1px solid var(--gold-soft);padding:10px 0;font-family:inherit;font-weight:400}
 .rtitle .ar{display:block;font-size:2.1rem;line-height:1.7;padding:0}
 .rtitle small{display:block;color:var(--muted);font-family:Inter,"Noto Sans Arabic",sans-serif;font-size:.8rem}
@@ -2540,6 +2546,9 @@ const onClick = e => {
     }
     case 'rd-back': rdStop(); home(); break;
     case 'rd-taj': case 'rd-tf': { const k = el.dataset.act === 'rd-taj' ? 'rdTaj' : 'rdTf'; cfg[k] = !cfg[k]; saveCfg(); rd.err = ''; const y = scrollY; rdStop(); rd.focus = 0; renderReader(); scrollTo(0, y); } break;
+    case 'rd-fold': { // replier / déplier tous les blocs
+      rd.closed.clear(); if (v === '1') rd.secs.forEach(id => (MT[id].sec || []).forEach((_, k) => rd.closed.add(id + ':' + k)));
+      const y = scrollY; rdStop(); rd.focus = 0; renderReader(); scrollTo(0, y); break; }
     case 'rd-hide': cfg.rdHide = !cfg.rdHide; saveCfg(); { const y = scrollY; rdStop(); rd.focus = 0; renderReader(); scrollTo(0, y); } break;
     case 'rd-size': cfg.rdSize = Math.min(3.2, Math.max(1.1, +(cfg.rdSize + 0.2 * +v).toFixed(2))); saveCfg(); { const y = scrollY; rdStop(); rd.focus = 0; renderReader(); scrollTo(0, y); } break;
     case 'rd-prev': case 'rd-next': {
@@ -2635,7 +2644,7 @@ function readerSecs(spec){ // 'q:all' | 'q:12' | 'q:sel' | 'm:all' | 'm:<id>'
 }
 function openReader(spec, focus = 0, sel = null){
   stopAudio(); if (rdObs){ rdObs.disconnect(); rdObs = null; }
-  rd = {spec, sel, focus, playing: false, i0: 0};
+  rd = {spec, sel, focus, playing: false, i0: 0, blk: null, closed: new Set()};   // blk : bloc affiché seul (null = matn entier) ; closed : blocs repliés (« id:k »)
   rd.secs = readerSecs(spec);
   if (focus && spec === 'q:all') rd.i0 = 0;
   rd.upto = Math.min(rd.secs.length, rd.i0 + (rd.secs.length > 1 ? 3 : 1));
@@ -2652,13 +2661,24 @@ function secHtml(id){
       : `<div class="rd${cfg.rdTaj ? ' tj' : ''}" style="font-size:${siz}rem">${B.a.map((_, i) => rvSpan(id, i + 1)).join(' ')}</div>`}</section>`;
   }
   const unit = {vers: '{n} vers|{n} vers', hadith: '{n} hadith|{n} hadiths', passage: '{n} passage|{n} passages'}[B.unit] || '{n}';
+  const line = (u, i) => {
+    const w = u.t.split(/\s+/), h = B.kind === 'poem' && u.m ? u.m : 0;
+    const txt = h ? `<span>${esc(w.slice(0, h).join(' '))}</span><span class="psep">✦</span><span>${esc(w.slice(h).join(' '))}</span>` : esc(u.t);
+    return `<div class="${h ? 'pl' : 'pp'} rd rv${cfg.rdHide ? ' hid' : ''}" style="font-size:${siz * 0.78}rem;line-height:2.1" data-act="rv" data-s="${id}" data-i="${i + 1}"><span class="pn">${i + 1}</span>${txt}</div>`;
+  };
+  let body;
+  if (B.sec && B.sec.length){ // blocs (chapitres de la source) : un seul bloc au choix, ou tout le matn avec blocs repliables
+    const one = rd.spec === 'm:' + id && rd.blk != null && B.sec[rd.blk] ? rd.blk : null;
+    body = B.sec.map((b, k) => {
+      if (one != null && one !== k) return '';
+      const [f, t] = secRange(id, k), to = Math.min(t, n), title = `${esc(secName(b))} <small>(${trp(to - f + 1, unit)})</small>`;
+      const verses = B.a.slice(f - 1, to).map((u, j) => line(u, f - 1 + j)).join('');
+      return one != null ? `<h3 class="rblk">${title}</h3>${verses}`
+        : `<details class="rblkd" data-k="${id}:${k}" ${rd.closed.has(id + ':' + k) ? '' : 'open'}><summary class="rblk">${title}</summary>${verses}</details>`;
+    }).join('');
+  } else body = B.a.map(line).join('');
   return `<section class="rsec" id="rs-${id}"><h2 class="rtitle"><span class="ar">${esc(B.ar)}</span><small>${esc(MN(id))} · ${trp(n, unit)}${B.author ? ' · ' + esc(tr(B.author)) : ''}</small></h2>${srcNote({id})}
-    ${B.a.map((u, i) => {
-      const w = u.t.split(/\s+/), h = B.kind === 'poem' && u.m ? u.m : 0, bk = (B.sec || []).findIndex(b => b.from === i + 1);
-      const head = bk >= 0 ? `<h3 class="rblk" id="rb-${id}-${bk}">${esc(secName(B.sec[bk]))}</h3>` : '';
-      const txt = h ? `<span>${esc(w.slice(0, h).join(' '))}</span><span class="psep">✦</span><span>${esc(w.slice(h).join(' '))}</span>` : esc(u.t);
-      return head + `<div class="${h ? 'pl' : 'pp'} rd rv${cfg.rdHide ? ' hid' : ''}" style="font-size:${siz * 0.78}rem;line-height:2.1" data-act="rv" data-s="${id}" data-i="${i + 1}"><span class="pn">${i + 1}</span>${txt}</div>`;
-    }).join('')}</section>`;
+    ${body}</section>`;
 }
 function renderReader(){
   setNav(false);
@@ -2678,6 +2698,9 @@ function renderReader(){
       ${Q.map(x => `<option value="q:${x.n}" ${optSel('q:' + x.n)}>${x.n}. ${esc(SN(x.n))}</option>`).join('')}</optgroup>
     <optgroup label="${tr('Moutoun')}"><option value="m:all" ${optSel('m:all')}>📜 ${tr('Tous les moutoun')}</option>
       ${Object.values(MT).map(t => `<option value="m:${t.id}" ${optSel('m:' + t.id)}>${esc(MN(t.id))}</option>`).join('')}</optgroup></select>`;
+  const MB = !q && !multi && MT[rd.secs[0]] && MT[rd.secs[0]].sec;    // un seul matn qui a des blocs
+  const blkSel = MB ? `<label class="f" for="rdblk">${tr('Bloc (chapitre du matn)')}</label><select id="rdblk"><option value="">📜 ${tr('Tout le matn')} (${MT[rd.secs[0]].a.length})</option>${MB.map((b, k) => `<option value="${k}" ${rd.blk === k ? 'selected' : ''}>${k + 1}. ${esc(secName(b))} (${secSize(rd.secs[0], k)})</option>`).join('')}</select>` : '';
+  const foldable = !q && rd.blk == null && rd.secs.some(id => MT[id] && MT[id].sec);
   const jump = multi ? `<label class="f" for="rdjump">${tr('Aller à…')}</label><select id="rdjump">${rd.secs.map(id => `<option value="${id}" ${id === rd.secs[rd.i0] ? 'selected' : ''}>${q ? id + '. ' + esc(SN(id)) : esc(MN(id))}</option>`).join('')}</select>` : '';
   const first = q ? 1 : Object.keys(MT)[0], last = q ? 114 : Object.keys(MT).slice(-1)[0];
   const id0 = rd.secs[0];
@@ -2686,7 +2709,7 @@ function renderReader(){
   $app.innerHTML = `
   <h1 class="sr-only">${tr('Lecteur')}</h1>
   <div class="top"><button class="link" data-act="rd-back">${tr('← Retour')}</button><span>${q ? tr('Coran') : tr('Moutoun')}</span></div>
-  <div class="card" style="margin-top:8px">${sel}${jump}
+  <div class="card" style="margin-top:8px">${sel}${jump}${blkSel}
     ${info ? `<p class="ref" style="margin:8px 0 0">${info}</p>` : ''}
     ${multi ? '' : `<div class="grades">
       <button data-act="rd-prev" ${id0 === first ? 'disabled' : ''}>${tr('‹ Précédent')}</button>
@@ -2697,6 +2720,7 @@ function renderReader(){
       <button data-act="rd-hide">${cfg.rdHide ? '👁 ' + tr('Tout afficher') : '🙈 ' + tr('Masquer le texte')}</button>
       ${q ? `<button id="rdplay" data-act="rd-play">▶ ${tr('Écouter')}</button>` : ''}
     </div>
+    ${foldable ? `<div class="grades"><button data-act="rd-fold" data-v="1">⏫ ${tr('Tout replier')}</button><button data-act="rd-fold" data-v="0">⏬ ${tr('Tout déplier')}</button></div>` : ''}
     ${q ? `<div class="grades">
       <button data-act="rd-taj" aria-pressed="${!!cfg.rdTaj}">🎨 ${cfg.rdTaj ? tr('Couleurs du tajwīd : oui') : tr('Couleurs du tajwīd : non')}</button>
       <button data-act="rd-tf" aria-pressed="${!!cfg.rdTf}">📚 ${cfg.rdTf ? tr('Tafsir al-Muyassar : oui') : tr('Tafsir al-Muyassar : non')}</button></div>
@@ -2709,6 +2733,8 @@ function renderReader(){
   ${rd.i0 > 0 ? `<button class="big" style="margin-bottom:12px" data-act="rd-more-up">⬆ ${tr('Sections précédentes')}</button>` : ''}
   <div class="card" id="rbody">${rd.secs.slice(rd.i0, rd.upto).map(secHtml).join('')}</div>
   <div id="rmore" class="rsentinel" ${rd.upto >= rd.secs.length ? 'hidden' : ''}>…</div>`;
+  if ($('rdblk')) $('rdblk').onchange = e => { rdStop(); rd.blk = e.target.value === '' ? null : +e.target.value; rd.focus = 0; renderReader(); scrollTo(0, 0); };
+  $app.querySelectorAll('details.rblkd').forEach(d => d.addEventListener('toggle', () => { rd.closed[d.open ? 'delete' : 'add'](d.dataset.k); }));
   if ($('rdtr')) $('rdtr').onchange = e => { cfg.rdTr = e.target.value; saveCfg(); rd.err = ''; const y = scrollY; rdStop(); rd.focus = 0; renderReader(); scrollTo(0, y); };
   $('rdsel').onchange = e => { const v = e.target.value; rdStop(); openReader(v, 0, v === 'q:sel' ? rd.sel : null); };
   if ($('rdjump')) $('rdjump').onchange = e => { rdStop(); const id = rd.secs.find(x => String(x) === e.target.value); rd.i0 = rd.secs.indexOf(id); rd.upto = Math.min(rd.secs.length, rd.i0 + 3); rd.focus = 0; renderReader(); window.scrollTo(0, 0); };
@@ -2804,7 +2830,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v68';
+const APP_VERSION = '23 oct. 2026 · v70';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -3466,7 +3492,8 @@ async function nfOpen(id){
   else if (x.kind === 'unlinked' || x.kind === 'request_declined') openAccount();
   else go('student');
 }
-document.addEventListener('click', e => { const p = $('nf-panel'); if (p && !p.hidden && !e.target.closest('#nf-panel, #bell')) nfClose(); });
+document.addEventListener('click', e => { // clic hors du panneau ou de la cloche : on ferme. composedPath() : la cible a pu être remplacée par le rafraîchissement de la cloche (innerHTML) pendant le clic, closest() la croirait alors « dehors »
+  const p = $('nf-panel'); if (p && !p.hidden && !e.composedPath().some(n => n === p || n.id === 'bell')) nfClose(); });
 document.addEventListener('keydown', e => { const p = $('nf-panel'); if (e.key === 'Escape' && p && !p.hidden) nfClose(); });
 
 // toutes les 20 s : nouveaux messages (conversation ouverte : mise à jour douce ; sinon : pastilles du menu seulement)

@@ -73,7 +73,18 @@
     $q('#ssec').value = ''; $q('#ssec').dispatchEvent(new Event('change'));
     eq(E("cfg.scope.sec"), undefined, 'retour au matn entier'); ok(!start().includes('Nūn sākina'), 'le bouton de départ ne porte plus le nom du bloc');
     E("cfg.scope = {type: 'matn', id: 'bayquniyya'}; go('train')"); ok(!$q('#ssec'), 'un matn sans titres de chapitres dans sa source n’a pas de choix de bloc');
-    E("openReader('m:ibnachir')"); await wait(300); eq($$q('.rblk').length, 27, 'le lecteur affiche les titres des 27 blocs d’Ibn ʿĀshir'); noErr('blocs');
+    E("openReader('m:ibnachir')"); await wait(300); eq($$q('.rblk').length, 27, 'le lecteur affiche les titres des 27 blocs d’Ibn ʿĀshir');
+    eq($$q('details.rblkd[open]').length, 27, 'matn entier : blocs dépliés au départ');
+    eq($$q(".rv").length, 315, "les 315 vers sont présents");
+    ok($q('#rdblk') && $q('#rdblk').options[0].value === '', 'lecteur : « tout le matn » en tête de la liste des blocs');
+    $q('[data-act="rd-fold"][data-v="1"]').click(); eq($$q('details.rblkd[open]').length, 0, 'Tout replier');
+    eq(E("rd.closed.size"), 27, 'l’état replié est mémorisé');
+    $q('[data-act="rd-fold"][data-v="0"]').click(); eq($$q('details.rblkd[open]').length, 27, 'Tout déplier');
+    $q('#rdblk').value = '3'; $q('#rdblk').dispatchEvent(new Event('change'));
+    eq($$q('.rv').length, 7, 'un seul bloc : seuls ses vers (« Les piliers de l’islam » = vers 43 à 49) sont affichés');
+    eq($$q('h3.rblk').length, 1, 'un seul titre de bloc'); eq($$q('details.rblkd').length, 0, 'un seul bloc : pas de repli'); ok(!$q('[data-act="rd-fold"]'), 'pas de boutons replier/déplier pour un seul bloc');
+    eq($q('.rv .pn').textContent, '43', 'la numérotation reste celle du matn');
+    E("openReader('m:bayquniyya')"); await wait(200); ok(!$q('#rdblk') && !$q('[data-act="rd-fold"]'), 'matn sans blocs : ni choix de bloc ni boutons de repli'); noErr('blocs');
   });
   test('Versets proches : toutes les références existent', () => {
     const bad = []; const MS = E('MS');
@@ -672,6 +683,11 @@
     W.__N = [{id: 9, kind: 'reply', ref: 'a', actor: 'a@x.fr', n: 1, created_at: iso(0), read_at: null}, {id: 8, kind: 'request', ref: 'u', actor: 'futur@x.fr', n: 1, created_at: iso(0), read_at: null}]; E("nfLoad()"); await wait(300);
     clickAct('bell'); await wait(200); clickAct('nf-all'); await wait(300); ok(calls.includes('notifs_read_all {}') && /Rien à traiter/.test(P().textContent) && !$q('#bell .badge'), 'tout marquer comme traité');
     D.dispatchEvent(new W.KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); await wait(100); ok(P().hidden, 'Échap ferme le panneau');
+    const clk = el => el.dispatchEvent(new W.MouseEvent('click', {bubbles: true, composed: true}));   // vrai clic sur l'icône (le svg), pas sur le bouton
+    clk($q('#bell svg')); await wait(300); ok(!P().hidden, 'un seul clic sur l’icône de la cloche ouvre le panneau (il ne se referme pas aussitôt)');
+    clk(P().querySelector('h2')); await wait(100); ok(!P().hidden, 'un clic à l’intérieur du panneau ne le ferme pas');
+    clk($q('#bell svg')); await wait(200); ok(P().hidden, 'un second clic sur la cloche le ferme');
+    clk($q('#bell svg')); await wait(200); clk(D.body); await wait(100); ok(P().hidden, 'un clic ailleurs ferme le panneau');
     E("sb.rpc('x')"); noErr('cloche');
     // administrateur : demande d'enseignant
     W.__N = [{id: 20, kind: 'request', ref: 'u', actor: 'futur@x.fr', n: 1, created_at: iso(0), read_at: null}]; E("me = {user: {id: 'ad', email: 'adm@x.fr'}, profile: {role: 'admin'}}; nf = {list: [], loaded: false}; go('home')"); for (let i = 0; i < 40 && !($q('#bell .badge')); i++) await wait(50);
