@@ -36,7 +36,7 @@ test('moutoun.js : 61 + 34 + 315 + 42 unités, chaque unité non vide, texte ara
   assert.ok(ib.a[214].t.split(' ')[1].startsWith('\u062d\u0650'), 'vers 215 : ḥijja (kasra sur le ḥāʾ), correction de relecture');
   const ws = k => ib.a[k - 1].t.split(' ');
   assert.ok(ws(90).includes('\u0648\u0627\u0644\u0622\u062e\u0650\u0631\u064e\u0627\u0646'), 'vers 90 : والآخِرَان (kasra sur le khāʾ)');
-  assert.ok(ws(173).some(w => w.startsWith('\u0648\u064e\u0623')), 'vers 173 : fatha sur le wāw de وَأغْلَفٌ');
+  assert.ok(ws(173).some(w => w.startsWith('\u0648\u064e\u0623\u064e\u063a')), 'vers 173 : fatha sur le wāw et sur l’alif de وَأَغْلَفٌ');
   assert.ok(ws(202).includes('\u0648\u064e\u0645\u0650\u0627\u0626\u064e\u0629\u0652'), 'vers 202 : وَمِائَةْ (écriture de la copie B, kasra sur le mīm)');
   assert.ok(ws(236).includes('\u0645\u064f\u0632\u0652\u062f\u064e\u0644\u0650\u0641\u064e'), 'vers 236 : fatha sur la dernière lettre de مُزْدَلِفَ');
   const I = loadGlobal('i18n.js', 'I18N');

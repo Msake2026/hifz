@@ -99,7 +99,7 @@ def _w(h): return "".join(chr(int(x, 16)) for x in h.split())
 CORRECTIONS = {_w(o): _w(n) for o, n in [
     ("62d 64e 62c 651 64e 629 64d", "62d 650 62c 651 64e 629 64d"),                          # vers 215 : حَجَّةٍ -> حِجَّةٍ (ḥijja)
     ("648 627 644 622 62e 631 64e 627 646", "648 627 644 622 62e 650 631 64e 627 646"),     # vers 90  : والآخرَان -> والآخِرَان (kasra sur le khāʾ)
-    ("648 623 63a 652 644 64e 641 64c", "648 64e 623 63a 652 644 64e 641 64c"),             # vers 173 : وأغْلَفٌ -> وَأغْلَفٌ (fatha sur le wāw)
+    ("648 623 63a 652 644 64e 641 64c", "648 64e 623 64e 63a 652 644 64e 641 64c"),          # vers 173 : وأغْلَفٌ -> وَأَغْلَفٌ (fatha sur le wāw et sur l'alif-hamza)
     ("648 64e 645 650 626 64e 629 652", "648 64e 645 650 627 626 64e 629 652"),            # vers 202 : وَمِئَةْ -> وَمِائَةْ (écriture de la copie B, kasra sur le mīm)
     ("645 64f 632 652 62f 64e 644 650 641 64d", "645 64f 632 652 62f 64e 644 650 641 64e")  # vers 236 : مُزْدَلِفٍ -> مُزْدَلِفَ (fatha sur la dernière lettre)
 ]}
@@ -198,8 +198,8 @@ def ibn_ashir():
 def source():
     return {"name": "Deux transcriptions web non officielles, comparées (soufisunni.blogspot.com, chariaa.weebly.com)",
             "url": URL_A,
-            "note": "pas d'édition savante en texte : copies de blog, non relues et parfois divergentes ; à comparer avec ton édition imprimée "
-                    "(les divergences sont listées dans AUDIT-CONTENU.md)"}
+            "note": "pas d'édition savante en texte : deux copies de blog ; les passages où elles diffèrent ont été relus et tranchés par une personne "
+                    "(23 oct. 2026), le reste du texte n'a pas été relu ; à comparer avec ton édition imprimée"}
 
 
 if __name__ == "__main__":
