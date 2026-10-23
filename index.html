@@ -1979,6 +1979,22 @@ function markGo(){
 /* ---------- voix (Web Speech API, arabe) ---------- */
 /* Le micro ne reste jamais ouvert indéfiniment : il se coupe (1) dès que la solution s'affiche (réponse corrigée, « Je préfère m'auto-évaluer », question suivante, sortie),
    (2) quand tu appuies sur « J'ai fini de réciter », (3) quand le navigateur détecte la fin de ta phrase (silence), (4) au plus tard au bout de MIC_MAX secondes. */
+/* MH:begin — message d'aide quand le micro ne s'ouvre pas : renvoie le texte (français) à traduire, selon le code d'erreur du navigateur et l'appareil */
+function micHelp(code, platform, standalone){
+  const how = platform === 'ios' ? (standalone ? "Sur iPhone, la reconnaissance vocale ne marche pas toujours dans l'application installée : ouvre le site dans Safari. Vérifie aussi Réglages > Safari > Microphone et Réglages > Général > Clavier > Activer la dictée."
+                : "Sur iPhone : Réglages > Safari > Microphone > Autoriser, et Réglages > Général > Clavier > Activer la dictée.")
+    : platform === 'android' ? "Sur Android : touche le cadenas à côté de l'adresse, puis Autorisations > Microphone > Autoriser."
+    : "Clique sur le cadenas à côté de l'adresse, choisis Microphone > Autoriser, puis recharge la page.";
+  if (code === 'not-allowed' || code === 'service-not-allowed') return {text: "Le micro est bloqué ou refusé.", how};
+  if (code === 'audio-capture') return {text: "Aucun micro détecté : branche ou active un micro.", how: ''};
+  if (code === 'network') return {text: "La reconnaissance vocale a besoin d'une connexion internet.", how: ''};
+  if (code === 'language-not-supported') return {text: "La reconnaissance vocale en arabe n'est pas disponible sur cet appareil.", how: ''};
+  if (code === 'no-speech') return {text: "Rien entendu, réessaie.", how: ''};
+  return {text: '', how: ''};
+}
+/* MH:end */
+const micPlatform = () => IOS ? 'ios' : /Android/i.test(navigator.userAgent) ? 'android' : 'desktop';
+const micError = code => { const h = micHelp(code, micPlatform(), IOS_APP); return h.text ? tr(h.text) + (h.how ? ' ' + tr(h.how) : '') : tr('Micro indisponible ({e}).', {e: code}); };
 let MIC_MAX = {one: 45, cont: 180};
 let micRec = null;
 function stopMic(){
@@ -1996,7 +2012,8 @@ function listen(){
     const R = [...ev.results]; text = R.map(r => r[0].transcript).join(' ');
     heard.innerHTML = R.map(r => `<span class="${r.isFinal ? '' : 'interim'}">${esc(r[0].transcript)}</span>`).join(' ');   // les mots encore provisoires sont estompés
   };
-  rec.onerror = ev => { msg.dataset.err = '1'; msg.textContent = tr('Micro indisponible ({e}).', {e: ev.error}); };
+  rec.onerror = ev => { if (ev.error === 'aborted') return; msg.dataset.err = '1'; msg.textContent = micError(ev.error); };
+  rec.onstart = () => { rec.started = true; if (!msg.dataset.err) tick(); };
   rec.onend = () => {
     clearTimeout(rec.cap); clearInterval(rec.tick); if (micRec === rec) micRec = null;
     if (rec.aborted) return;                                  // coupé par l'application (solution affichée) : rien à corriger
@@ -2009,13 +2026,13 @@ function listen(){
     else if (!msg.dataset.err) msg.textContent = tr('Rien entendu, réessaie.');
   };
   heard.textContent = ''; delete msg.dataset.err;
-  const tick = () => { msg.textContent = tr('Micro ouvert : il se coupe tout seul dans {n} s.', {n: left}); };
-  tick(); rec.tick = setInterval(() => { left--; if (left > 0) tick(); }, 1000);
+  const tick = () => { if (!msg.dataset.err) msg.textContent = tr('Micro ouvert : il se coupe tout seul dans {n} s.', {n: left}); };
+  msg.textContent = tr("Si ton navigateur demande l'autorisation du micro, accepte."); rec.tick = setInterval(() => { left--; if (left > 0 && rec.started) tick(); }, 1000);
   rec.cap = setTimeout(() => { rec.capped = true; try { rec.stop(); } catch { /* déjà arrêté */ } }, left * 1000);
   btn.textContent = cont ? tr("⏹ J'ai fini de réciter") : tr("🎙️ Je t'écoute… récite la suite");
   if (cont){ btn.onclick = ev => { ev.stopPropagation(); if (!stopping){ stopping = true; rec.stop(); } }; } else btn.disabled = true;
   micRec = rec;
-  try { rec.start(); } catch { btn.disabled = false; micRec = null; clearTimeout(rec.cap); clearInterval(rec.tick); }
+  try { rec.start(); } catch (e){ btn.disabled = false; btn.textContent = tr('🎤 Réessayer'); micRec = null; clearTimeout(rec.cap); clearInterval(rec.tick); msg.dataset.err = '1'; msg.textContent = micError((e && e.name === 'NotAllowedError') ? 'not-allowed' : (e && e.name) || 'start'); }
 }
 
 /* ---------- écoute d'une portée ---------- */
@@ -2712,7 +2729,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v59';
+const APP_VERSION = '23 oct. 2026 · v60';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

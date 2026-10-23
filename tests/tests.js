@@ -666,20 +666,26 @@
   });
   test('Récitation à voix haute : le texte entendu s’affiche en direct (micro simulé)', async () => {
     reset("cfg.mode = 'next'; cfg.input = 'voice'; cfg.scope = {type: 'surah', from: 1, to: 1};");
-    E("SR = function(){ window.__rec = this; this.start = function(){}; this.stop = function(){ this.onend(); }; };"); E("start()"); noErr('start voix');
+    E("SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ this.onend(); }; };"); E("start()"); noErr('start voix');
     ok($q('#heard') && $q('#heard').getAttribute('dir') === 'rtl' && $q('#heard').getAttribute('aria-live') === 'off', 'zone « Ce que j’entends » (arabe, de droite à gauche, non annoncée en continu)');
     clickAct('listen'); await wait(100); ok(E('window.__rec.interimResults === true && window.__rec.lang === "ar-SA"'), 'résultats provisoires demandés');
     E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: false})]})"); ok($q('#heard .interim') && $q('#heard').textContent.includes('الحمد لله'), 'texte provisoire affiché (estompé)');
     E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: true}), Object.assign([{transcript: 'رب العالمين'}], {isFinal: false})]})"); ok($q('#heard').textContent.includes('الحمد لله') && $q('#heard').textContent.includes('رب العالمين') && $$q('#heard .interim').length === 1, 'mots confirmés + mots encore provisoires');
     E("window.__rec.onend()"); await wait(200); ok(!$q('#work .interim') && $q('#work').textContent.includes('رب العالمين') && $q('#work').textContent.includes('الحمد لله'), 'à la fin, ce qui a été entendu reste affiché sous la correction'); ok($q('#fb .fb'), 'la récitation est corrigée'); noErr('voix');
     // le micro se coupe quand la solution s'affiche, et jamais au-delà de la limite
-    E("window.__aborted = 0; SR = function(){ window.__rec = this; this.start = function(){}; this.stop = function(){ this.onend(); }; this.abort = function(){ window.__aborted++; this.onend(); }; };");
+    E("window.__aborted = 0; SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ this.onend(); }; this.abort = function(){ window.__aborted++; this.onend(); }; };");
     E("home()"); E("start()"); clickAct('listen'); await wait(100); ok(E('micRec !== null'), 'micro ouvert'); ok(/Micro ouvert/.test($q('#hmsg').textContent) && /\d+ s/.test($q('#hmsg').textContent), 'compte à rebours affiché : ' + $q('#hmsg').textContent);
     clickAct('reveal'); await wait(100); eq(E('window.__aborted'), 1, 'la solution s’affiche : micro coupé'); ok(E('micRec === null') && !$q('#fb .fb'), 'rien n’est corrigé à la place de l’élève');
     E("home()"); E("start()"); clickAct('listen'); await wait(50); E("home()"); eq(E('window.__aborted'), 2, 'quitter l’exercice coupe le micro');
     E("start()"); clickAct('listen'); await wait(50); E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله'}], {isFinal: true})]})"); E("finish(1)"); eq(E('window.__aborted'), 3, 'la correction (finish) coupe le micro');
     E("MIC_MAX.one = 1; home()"); E("start()"); clickAct('listen'); await wait(1500); ok(E('micRec === null') && /Micro coupé automatiquement après 1 s/.test($q('#hmsg').textContent), 'coupé automatiquement après la limite : ' + $q('#hmsg').textContent);
     E("MIC_MAX.one = 45");
+    // le micro ne s'ouvre pas : le message dit pourquoi et quoi faire (au lieu d'un code technique)
+    E("SR = function(){ window.__rec = this; this.start = function(){ setTimeout(() => this.onerror({error: 'not-allowed'}), 20); setTimeout(() => this.onend(), 40); }; this.stop = function(){}; this.abort = function(){}; };");
+    E("home()"); E("start()"); clickAct('listen'); await wait(300); ok(/Le micro est bloqué ou refusé\./.test($q('#hmsg').textContent) && /Autoriser|cadenas|dictée/.test($q('#hmsg').textContent), 'refus du micro : explication et marche à suivre : ' + $q('#hmsg').textContent);
+    ok(!/Micro ouvert/.test($q('#hmsg').textContent) && E('micRec === null'), 'le compte à rebours ne masque pas l’erreur');
+    E("SR = function(){ this.start = function(){ const e = new Error('x'); e.name = 'NotAllowedError'; throw e; }; this.stop = function(){}; this.abort = function(){}; };");
+    E("home()"); E("start()"); clickAct('listen'); await wait(200); ok(/Le micro est bloqué ou refusé\./.test($q('#hmsg').textContent) && !$q('[data-act="listen"]').disabled, 'démarrage impossible : message affiché et bouton réutilisable');
     E("SR = window.SpeechRecognition || window.webkitSpeechRecognition");
   });
   test('Cloche : rappel de révision reçu et pas encore consulté', async () => {

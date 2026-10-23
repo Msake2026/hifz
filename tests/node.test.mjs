@@ -525,3 +525,13 @@ test('lien de confirmation reçu par e-mail : succès, lien expiré ou refusé s
   assert.equal(authLinkNotice('', ''), null); assert.equal(authLinkNotice('#/plan', '?r=3'), null);
   assert.ok(html.includes("LINK_NOTICE.err === 'expired'") && html.includes("history.replaceState(null, '', location.pathname)"), 'un lien inutilisable affiche une explication sur l’écran de connexion');
 });
+
+test('micro qui ne s’ouvre pas : chaque cause a un message d’aide précis, traduit, adapté à l’appareil', () => {
+  const html = read('index.html'), { micHelp } = new Function(html.slice(html.indexOf('/* MH:begin'), html.indexOf('/* MH:end */')) + '; return {micHelp};')();
+  const i18n = read('i18n.js');
+  const all = []; for (const code of ['not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported', 'no-speech']) for (const [pf, st] of [['ios', true], ['ios', false], ['android', false], ['desktop', false]]) { const h = micHelp(code, pf, st); assert.ok(h.text, code); all.push(h.text, h.how); }
+  assert.match(micHelp('not-allowed', 'ios', false).how, /Réglages > Safari > Microphone.*dictée/); assert.match(micHelp('not-allowed', 'ios', true).how, /ouvre le site dans Safari/);
+  assert.match(micHelp('not-allowed', 'android', false).how, /cadenas.*Microphone/); assert.match(micHelp('not-allowed', 'desktop', false).how, /cadenas.*recharge/);
+  assert.equal(micHelp('weird', 'ios', false).text, '', 'code inconnu : message générique avec le code');
+  for (const t of new Set(all.filter(Boolean))) assert.ok(i18n.includes(JSON.stringify(t).slice(1, -1).replace(/\\u2019/g, '’')), 'traduction manquante : ' + t);
+});
