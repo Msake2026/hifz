@@ -93,8 +93,16 @@ def tidy(w):
     return w
 
 
-# Corrections de voyelles faites par une relecture humaine (seules modifications du texte de la copie A). mot de A -> mot corrigé
-CORRECTIONS = {"\u062d\u064e\u062c\u0651\u064e\u0629\u064d": "\u062d\u0650\u062c\u0651\u064e\u0629\u064d"}   # حَجَّةٍ -> حِجَّةٍ (ordre des voyelles = celui de la source)   # vers 215 : ḥijja (ذو الحجة), pas ḥajja ; relecture de l'utilisateur, 23 oct. 2026
+# Corrections faites par une relecture humaine (l'utilisateur, 23 oct. 2026) : seules retouches du texte de la copie A.
+# (mot de A, mot corrigé), en points de code Unicode dans l'ordre de la source ; chaque mot doit exister une seule fois.
+def _w(h): return "".join(chr(int(x, 16)) for x in h.split())
+CORRECTIONS = {_w(o): _w(n) for o, n in [
+    ("62d 64e 62c 651 64e 629 64d", "62d 650 62c 651 64e 629 64d"),                          # vers 215 : حَجَّةٍ -> حِجَّةٍ (ḥijja)
+    ("648 627 644 622 62e 631 64e 627 646", "648 627 644 622 62e 650 631 64e 627 646"),     # vers 90  : والآخرَان -> والآخِرَان (kasra sur le khāʾ)
+    ("648 623 63a 652 644 64e 641 64c", "648 64e 623 63a 652 644 64e 641 64c"),             # vers 173 : وأغْلَفٌ -> وَأغْلَفٌ (fatha sur le wāw)
+    ("648 64e 645 650 626 64e 629 652", "648 64e 645 650 627 626 64e 629 652"),            # vers 202 : وَمِئَةْ -> وَمِائَةْ (écriture de la copie B, kasra sur le mīm)
+    ("645 64f 632 652 62f 64e 644 650 641 64d", "645 64f 632 652 62f 64e 644 650 641 64e")  # vers 236 : مُزْدَلِفٍ -> مُزْدَلِفَ (fatha sur la dernière lettre)
+]}
 
 
 LAST_REVIEW = []   # remplie par ibn_ashir() : une ligne par divergence (voir tools/review_ibn_achir.py)
@@ -112,7 +120,7 @@ def ibn_ashir():
     for old, new in CORRECTIONS.items():
         hits = [k for k, t in enumerate(S) if t[0] == old]
         assert len(hits) == 1, (old, len(hits))
-        S[hits[0]] = (new,) + S[hits[0]][1:]
+        S[hits[0]] = (new,) + S[hits[0]][1:]   # la clé (squelette) reste celle de A : l'alignement avec B ne change pas
     # B : un vers par ligne (B_SPLIT recolle les trois vers coupés)
     bl, i = [], b0
     while i < b1:

@@ -22,6 +22,8 @@ def row(r):
     a = r["a"] or "—"; b = r["b"] or "—"
     return f"| {r['n']} | {chap(r['n'])} | **{a}** | **{b}** | {verse(r)} |"
 head = "| N° du vers | Chapitre | Copie A (dans l'appli) | Copie B | Vers complet (copie A) |\n|---|---|---|---|---|"
+done = [r for r in rows if r["a"] in B.CORRECTIONS.values()]
+rows = [r for r in rows if r not in done]
 hard = [r for r in rows if B.sk(r["a"]).replace("  ", " ") in SENSE or r["b"].startswith("(vers") or B.sk(r["a"]) in SENSE]
 easy = [r for r in rows if r not in hard]
 out = f"""# Fiche de relecture : Ibn ʿĀshir, *al-Murshid al-Muʿīn*
@@ -39,9 +41,13 @@ Les titres de chapitres (27 blocs) viennent de la copie A : vérifier aussi qu'i
 ## 2. Autres divergences : le plus souvent une coquille de l'une des copies (lettre en trop, en moins ou changée) : {len(easy)} lignes
 À parcourir plus vite ; si le mot de la copie A est juste dans l'édition, il n'y a rien à faire.
 {head}
-""" + "\n".join(row(r) for r in easy) + """
+""" + "\n".join(row(r) for r in easy) + f"""
 
-*Fiche générée par `tools/review_ibn_achir.py` à partir des deux sources citées dans `tools/build_ibn_achir.py`. Aucune de ces lignes n'a été tranchée par l'IA.*
+## 3. Déjà tranchées par la relecture du 23 oct. 2026 : {len(done)} lignes (la colonne « Copie A » montre le mot corrigé, avec la voyelle donnée par le relecteur)
+{head}
+""" + "\n".join(row(r) for r in done) + """
+
+*Fiche générée par `tools/review_ibn_achir.py` à partir des deux sources citées dans `tools/build_ibn_achir.py`. Les lignes de la section 3 ont été tranchées par une relecture humaine, jamais par l'IA ; les autres ne sont pas tranchées.*
 """
 open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "RELECTURE-IBN-ACHIR.md"), "w", encoding="utf8").write(out)
 print(len(rows), "divergences :", len(hard), "à trancher,", len(easy), "orthographe")

@@ -6,7 +6,7 @@ Le texte de l'application vient de **deux transcriptions de blogs**. Elles s'acc
 Les 5 vers d'introduction (n° 1 à 5) n'existent que dans la copie A : à vérifier en entier. L'application compte 315 vers ; les sources en citent 317 : vérifier s'il manque deux vers.
 Les titres de chapitres (27 blocs) viennent de la copie A : vérifier aussi qu'ils correspondent à l'édition.
 
-## 1. À trancher en priorité (le mot diffère et le sens peut changer) : 15 lignes
+## 1. À trancher en priorité (le mot diffère et le sens peut changer) : 14 lignes
 | N° du vers | Chapitre | Copie A (dans l'appli) | Copie B | Vers complet (copie A) |
 |---|---|---|---|---|
 | 10 | Introduction au livre du credo | **قَبِلَ** | **قابَلَ** | وجَائِزًا مَا قَبِلَ الأَمْرَيْنِ سِمْ للضَّرُوري والنَّظري كُلُّ قُسِم |
@@ -19,13 +19,12 @@ Les titres de chapitres (27 blocs) viennent de la copie A : vérifier aussi qu'i
 | 156 | La prosternation de l'oubli | **بِفَصْلٍ** | **بِفَضْلِ** | وَفَوْتِ قَبْليٍّ ثَلاثَ سُنَن بِفَصْلٍ مَسْجِدٍ كَطولِ الزَّمَنِ |
 | 185 | Livre de la zakât | **وَنَعَمْ** | **وَغَنَمْ** | فُرضَتِ الزَّكاةُ فيمَا يُرْتَسَمْ عَيْنٍ وَحَبٍّ وَثِمارٍ وَنَعَمْ |
 | 188 | Livre de la zakât | **السَّقْيِ** | **الَّقْي** | وَهيَ في الثِّمارِ والحَبِّ العُشُر أو نِصْفُهُ إن ءالةَ السَّقْيِ يَجُرّ |
-| 215 | Livre du jeûne | **حِجَّةٍ** | **—** | كَتِسْعِ حِجَّةٍ وَأحْرَى الآخِرُ كَذا المُحَرَّمُ وأحْرَى العَاشِرُ |
 | 227 | Livre du jeûne | **لِرَفْضِ** | **لِفَرْضِ** | لأكْلٍِ أو شُرْبِ فَمٍ أو للمَنِي وَلَوْ بِفِكْرٍ أو لِرَفْضِ ما بُنِي |
 | 253 | Livre du ḥajj | **وَادْعُ بِمَا شِئْتَ لَدَى الْمُلْتَزَمِ وَالْحَجَرَ الأسْوَدَ بَعْدُ اسْتَلِمِ** | **(vers absent de B)** | وَادْعُ بِمَا شِئْتَ لَدَى الْمُلْتَزَمِ وَالْحَجَرَ الأسْوَدَ بَعْدُ اسْتَلِمِ |
 | 256 | Livre du ḥajj | **وَالأشْواطَ** | **والأشراط** | أرْبَعَ وَقْفَاتٍ بِكُلٍّ مِنْهُمَا تَقِفُ وَالأشْواطَ سَبْعا تَمِّمَا |
 | 277 | Livre du ḥajj | **بِنَسْجٍ** | **بسبح** | وَمَنَعَ المُحِيطَ بِالعُضْوِ وَلَوْ بِنَسْجٍ أوْ عَقْدٍ كَخَاتَمٍ حَكَوْا |
 
-## 2. Autres divergences : le plus souvent une coquille de l'une des copies (lettre en trop, en moins ou changée) : 37 lignes
+## 2. Autres divergences : le plus souvent une coquille de l'une des copies (lettre en trop, en moins ou changée) : 33 lignes
 À parcourir plus vite ; si le mot de la copie A est juste dans l'édition, il n'y a rien à faire.
 | N° du vers | Chapitre | Copie A (dans l'appli) | Copie B | Vers complet (copie A) |
 |---|---|---|---|---|
@@ -40,21 +39,17 @@ Les titres de chapitres (27 blocs) viennent de la copie A : vérifier aussi qu'i
 | 72 | Les sunan des ablutions | **وَعاجِزُ** | **وَحاجز** | وَعاجِزُ الفَوْرِ بِنى ما لمْ يَطُلْ بِيُبْسِ الأعْضا في زمانٍ مُعْتَدِلْ |
 | 78 | Ce qui annule les ablutions | **كذا** | **—** | إِلْطَافُ مَرْأَةٍ كذا مَسُّ الذّكَرْ وَالشَّكُّ في الْحَدَثِ كُفْرُ مَنْ كَفَرْ |
 | 81 | Les obligations du grand lavage | **—** | **فصل** | فُروضُ الغُسلِ قَصْدٌ يُحْتَضَرْ فَوْرٌ عُمومُ الدَّلْكِ تَخْليلُ الشَّعَرْ |
-| 90 | Ce qui rend le grand lavage obligatoire | **والآخرَان** | **والاحَرَان** | وَالأوَّلانِ مَنَعَا الْوَطْءَ إلَى غُسْلٍ والآخرَان قُرْءانا خَلا |
 | 135 | Les recommandations de la prière | **السُّجودِ حَذْوَ** | **الُّجود حَدْوَ** | لَدى السُّجودِ حَذْوَ أُذْنٍ وَكَذَا رَفْعَ اليَدَيْنِ عندَ الإحرامِ خُذَا |
 | 138 | Les recommandations de la prière | **والسُّجودَ** | **والُّجود** | وَكَرِهُوا بَسْمَلَةً تَعَوُّذَا في الفَرْضِ والسُّجودَ في الثَّوبِ كَذَا |
 | 139 | Les recommandations de la prière | **شىءٍ** | **شيئِ** | كَوْرُ عِمَامَةٍ وبَعْضُ كُمِّهِ وَحَمْلُ شىءٍ فيه أوْ في فَمِهِ |
 | 165 | La prière du vendredi | **وَحَالٌ** | **توَحَالُ** | وَسُنَّ غُسْلٌ بالرَّوَاحِ اتَّصَلا نُدِبَ تَهْجيرٌ وَحَالٌ جَمُلا |
-| 173 | Les conditions de l'imam | **وأغْلَفٌ** | **,َأغْلَفُ** | وَرَاتِبٌ مَجْهُولٌ أوْ مَنْ أُبِنَا وأغْلَفٌ عَبْدٌ خَصِيُّ ابْنُ زِنَا |
 | 177 | Les conditions de l'imam | **لا** | **—** | مُكَبِّرًا إنْ سَاجِدًا أو رَاكِعًا ألفَاهُ لا في جَلْسَةٍ وَتَابَعَا |
 | 178 | Les conditions de l'imam | **وَفِي** | **في** | إِنْ سَلَّمَ الإمَامُ قَامَ قَاضِيَا أقْوَالَهُ وَفِي الفِعَالِ بَانيَا |
 | 193 | Livre de la zakât | **—** | **ش مع** | فِي كُلِّ خَمْسَةِ جِمالٍ جَذَعَة مِن غَنَمٍ بِنْتُ المَخَاضِ مُقْنِعَه |
-| 202 | Livre de la zakât | **عِشْرينَ** | **وعشرين** | فِي وَاحِدٍ عِشْرينَ يَتْلو وَمِئَةْ وَمَعْ ثَمانينَ ثَلاثٌ مُجْزِئَةْ |
-| 202 | Livre de la zakât | **وَمِئَةْ** | **ومائة** | فِي وَاحِدٍ عِشْرينَ يَتْلو وَمِئَةْ وَمَعْ ثَمانينَ ثَلاثٌ مُجْزِئَةْ |
+| 202 | Livre de la zakât | **عِشْرينَ** | **وعشرين** | فِي وَاحِدٍ عِشْرينَ يَتْلو وَمِائَةْ وَمَعْ ثَمانينَ ثَلاثٌ مُجْزِئَةْ |
 | 213 | La zakât al-fiṭr | **بِجُلِّ** | **بِحُلِّ** | مِنْ مُسْلِمٍ بِجُلِّ عَيْشِ القَوْمِ لِتُغْنِ حُرًا مُسلٍمًا فِي اليَومِ |
 | 222 | Livre du jeûne | **غَالِبُ** | **غالبا** | وكَرِهوا ذَوقَ كقِدْرِ وَهَذَرْ غَالِبُ قَيْءٍ وَذُبَابٍ مُغْتَفَرْ |
 | 223 | Livre du jeûne | **صَانِعٍ** | **صَانِعِت** | غُبَارُ صَانِعٍ وَطُرْقٍ وسِواكْ يابِسٍ اصْبَاحُ جَنابةٍ كَذاك |
-| 236 | Livre du ḥajj | **مُزْدَلِفٍ** | **مُزدلِفة** | نُزولُ مُزْدَلِفٍ في رُجوعِنا مَبيتُ لَيْلاتٍ ثَلاثٍ بِمِنى |
 | 237 | Livre du ḥajj | **إحْرامُ** | **لإحرام** | إحْرامُ مِيقَاتٍ فَذوُ الحُلَيْفَه لِطَيْبَ للشّامِ ومِصرَ الجُحْفَة |
 | 241 | Livre du ḥajj | **جِئْتَ** | **جاءتَ** | إنْ جِئْتَ رَابِغًا تَنَظَّفْ وَاغْتَسِل كَواجِبٍ وَبالشروعِ يَتَصِل |
 | 241 | Livre du ḥajj | **وَاغْتَسِل** | **واغسل** | إنْ جِئْتَ رَابِغًا تَنَظَّفْ وَاغْتَسِل كَواجِبٍ وَبالشروعِ يَتَصِل |
@@ -67,4 +62,12 @@ Les titres de chapitres (27 blocs) viennent de la copie A : vérifier aussi qu'i
 | 285 | Livre du ḥajj | **كمَا** | **كمتا** | وَسُنَّةَ العُمْرَةِ فَافْعَلْهَا كمَا حَجٍّ وَفِي التَّنْعِيمِ نَدْبًا أحْرِمَا |
 | 290 | Livre du ḥajj | **ثُمَّ** | **وثم** | سَلِّمْ عَلَيهِ ثُمَّ زِدْ للصِّدِّيق ثُمَّ إلى عُمَرَ نِلْتَ التَّوفِيق |
 
-*Fiche générée par `tools/review_ibn_achir.py` à partir des deux sources citées dans `tools/build_ibn_achir.py`. Aucune de ces lignes n'a été tranchée par l'IA.*
+## 3. Déjà tranchées par la relecture du 23 oct. 2026 : 4 lignes (la colonne « Copie A » montre le mot corrigé, avec la voyelle donnée par le relecteur)
+| N° du vers | Chapitre | Copie A (dans l'appli) | Copie B | Vers complet (copie A) |
+|---|---|---|---|---|
+| 90 | Ce qui rend le grand lavage obligatoire | **والآخِرَان** | **والاحَرَان** | وَالأوَّلانِ مَنَعَا الْوَطْءَ إلَى غُسْلٍ والآخِرَان قُرْءانا خَلا |
+| 173 | Les conditions de l'imam | **وَأغْلَفٌ** | **,َأغْلَفُ** | وَرَاتِبٌ مَجْهُولٌ أوْ مَنْ أُبِنَا وَأغْلَفٌ عَبْدٌ خَصِيُّ ابْنُ زِنَا |
+| 215 | Livre du jeûne | **حِجَّةٍ** | **—** | كَتِسْعِ حِجَّةٍ وَأحْرَى الآخِرُ كَذا المُحَرَّمُ وأحْرَى العَاشِرُ |
+| 236 | Livre du ḥajj | **مُزْدَلِفَ** | **مُزدلِفة** | نُزولُ مُزْدَلِفَ في رُجوعِنا مَبيتُ لَيْلاتٍ ثَلاثٍ بِمِنى |
+
+*Fiche générée par `tools/review_ibn_achir.py` à partir des deux sources citées dans `tools/build_ibn_achir.py`. Les lignes de la section 3 ont été tranchées par une relecture humaine, jamais par l'IA ; les autres ne sont pas tranchées.*
