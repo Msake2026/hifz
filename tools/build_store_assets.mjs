@@ -12,7 +12,10 @@ const ui = url.pathToFileURL(path.join(root, 'fonts/inter-latin.woff2')).href;
 const CHROME = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const BASE = process.env.BASE || 'http://localhost:8766/';
 // [largeur appareil, hauteur appareil, densité] en points CSS : l'image mesure largeur×densité
-const SPLASH = [[440, 956, 3], [430, 932, 3], [402, 874, 3], [393, 852, 3], [428, 926, 3], [390, 844, 3], [375, 812, 3], [414, 896, 3], [414, 896, 2], [414, 736, 3], [375, 667, 2], [320, 568, 2]];
+// [largeur appareil, hauteur appareil, densité, orientations] en points CSS (dimensions de l'appareil tenu en portrait) : l'image mesure largeur×densité
+const SPLASH = [[440, 956, 3, 'p'], [430, 932, 3, 'p'], [402, 874, 3, 'p'], [393, 852, 3, 'p'], [428, 926, 3, 'p'], [390, 844, 3, 'p'], [375, 812, 3, 'p'], [414, 896, 3, 'p'], [414, 896, 2, 'p'], [414, 736, 3, 'p'], [375, 667, 2, 'p'], [320, 568, 2, 'p'],
+  // iPad : portrait et paysage (une tablette se tient dans les deux sens)
+  [1032, 1376, 2, 'pl'], [1024, 1366, 2, 'pl'], [834, 1210, 2, 'pl'], [834, 1194, 2, 'pl'], [834, 1112, 2, 'pl'], [820, 1180, 2, 'pl'], [810, 1080, 2, 'pl'], [768, 1024, 2, 'pl'], [744, 1133, 2, 'pl']];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const prof = fs.mkdtempSync('/tmp/sa-');
 const chrome = spawn(CHROME, ['--headless=new', '--no-sandbox', '--allow-file-access-from-files', '--remote-debugging-port=9341', '--user-data-dir=' + prof, 'about:blank'], { stdio: 'ignore' });
@@ -23,15 +26,17 @@ const send = (method, params = {}) => new Promise(r => { const i = ++id; pend[i]
 const ev = async e => (await send('Runtime.evaluate', { expression: e, awaitPromise: true, returnByValue: true })).result?.result?.value;
 fs.mkdirSync(path.join(root, 'icons/splash'), { recursive: true }); fs.mkdirSync(path.join(root, 'screenshots'), { recursive: true });
 // --- écrans de lancement : fond vert du logo ; le mot (centré selon l'encre) et son sous-titre forment un groupe centré dans l'écran
-for (const [w, h, d] of SPLASH) {
+const links = [];
+for (const [dw, dh, d, ori] of SPLASH) for (const o of ori) {
+  const w = o === 'p' ? dw : dh, h = o === 'p' ? dh : dw;   // l'image paysage a la largeur et la hauteur inversées
   const html = `<!doctype html><meta charset="utf-8"><style>@font-face{font-family:AQ;src:url(${font})}@font-face{font-family:IN;src:url(${ui})}html,body{margin:0}canvas{display:block}</style><canvas id="c" width="${w}" height="${h}"></canvas>
 <script>${ART_JS}
 Promise.all([document.fonts.load('100px AQ'), document.fonts.load('20px IN')]).then(() => { const W = ${w}, H = ${h}, ctx = document.getElementById('c').getContext('2d'); fond(ctx, W, H);
-  const nameW = W * 0.5, probe = document.createElement('canvas').getContext('2d'); const r0 = nom(probe, ${JSON.stringify(NAME)}, 0, 0, nameW, 'AQ', '#000'), nameH = r0.y1 - r0.y0;
-  const gap = W * 0.07, subPx = W * 0.045, lineH = Math.max(2, W * 0.006), groupH = nameH + gap + lineH + gap * 0.6 + subPx, top = (H - groupH) / 2;
+  const B = Math.min(W, H), nameW = B * 0.5, probe = document.createElement('canvas').getContext('2d'); const r0 = nom(probe, ${JSON.stringify(NAME)}, 0, 0, nameW, 'AQ', '#000'), nameH = r0.y1 - r0.y0;
+  const gap = B * 0.07, subPx = B * 0.045, lineH = Math.max(2, B * 0.006), groupH = nameH + gap + lineH + gap * 0.6 + subPx, top = (H - groupH) / 2;
   nom(ctx, ${JSON.stringify(NAME)}, W / 2, top + nameH / 2, nameW, 'AQ', '#f1e2b4');
-  ctx.fillStyle = 'rgba(217,189,106,.75)'; ctx.fillRect(W / 2 - W * 0.14, top + nameH + gap, W * 0.28, lineH);
-  ctx.font = subPx + 'px IN'; ctx.direction = 'ltr'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#d9bd6a'; if ('letterSpacing' in ctx) ctx.letterSpacing = (W * 0.003) + 'px';
+  ctx.fillStyle = 'rgba(217,189,106,.75)'; ctx.fillRect(W / 2 - B * 0.14, top + nameH + gap, B * 0.28, lineH);
+  ctx.font = subPx + 'px IN'; ctx.direction = 'ltr'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#d9bd6a'; if ('letterSpacing' in ctx) ctx.letterSpacing = (B * 0.003) + 'px';
   ctx.fillText(${JSON.stringify(SUB)}, W / 2, top + nameH + gap + lineH + gap * 0.6); document.title = 'ready'; });</script>`;
   const tmp = path.join(prof, 's.html'); fs.writeFileSync(tmp, html);
   await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: d, mobile: false });
@@ -39,7 +44,11 @@ Promise.all([document.fonts.load('100px AQ'), document.fonts.load('20px IN')]).t
   for (let i = 0; i < 40; i++) { await sleep(200); const r = await send('Runtime.evaluate', { expression: 'document.title', returnByValue: true }); if (r.result?.result?.value === 'ready') break; }
   const shot = await send('Page.captureScreenshot', { format: 'jpeg', quality: 90 });   // JPEG : un dégradé en PNG pèse ~400 Ko
   const f = `icons/splash/splash-${w * d}x${h * d}.jpg`; fs.writeFileSync(path.join(root, f), Buffer.from(shot.result.data, 'base64')); console.log(f);
+  links.push(`<link rel="apple-touch-startup-image" media="(device-width: ${dw}px) and (device-height: ${dh}px) and (-webkit-device-pixel-ratio: ${d}) and (orientation: ${o === 'p' ? 'portrait' : 'landscape'})" href="${f}">`);
 }
+// les balises sont réécrites dans index.html entre les repères « splash:begin » et « splash:end »
+const ip = path.join(root, 'index.html'); let page = fs.readFileSync(ip, 'utf8');
+page = page.replace(/(<!-- splash:begin[^>]*-->\n)[\s\S]*?(<!-- splash:end -->)/, (_, a, b) => a + links.join('\n') + '\n' + b); fs.writeFileSync(ip, page);
 // --- captures d'écran de l'application (comptes désactivés pour la capture : la vraie interface, sans connexion)
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 await send('Page.navigate', { url: BASE + 'index.html' }); await sleep(4000);
