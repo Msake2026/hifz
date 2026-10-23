@@ -33,7 +33,7 @@ jobs:
           printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 -d "$F" > b.tar.gz || { echo "::error::déchiffrement impossible : mauvaise phrase secrète ?"; exit 1; }
           tar tzf b.tar.gz
           tar xzf b.tar.gz
-          D=$(ls -d tathbit-backup-*/ hifz-backup-*/ 2>/dev/null | head -1)
+          D=$(ls -d tathbit-backup-*/ | head -1)
           for t in profiles user_data push_subs; do
             n=$(awk -v t="public.$t" '$0 ~ "^COPY " t " " {c=1; next} c && /^\\\.$/ {c=0} c {n++} END {print n+0}' "$D/public.sql")
             echo "table $t : $n ligne(s)"

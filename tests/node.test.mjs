@@ -488,29 +488,3 @@ test('résumé hebdomadaire : total, jours actifs et série sur 7 jours (send-re
   assert.deepEqual(weekSummary({ [d(1)]: 4 }, now), { total: 4, active: 1, streak: 1 });   // aujourd'hui pas encore révisé : la série d'hier compte encore
   assert.ok(ts.includes("getUTCDay() !== 0"), 'seulement le dimanche');
 });
-
-test('renommage Hifz → Tathbīt : les réglages hifz.* sont recopiés en tathbit.* sans rien perdre', () => {
-  const html = read('index.html'), code = html.slice(html.indexOf('(() => { try { const old = [];'), html.indexOf('const store = {'));
-  const mk = (init, quota = Infinity) => { const m = new Map(Object.entries(init)); return { m, get length(){ return m.size; }, key: i => [...m.keys()][i] ?? null, getItem: k => m.has(k) ? m.get(k) : null,
-    setItem(k, v){ if (m.size >= quota && !m.has(k)) throw new Error('quota'); m.set(k, String(v)); }, removeItem: k => { m.delete(k); } }; };
-  const run = ls => new Function('localStorage', code)(ls);
-  let ls = mk({ 'hifz.stats': '{"2:5":[1,0]}', 'hifz.cfg': '{"n":10}', 'hifz.quran.v2': 'GROS', 'autre': 'x', 'tathbit.days': '{"a":1}', 'hifz.days': '{"vieux":1}' }); run(ls);
-  assert.deepEqual([...ls.m.keys()].sort(), ['autre', 'tathbit.cfg', 'tathbit.days', 'tathbit.stats']);
-  assert.equal(ls.getItem('tathbit.stats'), '{"2:5":[1,0]}'); assert.equal(ls.getItem('tathbit.days'), '{"a":1}', 'une clé déjà migrée n’est jamais écrasée'); assert.equal(ls.getItem('hifz.quran.v2'), null, 'l’ancien cache du texte est supprimé');
-  run(ls); assert.equal(ls.m.size, 4, 'relancer ne change rien');
-  ls = mk({ 'hifz.a': '1', 'hifz.b': '2' }, 1); run(ls); assert.ok(ls.getItem('hifz.b') !== null || ls.getItem('tathbit.b') !== null, 'si le stockage est plein, rien n’est perdu');
-  assert.ok(!html.includes("store.get('hifz.") && !html.includes("store.set('hifz."), 'plus aucune clé hifz.* dans le code');
-});
-
-test('renommage : l’audio téléchargé est recopié dans le nouveau cache et l’ancien n’est supprimé que si la copie a réussi', async () => {
-  const sw = read('sw.js'), fn = sw.slice(sw.indexOf('async function migrateAudio'), sw.indexOf("self.addEventListener('activate'"));
-  const mkCache = items => ({ items, keys: async () => [...items.keys()], match: async k => items.get(k), put: async (k, v) => { if (items.failPut) throw new Error('quota'); items.set(k, v); } });
-  const mkCaches = (stores, fail = false) => ({ stores, has: async n => stores.has(n), open: async n => { if (!stores.has(n)) stores.set(n, new Map()); const m = stores.get(n); m.failPut = fail && n === 'tathbit-audio-v1'; return mkCache(m); } });
-  const run = caches => new Function('caches', 'AUDIO', 'OLD_AUDIO', fn + '; return migrateAudio();')(caches, 'tathbit-audio-v1', 'hifz-audio-v1');
-  let c = mkCaches(new Map([['hifz-audio-v1', new Map([['a', 1], ['b', 2]])]])); assert.equal(await run(c), true);
-  assert.deepEqual([...c.stores.get('tathbit-audio-v1').keys()], ['a', 'b']);
-  c = mkCaches(new Map([['hifz-audio-v1', new Map([['a', 1]])]]), true); assert.equal(await run(c), false, 'copie impossible : on le signale (l’ancien cache est alors conservé)');
-  c = mkCaches(new Map()); assert.equal(await run(c), true, 'rien à migrer');
-  assert.match(sw, /k === OLD_AUDIO && !moved/, 'l’ancien cache est conservé si la copie échoue');
-  assert.match(read('index.html'), /d\.app !== 'tathbit' && d\.app !== 'hifz'/, 'les anciennes sauvegardes (app: hifz) restent importables');
-});

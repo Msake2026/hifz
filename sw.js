@@ -1,5 +1,5 @@
 // Service worker Tathbīt : l'application fonctionne hors ligne, mais NE MET JAMAIS EN CACHE les échanges de compte (Supabase).
-const SHELL = 'tathbit-shell-v9', RUNTIME = 'tathbit-runtime-v9', AUDIO = 'tathbit-audio-v1', OLD_AUDIO = 'hifz-audio-v1';   // AUDIO : sourates téléchargées par l'utilisateur (jamais effacé automatiquement)
+const SHELL = 'tathbit-shell-v9', RUNTIME = 'tathbit-runtime-v9', AUDIO = 'tathbit-audio-v1';   // AUDIO : sourates téléchargées par l'utilisateur (jamais effacé automatiquement)
 const FILES = ['./', './index.html', './config.js', './i18n.js', './manifest.webmanifest', './icon.svg', './quran.js', './huruf.js', './moutoun.js', './mutashabihat.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
   './fonts/fonts.css', './fonts/amiri-quran-arabic.woff2', './fonts/amiri-quran-latin.woff2', './fonts/cormorant-garamond-latin.woff2', './fonts/cormorant-garamond-latin-ext.woff2',
@@ -8,15 +8,8 @@ const FILES = ['./', './index.html', './config.js', './i18n.js', './manifest.web
 const CACHEABLE = ['api.alquran.cloud', 'cdn.jsdelivr.net'];
 const keep = (cacheName, req, res) => { const copy = res.clone(); caches.open(cacheName).then(c => c.put(req, copy)).catch(() => {}); }; // clone AVANT de rendre la réponse
 self.addEventListener('install', e => { e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES))); self.skipWaiting(); });
-// renommage Hifz → Tathbīt : l'audio déjà téléchargé est recopié dans le nouveau cache avant de supprimer l'ancien (jamais supprimé si la copie échoue)
-async function migrateAudio(){
-  if (!(await caches.has(OLD_AUDIO))) return true;
-  try { const from = await caches.open(OLD_AUDIO), to = await caches.open(AUDIO);
-    for (const req of await from.keys()){ if (!(await to.match(req))){ const res = await from.match(req); if (res) await to.put(req, res); } }
-    return true; } catch { return false; }
-}
-self.addEventListener('activate', e => e.waitUntil(migrateAudio().then(moved =>
-  caches.keys().then(keys => Promise.all(keys.filter(k => ![SHELL, RUNTIME, AUDIO].includes(k) && !(k === OLD_AUDIO && !moved)).map(k => caches.delete(k))))).then(() => self.clients.claim())));
+self.addEventListener('activate', e => e.waitUntil(
+  caches.keys().then(keys => Promise.all(keys.filter(k => ![SHELL, RUNTIME, AUDIO].includes(k)).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const u = new URL(e.request.url);

@@ -271,9 +271,6 @@ input[type=email],input[type=password],input[type=time]{direction:ltr;text-align
 const $app = document.getElementById('app');
 const $ = id => document.getElementById(id);
 let cloudDirty = () => {}; // branché plus bas : envoie la progression au compte quand elle change
-// Renommage Hifz → Tathbīt : les réglages et la progression enregistrés sous « hifz.* » sont recopiés sous « tathbit.* » au premier lancement (rien n'est perdu), puis les anciennes clés sont supprimées
-(() => { try { const old = []; for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k && k.startsWith('hifz.')) old.push(k); }
-  for (const k of old){ const n = 'tathbit.' + k.slice(5); try { if (k !== 'hifz.quran.v2' && localStorage.getItem(n) === null) localStorage.setItem(n, localStorage.getItem(k)); localStorage.removeItem(k); } catch { /* quota : on garde l'ancienne clé */ } } } catch { /* stockage indisponible */ } })();
 const store = {
   get(k, d){ try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
   set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} cloudDirty(k); }
@@ -853,7 +850,7 @@ function planDefsHtml(open){ // définitions des trois étapes du plan
     ${item('Sabaq', "La leçon nouvelle : la portion que tu apprends aujourd'hui, par lecture, écoute et répétition jusqu'à pouvoir la réciter de mémoire.")}
     ${item('Sabqi', "La révision des leçons récentes : chaque jour, tu récites les portions apprises ces derniers jours pour les ancrer avant qu'elles ne s'effacent.")}
     ${item('Manzil', "La révision des anciennes leçons : tout ce que tu as déjà appris plus tôt, revu en rotation sur un cycle (de 14 à 60 jours dans le plan) pour que rien ne se perde.")}
-    <p class="ref" style="margin:0">${tr('Ces termes viennent de la tradition du hifz ; les durées varient selon les écoles et les enseignants. Tu peux les régler dans « Modifier le plan ».')}</p></div></details>`;
+    <p class="ref" style="margin:0">${tr('Ces termes viennent de la tradition de mémorisation du Coran ; les durées varient selon les écoles et les enseignants. Tu peux les régler dans « Modifier le plan ».')}</p></div></details>`;
 }
 function planSetupHtml(){
   const d = pdraft || (pdraft = plan ? {from: plan.from, to: plan.to, order: plan.order, amt: plan.amt, recent: plan.recent, cycle: plan.cycle} : {from: 78, to: 114, order: 'desc', amt: 'v5', recent: 7, cycle: 30});
@@ -2102,7 +2099,7 @@ async function importFile(f){
   if (!f) return;
   try {
     const d = JSON.parse(await f.text());
-    if ((d.app !== 'tathbit' && d.app !== 'hifz') || typeof d.stats !== 'object') throw new Error('format');
+    if (d.app !== 'tathbit' || typeof d.stats !== 'object') throw new Error('format');
     if (!confirm(tr('Remplacer ta progression actuelle par cette sauvegarde ?'))) return;
     store.set('tathbit.cfg', d.cfg || {}); store.set('tathbit.stats', d.stats); store.set('tathbit.sched', d.sched || {});
     store.set('tathbit.days', d.days || {}); store.set('tathbit.custom', d.custom || []); store.set('tathbit.errors', d.errors || []); store.set('tathbit.plan', d.plan || null);
@@ -2694,7 +2691,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v54';
+const APP_VERSION = '23 oct. 2026 · v55';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2705,7 +2702,7 @@ async function forceUpdate(el){
   } catch {}
   location.reload();
 }
-const CLOUD = window.TATHBIT_CLOUD || window.HIFZ_CLOUD || {};
+const CLOUD = window.TATHBIT_CLOUD || {};
 const cloudOn = () => !!(CLOUD.url && CLOUD.anonKey);
 let sb = null, me = null, screen = 'tab', loadingMe = false;
 let acc = {mode: 'login', msg: '', ok: false, busy: false, resend: '', resendAt: 0, last: '', syncErr: '', d: {email: '', pass: '', pass2: '', consent: false}}; // d : brouillon du formulaire (gardé en mémoire seulement)
@@ -3139,7 +3136,7 @@ async function remAction(act){
 const LEGAL_DATE = '2026-10-21';
 function renderLegal(){
   setNav(false); screen = 'legal';
-  const L = Object.assign({contact: '', region: ''}, window.TATHBIT_LEGAL || window.HIFZ_LEGAL || {});
+  const L = Object.assign({contact: '', region: ''}, window.TATHBIT_LEGAL || {});
   const contact = L.contact ? `<a href="mailto:${esc(L.contact)}">${esc(L.contact)}</a>` : tr('(adresse à compléter)');
   const cnil = '<a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">cnil.fr/fr/plaintes</a>';
   const region = L.region ? ', ' + tr('région : {r}', {r: esc(L.region)}) : '';
