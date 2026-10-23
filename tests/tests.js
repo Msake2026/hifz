@@ -676,6 +676,8 @@
     E("window.__stops = 0; SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ window.__stops++; this.onend(); }; this.abort = function(){}; };");
     E("home()"); E("start()"); clickAct('listen'); await wait(100); ok(E('window.__rec.continuous === true'), 'écoute continue : une pause ne coupe plus le micro');
     ok(!$q('[data-act="listen"]').disabled && /fini de réciter/.test($q('[data-act="listen"]').textContent), 'bouton « J’ai fini de réciter » actif pendant l’écoute');
+    ok($q('[data-act="listen"]').classList.contains('rec-stop') && /Touche ici/.test($q('[data-act="listen"]').textContent) && D.defaultView.getComputedStyle($q('[data-act="listen"]')).position === 'sticky' && $q('[data-act="listen"]').getBoundingClientRect().height >= 64, 'le bouton est grand, explicite (texte d’aide) et reste visible en bas de l’écran');
+    ok($q('#mic-on') && /Micro ouvert/.test($q('#mic-on').textContent), 'voyant « micro ouvert » visible');
     E("window.__rec.onresult({results: [Object.assign([{transcript: 'الحمد لله رب'}], {isFinal: false})]})"); await wait(30);
     $q('[data-act="listen"]').click(); $q('[data-act="listen"]') && $q('[data-act="listen"]').click(); await wait(250);
     eq(E('window.__stops'), 1, 'un seul arrêt, même si on touche deux fois'); ok($q('#fb .fb') && $q('#work').textContent.includes('الحمد لله رب'), 'le verset est corrigé avec ce qui a été récité');

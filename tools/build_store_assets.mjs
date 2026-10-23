@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
+import { ART_JS } from './_art.mjs';
 const NAME = 'تثبيت', SUB = 'Coran et moutoun';
 const root = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
 const font = url.pathToFileURL(path.join(root, 'fonts/amiri-quran-arabic.woff2')).href;
@@ -21,15 +22,21 @@ let id = 0; const pend = {}; ws.onmessage = m => { const d = JSON.parse(m.data);
 const send = (method, params = {}) => new Promise(r => { const i = ++id; pend[i] = r; ws.send(JSON.stringify({ id: i, method, params })); });
 const ev = async e => (await send('Runtime.evaluate', { expression: e, awaitPromise: true, returnByValue: true })).result?.result?.value;
 fs.mkdirSync(path.join(root, 'icons/splash'), { recursive: true }); fs.mkdirSync(path.join(root, 'screenshots'), { recursive: true });
-// --- écrans de lancement : fond vert du logo, nom en calligraphie, sous-titre
+// --- écrans de lancement : fond vert du logo ; le mot (centré selon l'encre) et son sous-titre forment un groupe centré dans l'écran
 for (const [w, h, d] of SPLASH) {
-  const html = `<!doctype html><meta charset="utf-8"><style>@font-face{font-family:AQ;src:url(${font})}@font-face{font-family:IN;src:url(${ui})}
-html,body{margin:0;width:${w}px;height:${h}px;overflow:hidden}body{background:radial-gradient(circle at 35% 25%,#1b7a5c 0,#0b4a38 85%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${w * 0.03}px;color:#f1e2b4}
-#n{font-family:AQ,serif;font-size:${w * 0.34}px;line-height:1.75;margin-top:-${w * 0.06}px}#s{font-family:IN,sans-serif;font-size:${w * 0.045}px;letter-spacing:.06em;color:#d9bd6a}#l{width:${w * 0.28}px;height:${w * 0.006}px;background:#d9bd6a;opacity:.7}</style>
-<div id="n">${NAME}</div><div id="l"></div><div id="s">${SUB}</div>`;
+  const html = `<!doctype html><meta charset="utf-8"><style>@font-face{font-family:AQ;src:url(${font})}@font-face{font-family:IN;src:url(${ui})}html,body{margin:0}canvas{display:block}</style><canvas id="c" width="${w}" height="${h}"></canvas>
+<script>${ART_JS}
+Promise.all([document.fonts.load('100px AQ'), document.fonts.load('20px IN')]).then(() => { const W = ${w}, H = ${h}, ctx = document.getElementById('c').getContext('2d'); fond(ctx, W, H);
+  const nameW = W * 0.5, probe = document.createElement('canvas').getContext('2d'); const r0 = nom(probe, ${JSON.stringify(NAME)}, 0, 0, nameW, 'AQ', '#000'), nameH = r0.y1 - r0.y0;
+  const gap = W * 0.07, subPx = W * 0.045, lineH = Math.max(2, W * 0.006), groupH = nameH + gap + lineH + gap * 0.6 + subPx, top = (H - groupH) / 2;
+  nom(ctx, ${JSON.stringify(NAME)}, W / 2, top + nameH / 2, nameW, 'AQ', '#f1e2b4');
+  ctx.fillStyle = 'rgba(217,189,106,.75)'; ctx.fillRect(W / 2 - W * 0.14, top + nameH + gap, W * 0.28, lineH);
+  ctx.font = subPx + 'px IN'; ctx.direction = 'ltr'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#d9bd6a'; if ('letterSpacing' in ctx) ctx.letterSpacing = (W * 0.003) + 'px';
+  ctx.fillText(${JSON.stringify(SUB)}, W / 2, top + nameH + gap + lineH + gap * 0.6); document.title = 'ready'; });</script>`;
   const tmp = path.join(prof, 's.html'); fs.writeFileSync(tmp, html);
   await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: d, mobile: false });
-  await send('Page.navigate', { url: url.pathToFileURL(tmp).href }); await sleep(900);
+  await send('Page.navigate', { url: url.pathToFileURL(tmp).href });
+  for (let i = 0; i < 40; i++) { await sleep(200); const r = await send('Runtime.evaluate', { expression: 'document.title', returnByValue: true }); if (r.result?.result?.value === 'ready') break; }
   const shot = await send('Page.captureScreenshot', { format: 'jpeg', quality: 90 });   // JPEG : un dégradé en PNG pèse ~400 Ko
   const f = `icons/splash/splash-${w * d}x${h * d}.jpg`; fs.writeFileSync(path.join(root, f), Buffer.from(shot.result.data, 'base64')); console.log(f);
 }

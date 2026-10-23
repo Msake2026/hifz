@@ -49,6 +49,13 @@
 *{box-sizing:border-box}
 .heard{min-height:2.6em;font-size:1.45rem;line-height:1.9;text-align:center;margin:4px 0 8px}.heard .interim{opacity:.55}
 .ai{display:inline-block;margin:2px 0 0 6px;padding:1px 8px;border-radius:10px;font-size:.72rem;font-weight:500;border:1px dashed var(--muted);color:var(--muted);white-space:normal}
+.mic-on{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0 2px;font-weight:700;font-size:1.05rem;color:#b3261e}
+.mic-on .dot{width:14px;height:14px;border-radius:50%;background:#b3261e;box-shadow:0 0 0 0 rgba(179,38,30,.5);animation:micpulse 1.3s infinite}
+@keyframes micpulse{70%{box-shadow:0 0 0 12px rgba(179,38,30,0)}100%{box-shadow:0 0 0 0 rgba(179,38,30,0)}}
+@media (prefers-reduced-motion:reduce){.mic-on .dot{animation:none}}
+button.rec-stop{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom));z-index:15;display:block;width:100%;min-height:72px;margin:12px 0 4px;padding:10px 14px;border-radius:18px;border:3px solid #fff!important;background:#b3261e!important;color:#fff!important;font-size:1.3rem;font-weight:800;line-height:1.25;box-shadow:0 8px 22px rgba(0,0,0,.35)!important;text-shadow:none}
+button.rec-stop small{display:block;margin-top:2px;font-size:.85rem;font-weight:500}
+button.rec-stop:disabled{opacity:.7}
 .chip{display:inline-block;padding:2px 9px;border-radius:12px;font-size:.78rem;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 .chip.role-admin{border-color:var(--ko);color:var(--ko)}.chip.role-teacher{border-color:var(--gold);color:var(--mid)}.chip.role-student{border-color:var(--accent);color:var(--accent)}
 .bell{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);inset-inline-end:10px;z-index:30;width:44px;height:44px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.12)}
@@ -216,7 +223,7 @@ button.big{border-radius:14px}
 .hero .logo{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--accent) 70%,#fff),var(--accent));border:2px solid var(--gold);color:var(--gold-soft);
   box-shadow:0 0 0 4px color-mix(in srgb,var(--gold) 22%,transparent)}
 .hero h1{font-size:2.1rem}
-.hero .logo{font-size:.95rem;line-height:1}.hero p.tag{font-weight:600;color:var(--accent);font-size:.95rem;margin-top:2px}
+.hero .logo{font-size:.95rem;line-height:1}.hero .logo .lg{display:block;transform:translate(.009em,-.354em)}   /* centrage selon l'encre de la calligraphie (mesuré : le mot paraissait trop bas) */.hero p.tag{font-weight:600;color:var(--accent);font-size:.95rem;margin-top:2px}
 .bar,.goal{height:8px;border-radius:8px;background:color-mix(in srgb,var(--gold) 22%,var(--line))}
 .bar i,.goal i{background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:8px}
 .stat div{background:color-mix(in srgb,var(--bg) 55%,var(--card));border:1px solid var(--line);border-radius:14px}
@@ -737,7 +744,7 @@ function tabHome(){
   const top = aggErrors(errors.filter(e => e.t >= Date.now() - 7 * 864e5)).slice(0, 3);
   return `
   ${homeNotice ? `<div class="fb ok" role="status">${esc(homeNotice)}</div>` : ''}
-  <div class="hero"><div class="logo">تثبيت</div><div><h1>Tathbīt</h1><p class="tag">${tr('Coran et moutoun')}</p><p>${me ? esc(me.user.email) + ' ' + roleChips() : tr('Que ta mémorisation soit bénie.')}</p></div></div>
+  <div class="hero"><div class="logo"><span class="lg">تثبيت</span></div><div><h1>Tathbīt</h1><p class="tag">${tr('Coran et moutoun')}</p><p>${me ? esc(me.user.email) + ' ' + roleChips() : tr('Que ta mémorisation soit bénie.')}</p></div></div>
   ${cloudOn() && !me ? `<div class="card"><h2>${tr('Sauvegarde ta progression')}</h2><p class="sub" style="margin:0 0 8px">${tr('Crée un compte gratuit pour retrouver tes séries, tes erreurs et ton historique sur tous tes appareils.')}</p>
     <div class="row"><button class="pri" data-act="acc-open" data-v="signup">${tr('Créer un compte')}</button><button data-act="acc-open" data-v="login">${tr('Se connecter')}</button></div></div>` : ''}
 
@@ -1998,6 +2005,7 @@ const micError = code => { const h = micHelp(code, micPlatform(), IOS_APP); retu
 let MIC_MAX = {one: 45, cont: 180}, MIC_SILENCE = 4000, MIC_GRACE = 1500;   // MIC_SILENCE : pause (ms) après laquelle, une fois du texte entendu, la récitation est considérée finie ; MIC_GRACE : attente (ms) de la fin d'écoute après l'arrêt, avant de corriger de force
 let micRec = null;
 function stopMic(){
+  const mo = $('mic-on'); if (mo) mo.remove();
   if (!micRec) return; const r = micRec; micRec = null; r.aborted = true; clearTimeout(r.cap); clearTimeout(r.silence); clearTimeout(r.grace); clearInterval(r.tick);
   try { r.abort(); } catch { try { r.stop(); } catch { /* déjà arrêté */ } }
 }
@@ -2019,7 +2027,7 @@ function listen(){
     if (ended) return; ended = true;
     clearTimeout(rec.cap); clearTimeout(rec.silence); clearTimeout(rec.grace); clearInterval(rec.tick); if (micRec === rec) micRec = null;
     if (rec.aborted) return;                                  // coupé par l'application (solution affichée) : rien à corriger
-    btn.disabled = false; btn.textContent = tr('🎤 Réessayer'); btn.onclick = null;
+    btn.disabled = false; btn.classList.remove('rec-stop'); btn.textContent = tr('🎤 Réessayer'); btn.onclick = null; const mo = $('mic-on'); if (mo) mo.remove();
     heard.querySelectorAll('.interim').forEach(e => e.classList.remove('interim'));
     if (text.trim()){
       evaluate(text, true);
@@ -2034,10 +2042,11 @@ function listen(){
   const tick = () => { if (!msg.dataset.err) msg.textContent = tr('Micro ouvert : il se coupe tout seul dans {n} s.', {n: left}); };
   msg.textContent = tr("Si ton navigateur demande l'autorisation du micro, accepte. Touche « J'ai fini de réciter » quand tu as terminé."); rec.tick = setInterval(() => { left--; if (left > 0 && rec.started) tick(); }, 1000);
   rec.cap = setTimeout(() => { rec.capped = true; stopNow(); }, left * 1000);
-  btn.textContent = tr("⏹ J'ai fini de réciter");
+  btn.classList.add('rec-stop'); btn.innerHTML = `⏹ ${esc(tr("J'ai fini de réciter"))}<small>${esc(tr('Touche ici dès que tu as terminé le verset'))}</small>`;
+  const old = $('mic-on'); if (old) old.remove(); btn.insertAdjacentHTML('beforebegin', `<div class="mic-on" id="mic-on" role="status"><span class="dot" aria-hidden="true"></span>${esc(tr('Micro ouvert : récite maintenant'))}</div>`);
   btn.onclick = ev => { ev.stopPropagation(); stopNow(); };   // c'est toi qui décides quand le verset est récité : le micro se coupe et la réponse est corrigée
   micRec = rec;
-  try { rec.start(); } catch (e){ btn.disabled = false; btn.textContent = tr('🎤 Réessayer'); micRec = null; clearTimeout(rec.cap); clearInterval(rec.tick); msg.dataset.err = '1'; msg.textContent = micError((e && e.name === 'NotAllowedError') ? 'not-allowed' : (e && e.name) || 'start'); }
+  try { rec.start(); } catch (e){ btn.classList.remove('rec-stop'); const mo2 = $('mic-on'); if (mo2) mo2.remove(); btn.disabled = false; btn.textContent = tr('🎤 Réessayer'); micRec = null; clearTimeout(rec.cap); clearInterval(rec.tick); msg.dataset.err = '1'; msg.textContent = micError((e && e.name === 'NotAllowedError') ? 'not-allowed' : (e && e.name) || 'start'); }
 }
 
 /* ---------- écoute d'une portée ---------- */
@@ -2734,7 +2743,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v62';
+const APP_VERSION = '23 oct. 2026 · v63';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2953,7 +2962,7 @@ function renderAccount(){
   const gate = cloudOn() && !me; acc.fromGate = gate;
   const langBar = `<div class="langs">${Object.entries(LANGS).map(([k, n]) => `<button class="${LANG === k ? 'sel' : ''}" data-act="lang" data-v="${k}" lang="${k}">${n}</button>`).join('')}</div>`;
   $app.innerHTML = `${gate ? langBar : `<div class="top"><button class="link" data-act="acc-back">${tr('← Retour')}</button><span>${tr('Compte')}</span></div>`}
-    ${gate ? `<div class="hero" style="margin-top:8px"><div class="logo">تثبيت</div><div><h1>Tathbīt</h1><p class="tag">${tr('Coran et moutoun')}</p><p>${tr("Crée un compte ou connecte-toi pour accéder à l'application.")}</p></div></div>` : `<h1 style="margin-top:8px">${tr('Mon compte')}</h1>`}
+    ${gate ? `<div class="hero" style="margin-top:8px"><div class="logo"><span class="lg">تثبيت</span></div><div><h1>Tathbīt</h1><p class="tag">${tr('Coran et moutoun')}</p><p>${tr("Crée un compte ou connecte-toi pour accéder à l'application.")}</p></div></div>` : `<h1 style="margin-top:8px">${tr('Mon compte')}</h1>`}
     ${acc.msg && cloudOn() && sb ? `<div id="acc-msg" class="fb ${acc.ok ? 'ok' : 'ko'}">${esc(acc.msg)}</div>` : ''}
     ${acc.resend && !me && sb && !acc.mode.startsWith('newp') ? `<p style="margin:0 0 10px;text-align:center"><button class="link" data-act="acc-resend">✉ ${tr("Renvoyer l'e-mail de confirmation")}</button></p>` : ''}${body}`;
   clearTimeout(msgTimer);
