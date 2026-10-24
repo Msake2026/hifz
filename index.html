@@ -2181,7 +2181,7 @@ function frBuild(from, to, hide){
     tok.forEach((w, j) => { const n = norm(w); if (n){ exp.push(n); meta.push({s, a: i + 1, j}); } });
     verses.push({s, a: i + 1, from: start, to: exp.length, tok});
   });
-  return {from, to, hide, exp, meta, verses, p: 0, base: 0, miss: new Set(), sess: new Set(), hint: new Set(), sec: 0, quick: 0};
+  return {from, to, hide, exp, meta, verses, p: 0, base: 0, miss: new Set(), sess: new Set(), hint: new Set(), sec: 0, quick: 0, undo: {}, koDone: new Set()};
 }
 const frVerse = p => { const V = fr.verses; let lo = 0, hi = V.length - 1; while (lo < hi){ const m = (lo + hi + 1) >> 1; if (V[m].from <= p) lo = m; else hi = m - 1; } return lo; };
 function frStart(){
@@ -2267,9 +2267,13 @@ function frSummary(){
   fr.clean = clean; fr.flagged = flagged;
   if (fr.hide && clean.length && !fr.recorded){ // récités de mémoire, sans oubli : comptent dans la révision (une seule écriture pour tout)
     fr.recorded = true; const now = Date.now();
-    for (const v of clean){ const k = v.s + ':' + v.a, [ok, ko] = stats[k] || [0, 0]; stats[k] = [ok + 1, ko]; sched[k] = srsNext(sched[k], 1, now); }
+    for (const v of clean){ const k = v.s + ':' + v.a, [ok, ko] = stats[k] || [0, 0]; fr.undo[k] = {st: [ok, ko], sc: sched[k]}; stats[k] = [ok + 1, ko]; sched[k] = srsNext(sched[k], 1, now); }
     days[today()] = (days[today()] || 0) + clean.length; store.set('tathbit.stats', stats); store.set('tathbit.sched', sched); store.set('tathbit.days', days);
   }
+  fr.done = done; frShowSummary();
+}
+function frShowSummary(){
+  const done = fr.done, clean = fr.clean, flagged = fr.flagged;
   const title = {done: tr('Récitation terminée'), stop: tr('Bilan de ta récitation'), time: tr('Temps maximal atteint'), error: tr('Micro arrêté')}[fr.reason] || tr('Bilan de ta récitation');
   const open = fr.p < fr.exp.length ? fr.verses[frVerse(fr.p)] : null;
   const wtxt = f => f.v.tok.map((t, j) => { const wi = f.bad.find(w => fr.meta[w].j === j); return wi != null ? `<span class="fw miss">${esc(t)}</span>` : esc(t); }).join(' ');
@@ -2280,15 +2284,45 @@ function frSummary(){
       ${fr.hide && clean.length ? `<p class="ref" style="margin:0 0 6px">${trp(clean.length, '{n} verset récité de mémoire sans oubli est compté dans ta révision.|{n} versets récités de mémoire sans oubli sont comptés dans ta révision.')}</p>` : ''}
       ${!done.length ? `<p class="ref" style="margin:0">${tr("Aucun verset n'a été suivi jusqu'au bout : vérifie le micro, parle près de l'appareil, et réessaie.")}</p>` : ''}
       <p class="ref" style="margin:6px 0 0">${tr("L'application suit les mots entendus : elle peut se tromper. Vérifie avec ton mushaf ou ton enseignant.")}</p></div>
+    ${done.length ? `<div class="card"><h2>${tr('Vérifier mes voyelles')}</h2>
+      <p class="ref" style="margin:0 0 8px">${tr("La reconnaissance vocale n'entend pas les voyelles. Compare ta récitation avec ton mushaf : touche les mots dont tu n'es pas sûr des voyelles, ou que tu as mal prononcés.")}</p>
+      ${fr.vowSaved ? `<p class="ref" style="margin:0">✓ ${tr('Voyelles vérifiées')}</p>` : `<button data-act="fr-vow">✍️ ${tr('Vérifier mes voyelles')}</button>`}</div>` : ''}
     ${flagged.length ? `<div class="card"><h2>${tr('À revoir')}</h2>${flagged.map(f => `<div class="sib"><p class="ref" style="margin:0">${esc(SN(f.v.s))} · ${f.v.a}</p><div class="ar" dir="rtl" lang="ar" style="font-size:1.4rem;line-height:2;margin:4px 0 0">${wtxt(f)}</div></div>`).join('')}
       <button style="margin-top:8px" data-act="fr-err" id="fr-err">${tr('Ajouter ces versets à mes erreurs')}</button><p class="ref" id="fr-errmsg" role="status" style="margin:6px 0 0"></p></div>` : ''}
     <button class="pri big" data-act="fr-again">🎤 ${tr('Réciter encore')}</button>
     <button class="big" style="margin-top:8px" data-act="fr-quit">${tr('Terminer')}</button>`;
   window.scrollTo(0, 0);
 }
+function frVowels(){ // autocontrôle : l'application n'entend pas les voyelles, c'est toi qui marques les mots douteux
+  setNav(false);
+  $app.innerHTML = `<div class="top"><button class="link" data-act="fr-vow-back">${tr('← Retour au bilan')}</button><span>${tr('Vérifier mes voyelles')}</span></div>
+    <h1 style="margin-top:8px">✍️ ${tr('Vérifier mes voyelles')}</h1>
+    <p class="sub">${tr("Touche les mots dont tu n'es pas sûr des voyelles, ou que tu as mal prononcés (touche encore pour annuler).")}</p>
+    ${fr.done.map(v => { const vi = fr.verses.indexOf(v);
+      return `<div class="card"><p class="ref" style="margin:0">${esc(SN(v.s))} · ${v.a}</p><div class="ar" dir="rtl" lang="ar" style="font-size:${cfg.rdSize || 1.7}rem;line-height:2.2">${v.tok.map((t, j) => norm(t) ? `<span class="wd" data-act="fr-wd" data-v="${vi}:${j}">${esc(t)}</span>` : esc(t)).join(' ')}</div></div>`; }).join('')}
+    <button class="pri big" id="fr-vow-go" data-act="fr-vow-save" style="position:sticky;bottom:calc(12px + env(safe-area-inset-bottom));z-index:15">${trp(0, 'Valider ({n} mot marqué)|Valider ({n} mots marqués)')}</button>`;
+  window.scrollTo(0, 0);
+}
+function frVowelsSave(){ // les versets où des mots sont marqués : erreurs + révision espacée (un « sans oubli » déjà compté est corrigé)
+  const marks = {}; document.querySelectorAll('.wd.bad').forEach(e => { const [vi, j] = e.dataset.v.split(':').map(Number); (marks[vi] ||= []).push(j); });
+  const now = Date.now(); let n = 0;
+  for (const [vi, js] of Object.entries(marks)){
+    const v = fr.verses[vi], k = v.s + ':' + v.a;
+    if (!fr.koDone.has(k)){
+      const u = fr.undo[k]; if (u){ stats[k] = [u.st[0], u.st[1] + 1]; sched[k] = srsNext(u.sc, 0, now); delete fr.undo[k]; }   // verset compté « sans oubli » : on annule et on le compte à revoir
+      else { const [ok, ko] = stats[k] || [0, 0]; stats[k] = [ok, ko + 1]; sched[k] = srsNext(sched[k], 0, now); }
+      fr.koDone.add(k);
+    }
+    errors.push({t: now, k, m: 'free', sc: 0, bad: [...new Set(js.sort((a, b) => a - b).map(j => v.tok[j]))].slice(0, 40)}); n++;
+  }
+  if (errors.length > 2000) errors = errors.slice(-2000);
+  store.set('tathbit.stats', stats); store.set('tathbit.sched', sched); store.set('tathbit.errors', errors);
+  fr.vowSaved = true; fr.vowN = n; frShowSummary();
+  const c = $app.querySelector('.card'); if (c) c.insertAdjacentHTML('beforeend', `<p class="ref" style="margin:6px 0 0" role="status">${n ? trp(n, '{n} verset avec des voyelles à revoir ajouté à tes erreurs.|{n} versets avec des voyelles à revoir ajoutés à tes erreurs.') : tr('Aucun mot marqué : rien à ajouter.')}</p>`);
+}
 function frErrors(){ // les versets à revoir entrent dans l'historique d'erreurs et dans la révision espacée
   if (!fr || !fr.flagged || fr.errAdded) return; fr.errAdded = true; const now = Date.now();
-  for (const f of fr.flagged){ const k = f.v.s + ':' + f.v.a, [ok, ko] = stats[k] || [0, 0]; stats[k] = [ok, ko + 1]; sched[k] = srsNext(sched[k], 0, now);
+  for (const f of fr.flagged){ const k = f.v.s + ':' + f.v.a, [ok, ko] = stats[k] || [0, 0]; fr.koDone.add(k); stats[k] = [ok, ko + 1]; sched[k] = srsNext(sched[k], 0, now);
     errors.push({t: now, k, m: 'free', sc: 0, bad: [...new Set(f.bad.map(w => f.v.tok[fr.meta[w].j]))].slice(0, 40)}); }
   if (errors.length > 2000) errors = errors.slice(-2000);
   store.set('tathbit.stats', stats); store.set('tathbit.sched', sched); store.set('tathbit.errors', errors);
@@ -2630,6 +2664,10 @@ const onClick = e => {
     case 'fr-quit': frQuit(); break;
     case 'fr-again': frSetup(); break;
     case 'fr-err': frErrors(); break;
+    case 'fr-vow': frVowels(); break;
+    case 'fr-vow-back': frShowSummary(); break;
+    case 'fr-vow-save': frVowelsSave(); break;
+    case 'fr-wd': { el.classList.toggle('bad'); const n = document.querySelectorAll('.wd.bad').length, b = $('fr-vow-go'); if (b) b.textContent = trp(n, 'Valider ({n} mot marqué)|Valider ({n} mots marqués)'); break; }
     case 'fr-reveal': { const b = el.closest('.sib'); if (b) b.classList.toggle('open'); break; }
     case 'play': playUrls(cur.audio.map(audioUrl)); break;
     case 'stopaudio': stopAudio(); break;
@@ -3021,7 +3059,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '24 oct. 2026 · v85';
+const APP_VERSION = '24 oct. 2026 · v86';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

@@ -871,6 +871,13 @@
     eq(E("stats['112:1']"), [1, 0], 'verset récité de mémoire sans oubli compté dans la révision'); eq(E("stats['112:2']"), undefined, 'verset avec oubli pas compté comme réussi');
     ok($q('#fr-err'), 'bouton « Ajouter à mes erreurs »'); clickAct('fr-err'); eq(E("errors.length"), 1, 'erreur ajoutée'); eq(E("errors[0].m"), 'free', 'mode « récitation libre »'); eq(E("stats['112:2']"), [0, 1], 'verset à revoir noté dans la révision espacée');
     clickAct('fr-err'); eq(E("errors.length"), 1, 'pas de doublon');
+    // autocontrôle des voyelles : l'utilisateur marque des mots, les versets concernés vont aux erreurs sans double compte
+    ok($q('[data-act="fr-vow"]'), 'bouton « Vérifier mes voyelles » dans le bilan'); clickAct('fr-vow'); ok($$q('.wd').length > 5 && /voyelles/.test(appText()), 'écran de contrôle des voyelles');
+    clickAct('fr-wd', '0:0'); ok(/1 mot marqué/.test($q('#fr-vow-go').textContent), 'compteur : ' + $q('#fr-vow-go').textContent); clickAct('fr-wd', '1:0'); clickAct('fr-wd', '1:0'); clickAct('fr-wd', '1:1');
+    ok(/2 mots marqués/.test($q('#fr-vow-go').textContent), 'toucher deux fois annule : ' + $q('#fr-vow-go').textContent);
+    clickAct('fr-vow-save'); await wait(100);
+    eq(E("stats['112:1']"), [0, 1], 'verset compté « sans oubli » puis marqué : annulé et compté à revoir'); eq(E("stats['112:2']"), [0, 1], 'verset déjà compté en erreur : pas compté deux fois'); eq(E("errors.length"), 3, 'une entrée d’erreur par verset marqué (en plus de la 1re)');
+    ok(/Voyelles vérifiées/.test(appText()) && /2 versets avec des voyelles à revoir ajoutés/.test(appText()) && !$q('[data-act="fr-vow"]'), 'bilan : voyelles vérifiées, 2 versets ajoutés');
     // micro refusé : la récitation s'arrête avec le bon message
     clickAct('fr-again'); clickAct('fr-start'); W.__rec.onerror({error: 'not-allowed'}); W.__rec.onend(); await wait(100); ok(/Micro arrêté/.test(appText()), 'micro refusé : bilan « Micro arrêté »');
     // texte visible : aucune écriture dans la révision
