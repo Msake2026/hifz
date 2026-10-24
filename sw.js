@@ -1,5 +1,5 @@
 // Service worker Tathbīt : l'application fonctionne hors ligne, mais NE MET JAMAIS EN CACHE les échanges de compte (Supabase).
-const SHELL = 'tathbit-shell-v26', RUNTIME = 'tathbit-runtime-v26', AUDIO = 'tathbit-audio-v1';   // AUDIO : sourates téléchargées par l'utilisateur (jamais effacé automatiquement)
+const SHELL = 'tathbit-shell-v27', RUNTIME = 'tathbit-runtime-v27', AUDIO = 'tathbit-audio-v1';   // AUDIO : sourates téléchargées par l'utilisateur (jamais effacé automatiquement)
 const FILES = ['./', './index.html', './config.js', './i18n.js', './manifest.webmanifest', './icon.svg', './quran.js', './huruf.js', './moutoun.js', './mutashabihat.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
   './fonts/fonts.css', './fonts/amiri-quran-arabic.woff2', './fonts/amiri-quran-latin.woff2', './fonts/cormorant-garamond-latin.woff2', './fonts/cormorant-garamond-latin-ext.woff2',

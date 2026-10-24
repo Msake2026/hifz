@@ -138,6 +138,8 @@ sup.vn{font-family:Inter,sans-serif;font-size:.6rem;color:var(--muted);margin:0 
 .stat{display:flex;gap:10px}.stat div{flex:1;text-align:center;background:var(--bg);border-radius:10px;padding:10px}
 .stat b{display:block;font-size:1.4rem}
 .weak{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.btnlink{display:block;padding:12px 14px;margin-top:8px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);text-decoration:none;font-weight:600}
+.btnlink:hover{filter:brightness(.97)}
 .big-score{font-size:3rem;font-weight:600;text-align:center;margin:.2em 0}
 .foot{color:var(--muted);font-size:.78rem;text-align:center;margin-top:24px}
 .link{background:none;border:none;color:var(--muted);text-decoration:underline;padding:4px}
@@ -842,7 +844,7 @@ function tabHome(){
 const PLAN_AMT = ['v3', 'v5', 'v10', 'v16', 'p0.25', 'p0.5', 'p1'];
 const amtLabel = a => a[0] === 'v' ? tr('{n} versets', {n: a.slice(1)}) : ({'p0.25': tr('¼ page'), 'p0.5': tr('½ page'), 'p1': tr('1 page')})[a];
 let pdraft = null, planEditing = false, sab = null;
-const PF_PRESETS = {recent: [3, 5, 7, 10], cycle: [14, 30, 60]}, PF_MAX = {recent: 30, cycle: 30};   // durées proposées ; « Autre » = nombre de jours libre (1 à 30)
+const PF_PRESETS = {recent: [3, 5, 7, 10], cycle: [14, 30]}, PF_MAX = {recent: 30, cycle: 30};   // durées proposées ; « Autre » = nombre de jours libre (1 à 30)
 function pfRead(){ // lit le formulaire du plan ; les durées viennent de la liste, ou du champ libre quand « Autre » est choisi
   const val = id => $(id) ? $(id).value : null, old = pdraft || {};
   const dur = k => { const sv = val('pf-' + k); if (sv !== 'other') return +sv; const n = Math.round(+val('pf-' + k + '-n')); return n >= 1 ? Math.min(n, PF_MAX[k]) : (old[k] || PF_PRESETS[k][0]); };
@@ -944,7 +946,7 @@ function planDefsHtml(open){ // définitions des trois étapes du plan
   return `<details class="card" ${open ? 'open' : ''}><summary>${tr('Comprendre sabaq, sabqi et manzil')}</summary><div style="margin-top:10px">
     ${item('Sabaq', "La leçon nouvelle : la portion que tu apprends aujourd'hui, par lecture, écoute et répétition jusqu'à pouvoir la réciter de mémoire.")}
     ${item('Sabqi', "La révision des leçons récentes : chaque jour, tu récites les portions apprises ces derniers jours pour les ancrer avant qu'elles ne s'effacent.")}
-    ${item('Manzil', "La révision des anciennes leçons : tout ce que tu as déjà appris plus tôt, revu en rotation sur un cycle (de 14 à 60 jours dans le plan) pour que rien ne se perde.")}
+    ${item('Manzil', "La révision des anciennes leçons : tout ce que tu as déjà appris plus tôt, revu en rotation sur un cycle (de 14 à 30 jours dans le plan) pour que rien ne se perde.")}
     <p class="ref" style="margin:0">${tr('Ces termes viennent de la tradition de mémorisation du Coran ; les durées varient selon les écoles et les enseignants. Tu peux les régler dans « Modifier le plan ».')} ${AI()}</p></div></details>`;
 }
 function planSetupHtml(){
@@ -1245,6 +1247,10 @@ function tabSettings(){
   <div class="card"><h2>${tr('Application')}</h2>
     <p class="ref" style="margin:0 0 8px">${tr("Version {v}. Une fois installée sur le téléphone, l'application se met à jour toute seule à l'ouverture quand tu es en ligne ; si tu ne vois pas les nouveautés, utilise ce bouton (ta progression n'est pas touchée).", {v: APP_VERSION})}</p>
     <button data-act="upd">🔄 ${tr('Chercher les mises à jour')}</button></div>
+
+  <div class="card"><h2>${tr('Contact')}</h2>
+    <p class="ref" style="margin:0 0 8px">${tr('Une question, une erreur dans un texte, un problème, une idée : écris-nous.')}</p>
+    <button data-act="contact">✉️ ${tr('Nous contacter')}</button></div>
 
   <div class="card"><h2>${tr('Confidentialité')}</h2>
     <p class="ref" style="margin:0 0 8px">${tr('Quelles données sont enregistrées, qui les voit, comment les supprimer.')}</p>
@@ -2503,7 +2509,9 @@ const onClick = e => {
     case 'sab-test': sabTest(); break;
     case 'rv-sab': el.classList.toggle('hid'); break;
     case 'legal': renderLegal(); break;
-    case 'legal-back': if (cloudOn() && !me) renderAccount(); else go('settings'); break;
+    case 'contact': renderContact(); break;
+    case 'contact-copy': copyContact(); break;
+    case 'legal-back': case 'contact-back': if (cloudOn() && !me) renderAccount(); else go('settings'); break;
     case 'lang': setLang(v); break;
     case 'pw-eye': { const i = $(v), show = i.type === 'password'; i.type = show ? 'text' : 'password'; el.innerHTML = show ? EYE_OFF : EYE;
       el.setAttribute('aria-pressed', String(show)); el.setAttribute('aria-label', show ? tr('Masquer le mot de passe') : tr('Afficher le mot de passe')); i.focus(); break; }
@@ -2844,7 +2852,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '24 oct. 2026 · v82';
+const APP_VERSION = '24 oct. 2026 · v83';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2945,7 +2953,7 @@ async function cloudInit(){
 }
 function renderLoading(){ setNav(false); $app.innerHTML = `<p class="sub" style="margin-top:40vh;text-align:center">${tr('Chargement…')}</p>`; }
 function refreshAccount(){
-  if (screen === 'legal') return;
+  if (screen === 'legal' || screen === 'contact') return;
   if (screen === 'account' && me && acc.fromGate){ acc.fromGate = false; return go('home'); } // connexion réussie depuis l'écran d'accueil protégé
   if (screen === 'account') renderAccount(); else if (screen === 'admin') renderAdmin(); else if (screen === 'tab' || !me) home();
 }
@@ -3054,7 +3062,7 @@ function renderAccount(){
       <div class="card"><h2>${tr('Mot de passe')}</h2>${f('ac-pass', tr('Nouveau mot de passe (8 caractères minimum)'), 'password', 'new-password', 'data-enter="ac-go"')}${PWRULE()}
       <button id="ac-go" class="pri" style="margin-top:8px" data-act="acc-newpass">${tr('Changer le mot de passe')}</button></div>
       <div class="card"><h2>${tr('Confidentialité')}</h2><p class="ref" style="margin:0">${tr("Sont enregistrés : ton e-mail, ta date d'inscription, ta dernière activité et ta progression (statistiques, erreurs, historique). L'administrateur du site peut les consulter. Tu peux tout supprimer à tout moment.")}</p>
-      <p style="margin:10px 0 0"><button class="link" data-act="legal">${tr('Confidentialité et conditions')}</button></p>
+      <p style="margin:10px 0 0"><button class="link" data-act="legal">${tr('Confidentialité et conditions')}</button> · <button class="link" data-act="contact">${tr('Contact')}</button></p>
       <p style="margin:10px 0 0"><button class="link" data-act="acc-delete" style="color:var(--ko)">${tr('Supprimer mon compte et mes données')}</button></p></div>
       <button class="big" data-act="acc-logout">${tr('Se déconnecter')}</button>`;
   } else if (acc.mode === 'newpass'){
@@ -3073,7 +3081,7 @@ function renderAccount(){
       <button id="ac-go" class="pri big" style="margin-top:12px" data-act="${su ? 'acc-signup' : rs ? 'acc-reset' : 'acc-login'}">${su ? tr('Créer mon compte') : rs ? tr('Envoyer le lien') : tr('Me connecter')}</button>
       ${!su && !rs ? `<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="reset">${tr('Mot de passe oublié ?')}</button></p>` : ''}
       ${rs ? `<p style="margin:10px 0 0;text-align:center"><button class="link" data-act="acc-mode" data-v="login">${tr('← Retour à la connexion')}</button></p>` : ''}</div>
-      <p style="text-align:center"><button class="link" data-act="legal">${tr('Confidentialité et conditions')}</button></p>`;
+      <p style="text-align:center"><button class="link" data-act="legal">${tr('Confidentialité et conditions')}</button> · <button class="link" data-act="contact">${tr('Contact')}</button></p>`;
   }
   const gate = cloudOn() && !me; acc.fromGate = gate;
   const langBar = `<div class="langs">${Object.entries(LANGS).map(([k, n]) => `<button class="${LANG === k ? 'sel' : ''}" data-act="lang" data-v="${k}" lang="${k}">${n}</button>`).join('')}</div>`;
@@ -3320,6 +3328,34 @@ async function remAction(act){
 
 /* confidentialité et conditions : décrit le fonctionnement réel du site (voir supabase/schema.sql, config.js) */
 const LEGAL_DATE = '2026-10-21';
+function contactAddr(){ return (Object.assign({contact: ''}, window.TATHBIT_LEGAL || {})).contact; }
+async function copyContact(){ const a = contactAddr(), m = $('contact-msg'); let ok = false; try { await navigator.clipboard.writeText(a); ok = true; } catch { /* presse-papiers refusé */ } if (m) m.textContent = ok ? tr('Adresse copiée.') : tr('Copie impossible : recopie l\'adresse à la main.'); }
+function renderContact(){
+  setNav(false); screen = 'contact';
+  const a = contactAddr(), v = typeof APP_VERSION === 'string' ? APP_VERSION : '';
+  const ver = tr('(Version de l\'application : {v})', {v}), nl = '\n';
+  const topics = [
+    ['📖', 'Signaler une erreur dans un texte (verset, vers, traduction)', 'Tathbīt – erreur dans un texte',
+      [tr('Texte (sourate ou matn) :'), tr('Numéro du verset ou du vers :'), tr('Mot ou passage concerné :'), tr('Ce que dit mon édition (titre, éditeur, page) :')]],
+    ['🛠️', "Un problème avec l'application ou mon compte", 'Tathbīt – problème',
+      [tr("Ce que j'ai fait :"), tr("Ce qui s'est passé :"), tr('Mon appareil et mon navigateur (par exemple iPhone, Safari) :')]],
+    ['💡', 'Une idée ou une remarque', 'Tathbīt – idée ou remarque', [tr('Mon message :')]],
+    ['🔒', 'Une demande sur mes données (accès, rectification, suppression)', 'Tathbīt – mes données', [tr('Mon adresse e-mail de compte :'), tr('Ma demande :')]]];
+  const link = ([ic, label, subj, lines]) => `<a class="btnlink" href="mailto:${esc(a)}?subject=${encodeURIComponent(subj)}&amp;body=${encodeURIComponent(lines.join(nl + nl) + nl + nl + ver)}">${ic} ${tr(label)}</a>`;
+  $app.innerHTML = `<div class="top"><button class="link" data-act="contact-back">${tr('← Retour')}</button><span>${tr('Contact')}</span></div>
+    <h1 style="margin-top:8px">${tr('Nous contacter')}</h1>
+    <div class="card"><p style="margin:0 0 8px">${tr("Une question, une erreur dans un texte, un problème avec ton compte, une idée ? Écris-nous par e-mail : choisis un sujet, le message s'ouvre dans ton application de messagerie avec un modèle à compléter.")}</p>
+      ${a ? topics.map(link).join('') : `<p class="ref">${tr('(adresse à compléter)')}</p>`}</div>
+    <div class="card"><h2>${tr('Adresse e-mail')}</h2>
+      <p style="margin:0 0 8px"><a href="mailto:${esc(a)}">${esc(a)}</a></p>
+      <button data-act="contact-copy">📋 ${tr("Copier l'adresse")}</button> <span class="ref" id="contact-msg" role="status"></span>
+      <p class="ref" style="margin:10px 0 0">${tr("Si ton application de messagerie ne s'ouvre pas, copie l'adresse et écris depuis ta boîte mail.")}</p></div>
+    <div class="card"><h2>${tr('À savoir')}</h2>
+      <p class="ref" style="margin:0 0 6px">${tr("Tathbīt est un projet personnel et gratuit : les réponses peuvent prendre du temps.")}</p>
+      <p class="ref" style="margin:0 0 6px">${tr("Pour une erreur dans un texte, dis dans quelle édition tu l'as vérifiée : une correction ne se fait qu'à partir d'une source fiable.")}</p>
+      <p class="ref" style="margin:0">${tr("N'écris jamais ton mot de passe dans un message.")}</p></div>`;
+  window.scrollTo(0, 0);
+}
 function renderLegal(){
   setNav(false); screen = 'legal';
   const L = Object.assign({contact: '', region: ''}, window.TATHBIT_LEGAL || {});

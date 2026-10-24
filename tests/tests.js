@@ -852,6 +852,25 @@
     E("planEditing = true; pdraft = null; go('plan')"); eq($q('#pf-recent').value, 'other', 'à la modification : « Autre » est reselectionné pour une durée hors liste'); eq($q('#pf-recent-n').value, '12', 'avec le nombre enregistré');
     $q('#pf-recent').value = '5'; $q('#pf-recent').dispatchEvent(new Event('change')); ok(!$q('#pf-recent-n'), 'revenir à une durée de la liste cache le champ libre');
   });
+  test('Contact : page avec adresse, sujets préremplis, copie de l’adresse ; liens depuis les Réglages et l’écran de connexion', async () => {
+    reset(); E("window.TATHBIT_LEGAL = {contact: 'tathbit.app.contact@gmail.com', region: ''}; renderContact()");
+    ok(appText().includes('tathbit.app.contact@gmail.com'), 'adresse affichée'); const links = $$q('a.btnlink'); eq(links.length, 4, 'quatre sujets');
+    ok(links.every(a => a.getAttribute('href').startsWith('mailto:tathbit.app.contact@gmail.com?subject=')), 'liens mailto vers l’adresse du site');
+    const u = new URL(links[0].getAttribute('href')); ok(/erreur dans un texte/.test(u.searchParams.get('subject')) && /Numéro du verset/.test(u.searchParams.get('body')) && /v\d+/.test(u.searchParams.get('body')), 'objet et modèle de message préremplis (avec la version)');
+    ok(!/mot de passe/i.test(u.searchParams.get('body')), 'jamais de mot de passe dans le modèle'); ok(/mot de passe dans un message/.test(appText()), 'mise en garde : pas de mot de passe dans un message');
+    E("navigator.clipboard.writeText = async t => { window.__w = t; }"); clickAct('contact-copy'); await wait(100); eq(W.__w, 'tathbit.app.contact@gmail.com', 'copie de l’adresse'); ok(/copiée/.test($q('#contact-msg').textContent), 'confirmation de copie');
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); renderContact()`); ok(appText().length > 200 && !/undefined/.test(appText()), 'page de contact en ' + L); eq(E('[...missingKeys]'), [], 'contact : clés traduites en ' + L); }
+    E("setLang('fr'); go('settings')"); ok($q('[data-act="contact"]'), 'bouton Contact dans les Réglages'); clickAct('contact'); ok($q('a.btnlink'), 'le bouton ouvre la page');
+    clickAct('contact-back'); eq(E('cfg.tab'), 'settings', 'Retour ramène aux Réglages');
+    E("CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; sb = {}; me = null; renderAccount()"); ok($q('[data-act="contact"]'), 'lien Contact aussi sur l’écran de connexion (sans compte)'); noErr('contact');
+    E("me = null; sb = null; CLOUD.url = ''; CLOUD.anonKey = ''; acc.mode = 'login'");   // on rend l'appli sans comptes aux tests suivants
+  });
+  test('Plan de révision : le cycle ne propose plus 60 jours (14 ou 30, ou « Autre » jusqu’à 30)', () => {
+    reset("plan = null; pdraft = null; planEditing = false;"); E("go('plan')");
+    eq([...$q('#pf-cycle').options].map(o => o.value), ['14', '30', 'other'], 'liste du cycle'); ok(!/14 à 60/.test(appText()), 'plus de « 14 à 60 jours » dans les explications');
+    E("plan = {v: 1, from: 78, to: 114, order: 'desc', amt: 'v5', recent: 7, cycle: 60, log: [], mptr: 0, done: {}}; planEditing = true; pdraft = null; go('plan')");
+    eq($q('#pf-cycle').value, 'other', 'un ancien plan à 60 jours s’ouvre sur « Autre »'); $q('#pf-from').dispatchEvent(new Event('change')); eq(E('pdraft.cycle'), 30, 'et il est ramené à 30 au maximum quand on enregistre');
+  });
   test('Mot de passe refusé : le message dit précisément ce qui manque (longueur, minuscule, majuscule, chiffre, caractère spécial, mot de passe connu)', () => {
     reset();
     const chars = "{message: 'Password should contain at least one character of each: abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789:!@#$%^&*()_+-=[]{};:|<>?,./~.', reasons: ['characters']}";
