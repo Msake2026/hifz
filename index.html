@@ -842,7 +842,7 @@ function tabHome(){
 const PLAN_AMT = ['v3', 'v5', 'v10', 'v16', 'p0.25', 'p0.5', 'p1'];
 const amtLabel = a => a[0] === 'v' ? tr('{n} versets', {n: a.slice(1)}) : ({'p0.25': tr('¼ page'), 'p0.5': tr('½ page'), 'p1': tr('1 page')})[a];
 let pdraft = null, planEditing = false, sab = null;
-const PF_PRESETS = {recent: [3, 5, 7, 10], cycle: [14, 30, 60]}, PF_MAX = {recent: 60, cycle: 365};   // durées proposées ; « Autre » = nombre de jours libre (1 à PF_MAX)
+const PF_PRESETS = {recent: [3, 5, 7, 10], cycle: [14, 30, 60]}, PF_MAX = {recent: 30, cycle: 30};   // durées proposées ; « Autre » = nombre de jours libre (1 à 30)
 function pfRead(){ // lit le formulaire du plan ; les durées viennent de la liste, ou du champ libre quand « Autre » est choisi
   const val = id => $(id) ? $(id).value : null, old = pdraft || {};
   const dur = k => { const sv = val('pf-' + k); if (sv !== 'other') return +sv; const n = Math.round(+val('pf-' + k + '-n')); return n >= 1 ? Math.min(n, PF_MAX[k]) : (old[k] || PF_PRESETS[k][0]); };
@@ -2844,7 +2844,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '24 oct. 2026 · v81';
+const APP_VERSION = '24 oct. 2026 · v82';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');

@@ -844,10 +844,10 @@
     $q('#pf-recent-n').value = '12'; $q('#pf-recent-n').dispatchEvent(new Event('input'));
     $q('#pf-cycle').value = 'other'; $q('#pf-cycle').dispatchEvent(new Event('change'));
     eq($q('#pf-recent-n').value, '12', 'le nombre saisi est gardé quand on touche à l’autre liste'); eq($q('#pf-cycle-n').value, '30', 'le cycle part de sa valeur actuelle');
-    $q('#pf-cycle-n').value = '90'; $q('#pf-cycle-n').dispatchEvent(new Event('input'));
-    $q('#pf-recent-n').value = '999'; $q('#pf-recent-n').dispatchEvent(new Event('input')); eq(E('pdraft.recent'), 60, 'au-delà du maximum : ramené à 60');
+    $q('#pf-cycle-n').value = '25'; $q('#pf-cycle-n').dispatchEvent(new Event('input'));
+    $q('#pf-recent-n').value = '999'; $q('#pf-recent-n').dispatchEvent(new Event('input')); eq(E('pdraft.recent'), 30, 'au-delà du maximum : ramené à 30');
     $q('#pf-recent-n').value = '12'; $q('#pf-recent-n').dispatchEvent(new Event('input'));
-    clickAct('plan-save'); eq(E('plan.recent'), 12, 'révision récente enregistrée : 12 jours'); eq(E('plan.cycle'), 90, 'cycle enregistré : 90 jours');
+    clickAct('plan-save'); eq(E('plan.recent'), 12, 'révision récente enregistrée : 12 jours'); eq(E('plan.cycle'), 25, 'cycle enregistré : 25 jours');
     ok(/12 derniers jours/.test(appText()) || /12/.test(appText()), 'le plan affiche ces durées'); noErr('plan autre');
     E("planEditing = true; pdraft = null; go('plan')"); eq($q('#pf-recent').value, 'other', 'à la modification : « Autre » est reselectionné pour une durée hors liste'); eq($q('#pf-recent-n').value, '12', 'avec le nombre enregistré');
     $q('#pf-recent').value = '5'; $q('#pf-recent').dispatchEvent(new Event('change')); ok(!$q('#pf-recent-n'), 'revenir à une durée de la liste cache le champ libre');
