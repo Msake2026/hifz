@@ -2834,7 +2834,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '23 oct. 2026 · v78';
+const APP_VERSION = '24 oct. 2026 · v79';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2861,6 +2861,20 @@ cloudDirty = k => {
   store.set('tathbit.cloud', {...cmeta(), dirty: true});
   clearTimeout(pushTimer); pushTimer = setTimeout(cloudPush, 3000);
 };
+function pwHelp(e, m){ // mot de passe refusé par le serveur : dit précisément ce qui manque (règles réglées dans Supabase, lues dans son message)
+  const R = (e && Array.isArray(e.reasons)) ? e.reasons : [], out = [], sep = LANG === 'ar' ? '، ' : ', ';
+  const len = /at least (\d+) characters/i.exec(m);
+  if (R.includes('length') || len) out.push(tr('Le mot de passe doit faire au moins {n} caractères.', {n: len ? len[1] : 8}));
+  const miss = [];
+  if (/abcdefghijklmnopqrstuvwxyz/.test(m)) miss.push(tr('une lettre minuscule'));
+  if (/ABCDEFGHIJKLMNOPQRSTUVWXYZ/.test(m)) miss.push(tr('une lettre majuscule'));
+  if (/0123456789/.test(m)) miss.push(tr('un chiffre'));
+  if (/[!@#$%^&*(]/.test(m)) miss.push(tr('un caractère spécial (par exemple ! ? # $ % & *)'));
+  if (miss.length) out.push(tr('Le mot de passe doit contenir au moins : {liste}.', {liste: miss.join(sep)}));
+  else if (R.includes('characters')) out.push(tr('Le mot de passe doit mélanger lettres minuscules et majuscules, chiffres et un caractère spécial.'));
+  if (R.includes('pwned') || /known to be weak|pwned/i.test(m)) out.push(tr('Ce mot de passe est trop courant ou connu (fuites de données) : choisis-en un autre.'));
+  return out.join(' ');
+}
 function friendly(e){
   const m = String(e?.message || e || '');
   if (/Invalid login credentials/i.test(m)) return tr('E-mail ou mot de passe incorrect.');
@@ -2870,7 +2884,7 @@ function friendly(e){
   if (/not authorized/i.test(m) && /email/i.test(m)) return tr("L'envoi d'e-mails n'est pas encore ouvert à tout le monde sur ce site : l'administrateur doit brancher un service d'envoi (voir supabase/README.md).");
   if (/sending (confirmation|recovery|magic link|email)|error sending/i.test(m)) return tr("L'e-mail n'a pas pu être envoyé : réessaie plus tard ou préviens l'administrateur.");
   if (/rate limit|too many|security purposes/i.test(m)) return tr('Trop de tentatives : réessaie dans quelques minutes.');
-  if (/Password should|weak password/i.test(m)) return tr('Mot de passe trop faible (8 caractères minimum).');
+  if (/Password should|weak.password|known to be weak|pwned/i.test(m) || (e && Array.isArray(e.reasons) && e.reasons.length)) return pwHelp(e, m) || tr('Mot de passe refusé : choisis-en un plus long, avec majuscules, minuscules, chiffres et un caractère spécial.');
   if (/does not exist|schema cache|Could not find/i.test(m)) return tr("La base n'est pas prête : exécute supabase/schema.sql dans Supabase.");
   if (/Failed to fetch|NetworkError|Load failed|hors ligne|offline/i.test(m)) return tr('Connexion impossible : vérifie ta connexion internet.');
   if (/accès refusé|42501|permission denied|row-level security/i.test(m)) return tr('Action refusée (droits insuffisants).');

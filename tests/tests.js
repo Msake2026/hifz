@@ -835,6 +835,18 @@
     ok($q('[data-act="acc-resend"]'), 'bouton si e-mail non confirmé'); eq(E('acc.resend'), 'c@d.fr');
     E("CLOUD.url = ''; CLOUD.anonKey = ''; sb = null; me = null; acc.resend = ''; acc.msg = '';");
   });
+  test('Mot de passe refusé : le message dit précisément ce qui manque (longueur, minuscule, majuscule, chiffre, caractère spécial, mot de passe connu)', () => {
+    reset();
+    const chars = "{message: 'Password should contain at least one character of each: abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789:!@#$%^&*()_+-=[]{};:|<>?,./~.', reasons: ['characters']}";
+    let m = E(`friendly(${chars})`);
+    ok(/minuscule/.test(m) && /majuscule/.test(m) && /chiffre/.test(m) && /caractère spécial/.test(m), 'tous les types de caractères exigés sont nommés : ' + m); ok(!/trop faible/.test(m), 'plus le message vague « trop faible »');
+    m = E("friendly({message: 'Password should be at least 8 characters.', reasons: ['length']})"); ok(/au moins 8 caractères/.test(m), 'longueur : ' + m);
+    m = E("friendly({message: 'Password is known to be weak and easy to guess, please choose a different one.', reasons: ['pwned']})"); ok(/trop courant ou connu/.test(m), 'mot de passe connu : ' + m);
+    m = E("friendly({message: 'Password should be at least 10 characters.', reasons: ['length', 'characters']})"); ok(/au moins 10 caractères/.test(m) && /mélanger/.test(m), 'longueur lue dans le message, types de caractères sans détail : ' + m);
+    E("LANG = 'en'"); m = E(`friendly(${chars})`); ok(/special character/.test(m) && /uppercase/.test(m), 'en anglais : ' + m);
+    E("LANG = 'ar'"); m = E(`friendly(${chars})`); ok(/رمز خاص/.test(m) && /حرف كبير/.test(m), 'en arabe : ' + m);
+    E("LANG = 'fr'"); eq(E("friendly(new Error('Invalid login credentials'))"), 'E-mail ou mot de passe incorrect.', 'les autres erreurs ne changent pas');
+  });
   test('Rappels : activer, changer l’heure, 2e rappel, désactiver (serveur simulé)', async () => {
     reset();
     const calls = []; let sub = null;
