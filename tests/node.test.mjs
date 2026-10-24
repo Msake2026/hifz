@@ -562,3 +562,16 @@ test('micro qui ne s’ouvre pas : chaque cause a un message d’aide précis, t
   assert.equal(micHelp('weird', 'ios', false).text, '', 'code inconnu : message générique avec le code');
   for (const t of new Set(all.filter(Boolean))) assert.ok(i18n.includes(JSON.stringify(t).slice(1, -1).replace(/\\u2019/g, '’')), 'traduction manquante : ' + t);
 });
+
+test('récitation libre : l’alignement des mots entendus suit l’ordre, saute les petits mots sans les inventer, ignore le bruit', () => {
+  const html = read('index.html'), { frAlign } = new Function(html.slice(html.indexOf('/* FR:begin'), html.indexOf('/* FR:end */')) + '; return {frAlign};')();
+  const same = (a, b) => a === b;
+  const exp = ['بسم', 'الله', 'الرحمن', 'الرحيم', 'الحمد', 'لله', 'رب', 'العالمين'];
+  let r = frAlign(exp, 0, ['بسم', 'الله', 'الرحمن', 'الرحيم'], same); assert.deepEqual(r, {p: 4, miss: []}, 'récitation exacte');
+  r = frAlign(exp, 0, ['بسم', 'الرحمن'], same); assert.deepEqual(r, {p: 3, miss: [1]}, 'un mot oublié (3 lettres ou plus) est noté à revoir');
+  r = frAlign(exp, 0, ['بسم', 'ازدحام', 'الله', 'ضجيج'], same); assert.deepEqual(r, {p: 2, miss: []}, 'bruit ignoré, on n\'avance pas sur un mot inconnu');
+  r = frAlign(exp, 0, ['رب'], same); assert.equal(r.p, 0, 'un petit mot (moins de 3 lettres) ne permet pas de sauter en avant');
+  r = frAlign(exp, 5, ['لله', 'رب', 'العالمين'], same); assert.deepEqual(r, {p: 8, miss: []}, 'on reprend à partir du point d\'arrêt');
+  r = frAlign(exp, 0, ['العالمين'], same); assert.equal(r.p, 0, 'un saut de plus de 4 mots est refusé');
+  r = frAlign(exp, 0, [], same); assert.deepEqual(r, {p: 0, miss: []}, 'rien entendu');
+});

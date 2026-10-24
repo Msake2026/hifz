@@ -852,6 +852,34 @@
     E("planEditing = true; pdraft = null; go('plan')"); eq($q('#pf-recent').value, 'other', 'à la modification : « Autre » est reselectionné pour une durée hors liste'); eq($q('#pf-recent-n').value, '12', 'avec le nombre enregistré');
     $q('#pf-recent').value = '5'; $q('#pf-recent').dispatchEvent(new Event('change')); ok(!$q('#pf-recent-n'), 'revenir à une durée de la liste cache le champ libre');
   });
+  test('Récitation libre à voix haute : choix de sourates, texte masqué qui se dévoile, indice, passage, bilan, erreurs (micro simulé)', async () => {
+    reset("cfg.frFrom = 112; cfg.frTo = 112; delete cfg.frHide;");
+    E("SR = function(){ window.__rec = this; this.start = function(){ if (this.onstart) this.onstart(); }; this.stop = function(){ if (this.onend) this.onend(); }; this.abort = function(){}; }");
+    const heard = (n) => E(`Q[111].a[${n}].t`), say = txt => W.__rec.onresult({results: [Object.assign([{transcript: txt}], {isFinal: true})]});
+    E("go('train')"); ok($q('[data-act="fr-setup"]'), 'carte « Réciter à voix haute » dans Réviser'); clickAct('fr-setup');
+    ok($q('#frfrom') && $q('#frto') && $q('#frhide').checked, 'choix des sourates, texte masqué par défaut'); eq($q('#frfrom').value, '112', 'sourates retenues d’une fois sur l’autre');
+    clickAct('fr-start'); noErr('récitation libre');
+    const words = $$q('#fr-text .fw'); ok(words.length > 10 && words.every(w => w.classList.contains('mask') || w.classList.contains('cur')), 'texte masqué au départ (' + words.length + ' mots)');
+    ok($q('#mic-on') && $q('.rec-stop[data-act="fr-stop"]'), 'micro ouvert signalé et gros bouton « J’ai fini de réciter »');
+    say(heard(0)); const n1 = E('fr.verses[0].to'); eq(E('fr.p'), n1, 'le 1er verset entendu fait avancer au 2e'); ok($$q('#fr-text .fw.ok').length === n1, 'les mots récités se dévoilent en vert');
+    clickAct('fr-hint'); ok(E('fr.hint.size') === 1 && $q('#fr-text .fw.hint'), 'indice : le mot suivant s’affiche, et compte « à revoir »');
+    say(heard(0) + ' ' + heard(1).split(' ').slice(1).join(' ')); ok(E('fr.p') === E('fr.verses[1].to'), 'le 2e verset est suivi même sans son premier mot (donné en indice)');
+    say(heard(0) + ' ' + heard(1).split(' ').slice(1).join(' ') + ' ' + heard(2)); eq(E('fr.p'), E('fr.verses[2].to'), 'le 3e verset suit');
+    ok(/Verset 4 \/ 4/.test($q('#fr-pos').textContent), 'position : ' + $q('#fr-pos').textContent);
+    clickAct('fr-stop'); await wait(100);
+    ok(/Bilan de ta récitation/.test(appText()) && /3 versets récités en entier/.test(appText()) && /2 sans oubli/.test(appText()) && /1 à revoir/.test(appText()), 'bilan : 3 versets, 2 sans oubli, 1 à revoir : ' + appText().slice(0, 250));
+    eq(E("stats['112:1']"), [1, 0], 'verset récité de mémoire sans oubli compté dans la révision'); eq(E("stats['112:2']"), undefined, 'verset avec oubli pas compté comme réussi');
+    ok($q('#fr-err'), 'bouton « Ajouter à mes erreurs »'); clickAct('fr-err'); eq(E("errors.length"), 1, 'erreur ajoutée'); eq(E("errors[0].m"), 'free', 'mode « récitation libre »'); eq(E("stats['112:2']"), [0, 1], 'verset à revoir noté dans la révision espacée');
+    clickAct('fr-err'); eq(E("errors.length"), 1, 'pas de doublon');
+    // micro refusé : la récitation s'arrête avec le bon message
+    clickAct('fr-again'); clickAct('fr-start'); W.__rec.onerror({error: 'not-allowed'}); W.__rec.onend(); await wait(100); ok(/Micro arrêté/.test(appText()), 'micro refusé : bilan « Micro arrêté »');
+    // texte visible : aucune écriture dans la révision
+    E("stats = {}; cfg.frHide = false"); clickAct('fr-again'); eq($q('#frhide').checked, false, 'choix « texte visible » retenu'); clickAct('fr-start'); ok(!$q('#fr-text .fw.mask'), 'texte visible : rien n’est masqué'); say(heard(0)); clickAct('fr-stop'); await wait(100); eq(E("stats['112:1']"), undefined, 'en lecture (texte visible) rien n’est compté comme récité de mémoire');
+    // plusieurs sourates : l'affichage suit
+    E("cfg.frFrom = 111; cfg.frTo = 112; cfg.frHide = true"); clickAct('fr-again'); clickAct('fr-start'); ok(E("fr.verses.filter(v => v.s === 111).length") === 5, 'Al-Masad : 5 versets'); ok(E("fr.exp.length") > E("fr.verses[4].to"), 'deux sourates à la suite'); clickAct('fr-quit');
+    for (const L of ['en', 'ar']){ E(`setLang('${L}'); frSetup()`); clickAct('fr-start'); say(heard(0)); clickAct('fr-stop'); await wait(100); ok(!/undefined/.test(appText()), 'récitation libre en ' + L); eq(E('[...missingKeys]'), [], 'clés traduites (' + L + ')'); }
+    E("setLang('fr'); frQuit()");
+  });
   test('Contact : page avec adresse, sujets préremplis, copie de l’adresse ; liens depuis les Réglages et l’écran de connexion', async () => {
     reset(); E("window.TATHBIT_LEGAL = {contact: 'tathbit.app.contact@gmail.com', region: ''}; renderContact()");
     ok(appText().includes('tathbit.app.contact@gmail.com'), 'adresse affichée'); const links = $$q('a.btnlink'); eq(links.length, 5, 'cinq sujets, dont « Autre sujet »'); ok(/autre/i.test(links[4].textContent) && /autre/i.test(decodeURIComponent(links[4].getAttribute('href'))), 'le dernier sujet est « Autre sujet »');

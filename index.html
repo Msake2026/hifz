@@ -140,6 +140,9 @@ sup.vn{font-family:Inter,sans-serif;font-size:.6rem;color:var(--muted);margin:0 
 .weak{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:.92rem}
 .btnlink{display:block;padding:12px 14px;margin-top:8px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);text-decoration:none;font-weight:600}
 .btnlink:hover{filter:brightness(.97)}
+.frtext{line-height:2.4;text-align:justify}.frtext .frv{display:inline}
+.fw{padding:0 .1em;border-radius:5px;transition:background .15s,color .15s}.fw.ok{color:var(--ok)}.fw.miss{background:color-mix(in srgb,var(--ko) 16%,transparent);text-decoration:underline wavy var(--ko)}
+.fw.mask{color:transparent!important;background:color-mix(in srgb,var(--muted) 30%,transparent);user-select:none}.fw.cur{outline:2px solid var(--accent);outline-offset:1px}.fw.hint{background:color-mix(in srgb,var(--gold,#c9a227) 30%,transparent);color:var(--ink)}
 .big-score{font-size:3rem;font-weight:600;text-align:center;margin:.2em 0}
 .foot{color:var(--muted);font-size:.78rem;text-align:center;margin-top:24px}
 .link{background:none;border:none;color:var(--muted);text-decoration:underline;padding:4px}
@@ -736,7 +739,7 @@ const scopeLabel = sc => sc.type === 'matn' ? (sc.id === 'all' ? tr('Tous les mo
   : sc.type === 'surah' ? (sc.from === sc.to ? tr('Sourate {n} · {name}', {n: sc.from, name: SN(sc.from)}) : tr('Sourates {a} {an} → {b} {bn}', {a: sc.from, an: SN(sc.from), b: sc.to, bn: SN(sc.to)}))
   : sc.type === 'juz' ? (sc.from === sc.to ? tr("Juz' {a}", {a: sc.from}) : tr("Juz' {a}–{b}", {a: sc.from, b: sc.to}))
   : (sc.from === sc.to ? tr('Page {a}', {a: sc.from}) : tr('Pages {a}–{b}', {a: sc.from, b: sc.to}));
-const modeTitle = id => tr((MODES.find(m => m[0] === id) || [])[1] || id);
+const modeTitle = id => id === 'free' ? tr('Récitation libre') : tr((MODES.find(m => m[0] === id) || [])[1] || id);
 const INPUTS = {recite: 'je récite', type: 'je tape', voice: 'à voix haute'};
 
 function home(){ // affiche l'écran du menu courant (accès réservé aux comptes connectés quand les comptes sont activés)
@@ -1059,6 +1062,10 @@ function tabTrain(){
   return `
   <h1>${tr('Réviser')}</h1>
   <p class="sub">${tr('Choisis ce que tu veux travailler, puis lance la série.')}</p>
+
+  <div class="card"><h2>🎙️ ${tr('Réciter à voix haute')}</h2>
+    <p class="ref" style="margin:0 0 8px">${tr("Sans exercice : choisis une ou plusieurs sourates et récite-les d'une traite, de mémoire. L'application suit ta récitation.")}</p>
+    <button class="pri" data-act="fr-setup">🎤 ${tr('Réciter une ou plusieurs sourates')}</button></div>
 
   <div class="card"><h2>${tr("Type d'exercice")}</h2>
     <select id="scat" aria-label="${tr("Type d'exercice")}">${CATS.map(([id, t]) => `<option value="${id}" ${id === cat ? 'selected' : ''}>${tr(t)}</option>`).join('')}</select>
@@ -2135,6 +2142,159 @@ function listen(){
   try { rec.start(); } catch (e){ btn.classList.remove('rec-stop'); const mo2 = $('mic-on'); if (mo2) mo2.remove(); btn.disabled = false; btn.textContent = tr('🎤 Réessayer'); micRec = null; clearTimeout(rec.cap); clearInterval(rec.tick); msg.dataset.err = '1'; msg.textContent = micError((e && e.name === 'NotAllowedError') ? 'not-allowed' : (e && e.name) || 'start'); }
 }
 
+/* FR:begin — récitation libre : aligne, dans l'ordre, les mots entendus sur les mots attendus */
+function frAlign(exp, start, heard, same, look = 4){
+  let p = start; const miss = [];
+  for (const hw of heard){
+    let k = -1;
+    for (let d = 0; d <= look && p + d < exp.length; d++){ const e = exp[p + d]; if (same(e, hw) && (d === 0 || e.length >= 3)){ k = p + d; break; } }   // sauter un mot n'est permis que vers un mot d'au moins 3 lettres (les petits mots se répètent trop)
+    if (k < 0) continue;                        // mot non reconnu (bruit, mauvaise écoute) : on l'ignore, on n'avance pas
+    for (let q = p; q < k; q++) miss.push(q);   // mots sautés : à revoir
+    p = k + 1;
+  }
+  return {p, miss};
+}
+/* FR:end */
+/* ---------- récitation libre à voix haute (sans exercice) : une ou plusieurs sourates, de mémoire ---------- */
+const FR_MAX = 1800;   // durée maximale d'une récitation libre (secondes)
+let fr = null;
+function frQuit(){ if (fr){ clearTimeout(fr.timer); clearTimeout(fr.cap); clearTimeout(fr.grace); if (fr.rec){ fr.rec.onend = null; fr.rec.onresult = null; try { fr.rec.abort(); } catch { /* déjà arrêté */ } } fr = null; } go('train'); }
+function frSetup(){
+  if (fr && fr.rec){ fr.rec.onend = null; try { fr.rec.abort(); } catch { /* déjà arrêté */ } } fr = null; stopMic(); setNav(false);
+  const from = cfg.frFrom || 78, to = cfg.frTo || 114, hide = cfg.frHide !== false;
+  $app.innerHTML = `<div class="top"><button class="link" data-act="fr-quit">✕ ${tr('Quitter')}</button><span>${tr('Récitation libre')}</span></div>
+    <h1 style="margin-top:8px">🎙️ ${tr('Réciter à voix haute')}</h1>
+    <p class="sub">${tr("Sans exercice : choisis tes sourates et récite-les d'une traite. L'application suit ta récitation.")}</p>
+    <div class="card"><h2>${tr('Sourates')}</h2>
+      <div class="row"><div><label class="f" for="frfrom">${tr('De')}</label><select id="frfrom">${surahOpts(from)}</select></div>
+        <div><label class="f" for="frto">${tr('À')}</label><select id="frto">${surahOpts(to)}</select></div></div>
+      <label class="consent" style="margin-top:10px"><input type="checkbox" id="frhide" ${hide ? 'checked' : ''}><span>${tr('Réciter de mémoire : le texte reste masqué et se dévoile au fur et à mesure.')}</span></label></div>
+    <div class="card"><p class="ref" style="margin:0 0 6px">${tr("Le micro reste ouvert jusqu'à ce que tu touches « J'ai fini de réciter » (30 minutes au plus).")}</p>
+      <p class="ref" style="margin:0 0 6px">${tr("L'application suit les mots que tu dis. Elle ne vérifie ni les voyelles ni le tajwīd, et elle peut se tromper : un mot non reconnu n'est pas forcément une erreur.")}</p>
+      ${SR ? '' : `<p class="ref" style="margin:0;color:var(--ko)">${tr("La reconnaissance vocale n'est pas disponible sur ce navigateur.")}</p>`}</div>
+    <button class="pri big" data-act="fr-start" ${SR ? '' : 'disabled'}>🎤 ${tr('Commencer à réciter')}</button>`;
+}
+function frBuild(from, to, hide){
+  const exp = [], meta = [], verses = [];
+  for (let s = from; s <= to; s++) Q[s - 1].a.forEach((v, i) => {
+    const tok = v.t.replace(/﻿/g, '').trim().split(/\s+/), start = exp.length;
+    tok.forEach((w, j) => { const n = norm(w); if (n){ exp.push(n); meta.push({s, a: i + 1, j}); } });
+    verses.push({s, a: i + 1, from: start, to: exp.length, tok});
+  });
+  return {from, to, hide, exp, meta, verses, p: 0, base: 0, miss: new Set(), sess: new Set(), hint: new Set(), sec: 0, quick: 0};
+}
+const frVerse = p => { const V = fr.verses; let lo = 0, hi = V.length - 1; while (lo < hi){ const m = (lo + hi + 1) >> 1; if (V[m].from <= p) lo = m; else hi = m - 1; } return lo; };
+function frStart(){
+  let from = +$('frfrom').value, to = +$('frto').value; if (from > to) [from, to] = [to, from];
+  cfg.frFrom = from; cfg.frTo = to; cfg.frHide = $('frhide').checked; saveCfg();
+  fr = frBuild(from, to, cfg.frHide); stopMic(); setNav(false);
+  $app.innerHTML = `<div class="top"><button class="link" data-act="fr-quit">✕ ${tr('Quitter')}</button><span id="fr-pos"></span></div>
+    <div class="bar"><i id="fr-bar" style="width:0%"></i></div>
+    <h2 class="rtitle" id="fr-title" style="margin-top:8px"></h2>
+    <div class="card frtext rd" id="fr-text" dir="rtl" lang="ar" style="font-size:${cfg.rdSize || 1.7}rem"></div>
+    <div class="mic-on" id="mic-on" role="status"><span class="dot" aria-hidden="true"></span>${esc(tr('Micro ouvert : récite maintenant'))}</div>
+    <p class="ref" style="margin:8px 0 2px" id="fr-msg" role="status"></p>
+    <div class="ar heard" id="heard" dir="rtl" lang="ar" aria-live="off"></div>
+    <div class="grades"><button data-act="fr-hint" ${fr.hide ? '' : 'hidden'}>💡 ${tr('Montrer le mot suivant')}</button><button data-act="fr-skip">⏭ ${tr('Passer ce verset')}</button></div>
+    <button class="rec-stop" data-act="fr-stop">⏹ ${esc(tr("J'ai fini de réciter"))}<small>${esc(tr('Touche ici pour terminer et voir le bilan'))}</small></button>`;
+  frDraw(fr.meta[0].s); frPaint();
+  fr.cap = setTimeout(() => frFinish('time'), FR_MAX * 1000);
+  frListen();
+}
+function frDraw(s){ // affiche le texte de la sourate s ; chaque mot est un <span data-w=n° du mot dans toute la récitation>
+  fr.sec = s; const box = $('fr-text'); if (!box) return;
+  box.innerHTML = fr.verses.filter(v => v.s === s).map(v => { let w = v.from;
+    return `<span class="frv">${v.tok.map(t => norm(t) ? `<span class="fw" data-w="${w++}">${esc(t)}</span>` : esc(t)).join(' ')} <span class="vend">﴿${arNum(v.a)}﴾</span></span> `; }).join('');
+  fr.spans = [...box.querySelectorAll('.fw')]; fr.cv = -1;
+  const t = $('fr-title'); if (t) t.innerHTML = `<span class="ar">${esc(Q[s - 1].ar)}</span><small>${s}. ${esc(SN(s))}</small>`;
+}
+function frPaint(){
+  if (!fr || !fr.spans) return;
+  const p = fr.p, last = fr.exp.length - 1, at = Math.min(p, last), m = fr.meta[at];
+  if (m.s !== fr.sec) frDraw(m.s);
+  for (const el of fr.spans){
+    const w = +el.dataset.w, bad = fr.miss.has(w) || fr.sess.has(w) || fr.hint.has(w);
+    const c = w < p ? (bad ? 'fw miss' : 'fw ok') : (fr.hint.has(w) ? 'fw hint' : (w === p ? 'fw cur' : 'fw') + (fr.hide ? ' mask' : ''));
+    if (el.className !== c) el.className = c;
+  }
+  const vi = frVerse(at), v = fr.verses[vi], n = Q[v.s - 1].a.length;
+  const pos = $('fr-pos'); if (pos) pos.textContent = tr('Verset {a} / {n}', {a: Math.min(v.a, n), n});
+  const bar = $('fr-bar'); if (bar) bar.style.width = (100 * Math.min(p, fr.exp.length) / fr.exp.length) + '%';
+  if (vi !== fr.cv){ fr.cv = vi; const el = fr.spans.find(e => +e.dataset.w >= v.from); if (el && el.scrollIntoView) try { el.scrollIntoView({block: 'center'}); } catch { /* ancien navigateur */ } }
+}
+function frCommit(){ fr.sess.forEach(i => fr.miss.add(i)); fr.sess = new Set(); fr.base = fr.p; }
+function frListen(){
+  if (!fr || fr.finishing) return;
+  const rec = new SR(); rec.lang = 'ar-SA'; rec.interimResults = true; rec.continuous = true; rec.maxAlternatives = 1;
+  fr.rec = rec; fr.base = fr.p; fr.sess = new Set(); const t0 = Date.now(); let got = false; const msg = $('fr-msg');
+  rec.onstart = () => { if (msg) msg.textContent = ''; };
+  rec.onresult = ev => {
+    if (fr.rec !== rec) return; got = true;
+    const R = [...ev.results], words = R.map(r => r[0].transcript).join(' ').split(/\s+/).map(norm).filter(Boolean);
+    const h = $('heard'); if (h) h.innerHTML = R.slice(-3).map(r => `<span class="${r.isFinal ? '' : 'interim'}">${esc(r[0].transcript)}</span>`).join(' ');
+    const a = frAlign(fr.exp, fr.base, words, same); fr.p = a.p; fr.sess = new Set(a.miss); frPaint();
+    if (fr.p >= fr.exp.length) frFinish('done');
+  };
+  rec.onerror = ev => { if (fr.rec !== rec || ev.error === 'no-speech' || ev.error === 'aborted') return; fr.fatal = ev.error; };
+  rec.onend = () => {
+    if (fr.rec !== rec || fr.finishing) return;
+    frCommit(); fr.quick = !got && Date.now() - t0 < 1500 ? fr.quick + 1 : 0;
+    if (fr.fatal || fr.quick >= 4){ if (msg) msg.textContent = micError(fr.fatal || 'audio-capture'); return frFinish('error'); }
+    fr.timer = setTimeout(frListen, 250);   // le navigateur coupe l'écoute après un moment de silence : on la rouvre, sans rien perdre
+  };
+  try { rec.start(); } catch (e){ fr.fatal = e && e.name === 'NotAllowedError' ? 'not-allowed' : 'audio-capture'; if (msg) msg.textContent = micError(fr.fatal); frFinish('error'); }
+}
+function frHint(){ // révèle le prochain mot ; il compte comme « à revoir »
+  if (!fr || fr.finishing || fr.p >= fr.exp.length) return; fr.hint.add(fr.p); frPaint();
+}
+function frSkip(){ // passe au verset suivant : les mots restants du verset sont « à revoir »
+  if (!fr || fr.finishing) return; const v = fr.verses[frVerse(Math.min(fr.p, fr.exp.length - 1))];
+  frCommit(); for (let w = fr.p; w < v.to; w++) fr.miss.add(w);
+  fr.p = v.to; fr.base = v.to; if (fr.rec){ fr.rec.onend = null; fr.rec.onresult = null; try { fr.rec.abort(); } catch { /* déjà arrêté */ } fr.rec = null; }
+  frPaint(); if (fr.p >= fr.exp.length) frFinish('done'); else { clearTimeout(fr.timer); fr.timer = setTimeout(frListen, 150); }
+}
+function frFinish(reason){
+  if (!fr || fr.finishing) return; fr.finishing = true; fr.reason = reason; clearTimeout(fr.timer); clearTimeout(fr.cap);
+  const rec = fr.rec, go = () => { if (!fr || fr.summarized) return; fr.summarized = true; clearTimeout(fr.grace); frSummary(); };
+  if (!rec) return go();
+  rec.onend = go; fr.grace = setTimeout(go, 1200); try { rec.stop(); } catch { go(); }   // on laisse le dernier résultat arriver avant le bilan
+}
+function frSummary(){
+  if (fr.rec){ fr.rec.onend = null; try { fr.rec.abort(); } catch { /* déjà arrêté */ } fr.rec = null; }
+  frCommit(); const mo = $('mic-on'); if (mo) mo.remove();
+  const done = fr.verses.filter(v => v.to <= fr.p), clean = [], flagged = [];
+  for (const v of done){ const bad = []; for (let w = v.from; w < v.to; w++) if (fr.miss.has(w) || fr.hint.has(w)) bad.push(w); (bad.length ? flagged.push({v, bad}) : clean.push(v)); }
+  fr.clean = clean; fr.flagged = flagged;
+  if (fr.hide && clean.length && !fr.recorded){ // récités de mémoire, sans oubli : comptent dans la révision (une seule écriture pour tout)
+    fr.recorded = true; const now = Date.now();
+    for (const v of clean){ const k = v.s + ':' + v.a, [ok, ko] = stats[k] || [0, 0]; stats[k] = [ok + 1, ko]; sched[k] = srsNext(sched[k], 1, now); }
+    days[today()] = (days[today()] || 0) + clean.length; store.set('tathbit.stats', stats); store.set('tathbit.sched', sched); store.set('tathbit.days', days);
+  }
+  const title = {done: tr('Récitation terminée'), stop: tr('Bilan de ta récitation'), time: tr('Temps maximal atteint'), error: tr('Micro arrêté')}[fr.reason] || tr('Bilan de ta récitation');
+  const open = fr.p < fr.exp.length ? fr.verses[frVerse(fr.p)] : null;
+  const wtxt = f => f.v.tok.map((t, j) => { const wi = f.bad.find(w => fr.meta[w].j === j); return wi != null ? `<span class="fw miss">${esc(t)}</span>` : esc(t); }).join(' ');
+  $app.innerHTML = `<div class="top"><button class="link" data-act="fr-quit">✕ ${tr('Quitter')}</button><span>${tr('Récitation libre')}</span></div>
+    <h1 style="margin-top:8px">${title}</h1>
+    <div class="card"><p style="margin:0 0 6px"><b>${trp(done.length, '{n} verset récité en entier|{n} versets récités en entier')}</b> · ${trp(clean.length, '{n} sans oubli|{n} sans oubli')}${flagged.length ? ' · ' + trp(flagged.length, '{n} à revoir|{n} à revoir') : ''}</p>
+      ${open ? `<p class="ref" style="margin:0 0 6px">${tr('Verset en cours quand tu as terminé : {s}, verset {a}.', {s: SN(open.s), a: open.a})}</p>` : ''}
+      ${fr.hide && clean.length ? `<p class="ref" style="margin:0 0 6px">${trp(clean.length, '{n} verset récité de mémoire sans oubli est compté dans ta révision.|{n} versets récités de mémoire sans oubli sont comptés dans ta révision.')}</p>` : ''}
+      ${!done.length ? `<p class="ref" style="margin:0">${tr("Aucun verset n'a été suivi jusqu'au bout : vérifie le micro, parle près de l'appareil, et réessaie.")}</p>` : ''}
+      <p class="ref" style="margin:6px 0 0">${tr("L'application suit les mots entendus : elle peut se tromper. Vérifie avec ton mushaf ou ton enseignant.")}</p></div>
+    ${flagged.length ? `<div class="card"><h2>${tr('À revoir')}</h2>${flagged.map(f => `<div class="sib"><p class="ref" style="margin:0">${esc(SN(f.v.s))} · ${f.v.a}</p><div class="ar" dir="rtl" lang="ar" style="font-size:1.4rem;line-height:2;margin:4px 0 0">${wtxt(f)}</div></div>`).join('')}
+      <button style="margin-top:8px" data-act="fr-err" id="fr-err">${tr('Ajouter ces versets à mes erreurs')}</button><p class="ref" id="fr-errmsg" role="status" style="margin:6px 0 0"></p></div>` : ''}
+    <button class="pri big" data-act="fr-again">🎤 ${tr('Réciter encore')}</button>
+    <button class="big" style="margin-top:8px" data-act="fr-quit">${tr('Terminer')}</button>`;
+  window.scrollTo(0, 0);
+}
+function frErrors(){ // les versets à revoir entrent dans l'historique d'erreurs et dans la révision espacée
+  if (!fr || !fr.flagged || fr.errAdded) return; fr.errAdded = true; const now = Date.now();
+  for (const f of fr.flagged){ const k = f.v.s + ':' + f.v.a, [ok, ko] = stats[k] || [0, 0]; stats[k] = [ok, ko + 1]; sched[k] = srsNext(sched[k], 0, now);
+    errors.push({t: now, k, m: 'free', sc: 0, bad: [...new Set(f.bad.map(w => f.v.tok[fr.meta[w].j]))].slice(0, 40)}); }
+  if (errors.length > 2000) errors = errors.slice(-2000);
+  store.set('tathbit.stats', stats); store.set('tathbit.sched', sched); store.set('tathbit.errors', errors);
+  const b = $('fr-err'); if (b) b.disabled = true; const m = $('fr-errmsg'); if (m) m.textContent = tr('Ajoutés à tes erreurs.');
+}
+
 /* ---------- écoute d'une portée ---------- */
 function lsOpen(){
   if (cfg.scope.type === 'matn') return alert(tr("L'écoute audio est disponible pour le Coran."));
@@ -2462,6 +2622,15 @@ const onClick = e => {
     case 'delcustom':
       if (confirm(tr('Supprimer ce matn ?'))){ custom = custom.filter(t => t.id !== v); store.set('tathbit.custom', custom); delete MT[v]; cfg.scope = {type: 'matn', id: 'all'}; saveCfg(); home(); } break;
     case 'listen': listen(); break;
+    case 'fr-setup': frSetup(); break;
+    case 'fr-start': frStart(); break;
+    case 'fr-stop': frFinish('stop'); break;
+    case 'fr-hint': frHint(); break;
+    case 'fr-skip': frSkip(); break;
+    case 'fr-quit': frQuit(); break;
+    case 'fr-again': frSetup(); break;
+    case 'fr-err': frErrors(); break;
+    case 'fr-reveal': { const b = el.closest('.sib'); if (b) b.classList.toggle('open'); break; }
     case 'play': playUrls(cur.audio.map(audioUrl)); break;
     case 'stopaudio': stopAudio(); break;
     case 'lsopen': lsOpen(); break;
@@ -2790,7 +2959,7 @@ function rdPlay(id, i){
 
 /* ---------- historique des erreurs ---------- */
 let hf = 'all', hv = 'v', hrefs = [];
-const MODE_NAME = new Proxy({}, {get: (_o, id) => { const m = MODES.find(x => x[0] === id); return m ? tr(m[1]) : undefined; }}); // nom traduit de chaque exercice
+const MODE_NAME = new Proxy({}, {get: (_o, id) => { if (id === 'free') return tr('Récitation libre'); const m = MODES.find(x => x[0] === id); return m ? tr(m[1]) : undefined; }}); // nom traduit de chaque exercice
 const fdate = t => new Date(t).toLocaleString(LOCALE(), {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
 function aggErrors(list){
   const agg = new Map();
@@ -2852,7 +3021,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '24 oct. 2026 · v84';
+const APP_VERSION = '24 oct. 2026 · v85';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
