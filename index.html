@@ -2834,7 +2834,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '24 oct. 2026 · v79';
+const APP_VERSION = '24 oct. 2026 · v80';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -2861,6 +2861,7 @@ cloudDirty = k => {
   store.set('tathbit.cloud', {...cmeta(), dirty: true});
   clearTimeout(pushTimer); pushTimer = setTimeout(cloudPush, 3000);
 };
+const PWRULE = () => `<p class="ref" style="margin:4px 0 0">${tr('Règles du mot de passe : 8 caractères minimum, avec au moins une minuscule, une majuscule, un chiffre et un symbole (par exemple ! ? # $ % & *).')}</p>`;
 function pwHelp(e, m){ // mot de passe refusé par le serveur : dit précisément ce qui manque (règles réglées dans Supabase, lues dans son message)
   const R = (e && Array.isArray(e.reasons)) ? e.reasons : [], out = [], sep = LANG === 'ar' ? '، ' : ', ';
   const len = /at least (\d+) characters/i.exec(m);
@@ -3040,14 +3041,14 @@ function renderAccount(){
       ${tchStudentCard()}
       ${roleCard()}
       ${wkCard()}
-      <div class="card"><h2>${tr('Mot de passe')}</h2>${f('ac-pass', tr('Nouveau mot de passe (8 caractères minimum)'), 'password', 'new-password', 'data-enter="ac-go"')}
+      <div class="card"><h2>${tr('Mot de passe')}</h2>${f('ac-pass', tr('Nouveau mot de passe (8 caractères minimum)'), 'password', 'new-password', 'data-enter="ac-go"')}${PWRULE()}
       <button id="ac-go" class="pri" style="margin-top:8px" data-act="acc-newpass">${tr('Changer le mot de passe')}</button></div>
       <div class="card"><h2>${tr('Confidentialité')}</h2><p class="ref" style="margin:0">${tr("Sont enregistrés : ton e-mail, ta date d'inscription, ta dernière activité et ta progression (statistiques, erreurs, historique). L'administrateur du site peut les consulter. Tu peux tout supprimer à tout moment.")}</p>
       <p style="margin:10px 0 0"><button class="link" data-act="legal">${tr('Confidentialité et conditions')}</button></p>
       <p style="margin:10px 0 0"><button class="link" data-act="acc-delete" style="color:var(--ko)">${tr('Supprimer mon compte et mes données')}</button></p></div>
       <button class="big" data-act="acc-logout">${tr('Se déconnecter')}</button>`;
   } else if (acc.mode === 'newpass'){
-    body = `<div class="card"><h2>${tr('Nouveau mot de passe')}</h2>${f('ac-pass', tr('Mot de passe (8 caractères minimum)'), 'password', 'new-password', 'data-enter="ac-go"')}
+    body = `<div class="card"><h2>${tr('Nouveau mot de passe')}</h2>${f('ac-pass', tr('Mot de passe (8 caractères minimum)'), 'password', 'new-password', 'data-enter="ac-go"')}${PWRULE()}
       <button id="ac-go" class="pri big" style="margin-top:10px" data-act="acc-newpass">${tr('Enregistrer')}</button></div>`;
   } else {
     const su = acc.mode === 'signup', rs = acc.mode === 'reset';
@@ -3055,7 +3056,7 @@ function renderAccount(){
       <button class="${su ? 'sel' : ''}" data-act="acc-mode" data-v="signup">${tr('Créer un compte')}</button></div>
       <div class="card"><h2>${su ? tr('Créer un compte') : rs ? tr('Mot de passe oublié') : tr('Se connecter')}</h2>
       ${f('ac-email', tr('Adresse e-mail'), 'email', 'email', `data-enter="ac-go"`)}
-      ${rs ? '' : f('ac-pass', su ? tr('Mot de passe (8 caractères minimum)') : tr('Mot de passe'), 'password', su ? 'new-password' : 'current-password', 'data-enter="ac-go"')}
+      ${rs ? '' : f('ac-pass', su ? tr('Mot de passe (8 caractères minimum)') : tr('Mot de passe'), 'password', su ? 'new-password' : 'current-password', 'data-enter="ac-go"')}${su ? PWRULE() : ''}
       ${su ? f('ac-pass2', tr('Confirmer le mot de passe'), 'password', 'new-password', 'data-enter="ac-go"')
         + `<label class="consent"><input type="checkbox" id="ac-consent" ${acc.d.consent ? 'checked' : ''}>
         <span>${tr("J'accepte que mon e-mail et ma progression soient enregistrés pour la synchronisation, et consultables par l'administrateur du site.")}</span></label>` : ''}

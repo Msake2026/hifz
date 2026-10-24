@@ -827,6 +827,7 @@
     const calls = []; W.__c = calls;
     E("CLOUD.url = 'https://x.supabase.co'; CLOUD.anonKey = 'k'; me = null; acc.mode = 'signup'; acc.resend = ''; acc.resendAt = 0; sb = {auth: {async signUp(){ window.__c.push('signUp'); return {data: {user: {identities: [{}]}, session: null}, error: null}; }, async resend(o){ window.__c.push('resend ' + o.email + ' ' + o.type); return {error: null}; }, async signInWithPassword(){ return {data: null, error: {message: 'Email not confirmed'}}; }}};");
     E("renderAccount()"); ok(!$q('[data-act="acc-resend"]'), 'pas de bouton avant inscription');
+    ok(/8 caractères minimum, avec au moins une minuscule, une majuscule, un chiffre et un symbole/.test(appText()), 'inscription : les règles du mot de passe sont écrites avant la saisie');
     $q('#ac-email').value = 'a@b.fr'; $q('#ac-pass').value = 'motdepasse1'; $q('#ac-pass2').value = 'motdepasse1'; $q('#ac-consent').checked = true; clickAct('acc-signup'); await wait(300);
     ok($q('[data-act="acc-resend"]'), 'bouton de renvoi après inscription'); ok(/indésirables/.test($q('#acc-msg').textContent), 'rappel du dossier spam');
     clickAct('acc-resend'); await wait(300); ok(calls.includes('resend a@b.fr signup'), 'renvoi demandé'); ok(/renvoyé/.test($q('#acc-msg').textContent));
