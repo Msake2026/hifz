@@ -854,7 +854,7 @@
   });
   test('Contact : page avec adresse, sujets préremplis, copie de l’adresse ; liens depuis les Réglages et l’écran de connexion', async () => {
     reset(); E("window.TATHBIT_LEGAL = {contact: 'tathbit.app.contact@gmail.com', region: ''}; renderContact()");
-    ok(appText().includes('tathbit.app.contact@gmail.com'), 'adresse affichée'); const links = $$q('a.btnlink'); eq(links.length, 4, 'quatre sujets');
+    ok(appText().includes('tathbit.app.contact@gmail.com'), 'adresse affichée'); const links = $$q('a.btnlink'); eq(links.length, 5, 'cinq sujets, dont « Autre sujet »'); ok(/autre/i.test(links[4].textContent) && /autre/i.test(decodeURIComponent(links[4].getAttribute('href'))), 'le dernier sujet est « Autre sujet »');
     ok(links.every(a => a.getAttribute('href').startsWith('mailto:tathbit.app.contact@gmail.com?subject=')), 'liens mailto vers l’adresse du site');
     const u = new URL(links[0].getAttribute('href')); ok(/erreur dans un texte/.test(u.searchParams.get('subject')) && /Numéro du verset/.test(u.searchParams.get('body')) && /v\d+/.test(u.searchParams.get('body')), 'objet et modèle de message préremplis (avec la version)');
     ok(!/mot de passe/i.test(u.searchParams.get('body')), 'jamais de mot de passe dans le modèle'); ok(/mot de passe dans un message/.test(appText()), 'mise en garde : pas de mot de passe dans un message');

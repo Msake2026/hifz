@@ -2852,7 +2852,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '24 oct. 2026 · v83';
+const APP_VERSION = '24 oct. 2026 · v84';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
@@ -3340,7 +3340,8 @@ function renderContact(){
     ['🛠️', "Un problème avec l'application ou mon compte", 'Tathbīt – problème',
       [tr("Ce que j'ai fait :"), tr("Ce qui s'est passé :"), tr('Mon appareil et mon navigateur (par exemple iPhone, Safari) :')]],
     ['💡', 'Une idée ou une remarque', 'Tathbīt – idée ou remarque', [tr('Mon message :')]],
-    ['🔒', 'Une demande sur mes données (accès, rectification, suppression)', 'Tathbīt – mes données', [tr('Mon adresse e-mail de compte :'), tr('Ma demande :')]]];
+    ['🔒', 'Une demande sur mes données (accès, rectification, suppression)', 'Tathbīt – mes données', [tr('Mon adresse e-mail de compte :'), tr('Ma demande :')]],
+    ['✉️', 'Autre sujet', 'Tathbīt – autre sujet', [tr('Mon message :')]]];
   const link = ([ic, label, subj, lines]) => `<a class="btnlink" href="mailto:${esc(a)}?subject=${encodeURIComponent(subj)}&amp;body=${encodeURIComponent(lines.join(nl + nl) + nl + nl + ver)}">${ic} ${tr(label)}</a>`;
   $app.innerHTML = `<div class="top"><button class="link" data-act="contact-back">${tr('← Retour')}</button><span>${tr('Contact')}</span></div>
     <h1 style="margin-top:8px">${tr('Nous contacter')}</h1>
