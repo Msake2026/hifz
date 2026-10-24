@@ -746,6 +746,7 @@ function home(){ // affiche l'écran du menu courant (accès réservé aux compt
   setNav(true); tchEnter(); chatBottom(); if (cfg.tab === 'settings') setTimeout(audioSpace, 0);
   $app.querySelectorAll('select').forEach(el => { if (el.id.startsWith('cm-')) return;
     el.onchange = () => { syncCfg(); if (['stype', 'smatn', 'ssec', 'sgoal', 'scat', 'srec', 'aud-from', 'aud-to', 'aud-cap', 'aud-q'].includes(el.id) || el.id.startsWith('pf-')) home(); }; });
+  ['pf-recent-n', 'pf-cycle-n'].forEach(id => { if ($(id)) $(id).oninput = () => { pdraft = pfRead(); }; });
   if ($('impfile')) $('impfile').onchange = e => importFile(e.target.files[0]);
   ['cm-f-cam', 'cm-f-img', 'cm-f-doc'].forEach(id => { if ($(id)) $(id).onchange = e => { queueAdd([...e.target.files]); e.target.value = ''; }; });
 }
@@ -779,7 +780,7 @@ function syncCfg(){
   if ($('send')) cfg.endLen = +v('send');
   if ($('sbeg')) cfg.begLen = +v('sbeg');
   if ($('srec')){ cfg.reciter = v('srec'); cfg.goal = +v('sgoal'); }
-  if ($('pf-from')) pdraft = {from: +v('pf-from'), to: +v('pf-to'), order: v('pf-order'), amt: v('pf-amt'), recent: +v('pf-recent'), cycle: +v('pf-cycle')};
+  if ($('pf-from')) pdraft = pfRead();
   if ($('sabrep') && sab) sab.rep = +v('sabrep');
   saveCfg();
 }
@@ -841,6 +842,12 @@ function tabHome(){
 const PLAN_AMT = ['v3', 'v5', 'v10', 'v16', 'p0.25', 'p0.5', 'p1'];
 const amtLabel = a => a[0] === 'v' ? tr('{n} versets', {n: a.slice(1)}) : ({'p0.25': tr('¼ page'), 'p0.5': tr('½ page'), 'p1': tr('1 page')})[a];
 let pdraft = null, planEditing = false, sab = null;
+const PF_PRESETS = {recent: [3, 5, 7, 10], cycle: [14, 30, 60]}, PF_MAX = {recent: 60, cycle: 365};   // durées proposées ; « Autre » = nombre de jours libre (1 à PF_MAX)
+function pfRead(){ // lit le formulaire du plan ; les durées viennent de la liste, ou du champ libre quand « Autre » est choisi
+  const val = id => $(id) ? $(id).value : null, old = pdraft || {};
+  const dur = k => { const sv = val('pf-' + k); if (sv !== 'other') return +sv; const n = Math.round(+val('pf-' + k + '-n')); return n >= 1 ? Math.min(n, PF_MAX[k]) : (old[k] || PF_PRESETS[k][0]); };
+  return {from: +val('pf-from'), to: +val('pf-to'), order: val('pf-order'), amt: val('pf-amt'), recent: dur('recent'), cycle: dur('cycle'), other: {recent: val('pf-recent') === 'other', cycle: val('pf-cycle') === 'other'}};
+}
 const dayKey = d => today(d || new Date());
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const chunkRefs = c => range(c.s, c.a, c.b - c.a + 1);
@@ -943,6 +950,9 @@ function planDefsHtml(open){ // définitions des trois étapes du plan
 function planSetupHtml(){
   const d = pdraft || (pdraft = plan ? {from: plan.from, to: plan.to, order: plan.order, amt: plan.amt, recent: plan.recent, cycle: plan.cycle} : {from: 78, to: 114, order: 'desc', amt: 'v5', recent: 7, cycle: 30});
   const total = planUnits(d).length, per = d.amt[0] === 'v' ? +d.amt.slice(1) : +d.amt.slice(1) * 10.3, days = Math.ceil(total / per);
+  const durSel = (k, label) => { const id = 'pf-' + k, pre = PF_PRESETS[k], other = d.other ? d.other[k] : !pre.includes(d[k]);
+    return `<div><label class="f" for="${id}">${label}</label><select id="${id}">${pre.map(n => `<option value="${n}" ${!other && d[k] === n ? 'selected' : ''}>${tr('{n} jours', {n})}</option>`).join('')}<option value="other" ${other ? 'selected' : ''}>${tr('Autre…')}</option></select>
+      ${other ? `<input type="number" id="${id}-n" inputmode="numeric" min="1" max="${PF_MAX[k]}" step="1" value="${d[k]}" aria-label="${esc(label)} : ${tr('nombre de jours')}" style="margin-top:6px"><p class="ref" style="margin:4px 0 0">${tr('Écris un nombre de jours entre 1 et {max}.', {max: PF_MAX[k]})}</p>` : ''}</div>`; };
   const sel = (id, label, opts, val) => `<div><label class="f" for="${id}">${label}</label><select id="${id}">${opts.map(([v, t]) => `<option value="${v}" ${String(v) === String(val) ? 'selected' : ''}>${t}</option>`).join('')}</select></div>`;
   return `
   <h1>${tr('Mon plan de révision')}</h1>
@@ -955,8 +965,8 @@ function planSetupHtml(){
   </div>
   <div class="card"><h2>${tr('Rythme')}</h2>
     ${sel('pf-amt', tr('Quantité de nouveau par jour'), PLAN_AMT.map(a => [a, amtLabel(a)]), d.amt)}
-    <div class="row">${sel('pf-recent', tr('Révision récente sur'), [3, 5, 7, 10].map(n => [n, tr('{n} jours', {n})]), d.recent)}
-      ${sel('pf-cycle', tr('Révision ancienne : cycle de'), [14, 30, 60].map(n => [n, tr('{n} jours', {n})]), d.cycle)}</div>
+    <div class="row">${durSel('recent', tr('Révision récente sur'))}
+      ${durSel('cycle', tr('Révision ancienne : cycle de'))}</div>
     <p class="ref" style="margin:10px 0 0">${tr('{v} versets au total, environ {d} jours à ce rythme.', {v: total, d: days})}</p>
   </div>
   <button class="pri big" data-act="plan-save">${plan ? tr('Enregistrer le plan') : tr('Créer mon plan')}</button>
@@ -2476,7 +2486,7 @@ const onClick = e => {
     case 'cm-rev': { const seg = window.Intl && Intl.Segmenter ? new Intl.Segmenter('ar', {granularity: 'grapheme'}) : null;
       $('cm-text').value = $('cm-text').value.split('\n').map(l => (seg ? [...seg.segment(l)].map(x => x.segment) : Array.from(l)).reverse().join('')).join('\n'); break; }
     case 'plan-save': {
-      const d = pdraft || {}; plan = {v: 1, from: d.from, to: d.to, order: d.order, amt: d.amt, recent: d.recent, cycle: d.cycle,
+      const d = $('pf-from') ? pfRead() : (pdraft || {}); plan = {v: 1, from: d.from, to: d.to, order: d.order, amt: d.amt, recent: d.recent, cycle: d.cycle,
         log: plan ? plan.log : [], mptr: plan ? plan.mptr || 0 : 0, done: plan ? plan.done || {} : {}};
       savePlan(); planEditing = false; pdraft = null; home(); window.scrollTo(0, 0); break;
     }
@@ -2834,7 +2844,7 @@ function results(){
 }
 
 /* ---------- compte (Supabase) : inscription, connexion, synchronisation, espace admin ---------- */
-const APP_VERSION = '24 oct. 2026 · v80';
+const APP_VERSION = '24 oct. 2026 · v81';
 async function forceUpdate(el){
   if (!navigator.onLine) return alert(tr('Pas de connexion : connecte-toi à internet pour mettre à jour.'));
   el.disabled = true; el.textContent = tr('Mise à jour…');
